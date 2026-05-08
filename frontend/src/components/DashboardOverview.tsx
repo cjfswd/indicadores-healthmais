@@ -498,23 +498,13 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      {/* Full-width Relatórios Card at the bottom */}
+      {/* Full-width Relatórios Card hidden */}
+      {/* 
       <Card className="w-full bg-muted/20 border-primary/10">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="w-4 h-4 text-primary" />
-            Geração de Relatórios
-          </CardTitle>
-          <CardDescription>Gere relatórios consolidados dos indicadores com comparação mensal com base no Período de Apuração definido.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" className="min-w-[120px] gap-2" onClick={() => handleDownloadReport('pdf')} title="Baixar PDF">
-              <FileText className="w-4 h-4 text-red-500" /> Gerar Relatório PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        ...
+      </Card> 
+      */}
     </div>
+
   );
 }
