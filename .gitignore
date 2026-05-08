@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-pnpm-lock.yaml
 venv/
 .venv/
 __pycache__/
@@ -35,3 +34,6 @@ backend/certs/
 
 # Docker
 docker-compose.override.yml
+
+# Real Secrets (Copy/Paste only)
+REAL_COOLIFY_ENV.txt
