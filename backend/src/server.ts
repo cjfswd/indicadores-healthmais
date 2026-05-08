@@ -5,7 +5,8 @@ import { MongoClient, ObjectId, Db } from 'mongodb';
 import dotenv from 'dotenv';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import type { DbRequest, DbResponse } from './types';
+import { spawn } from 'node:child_process';
+import type { DbRequest, DbResponse } from './db-types';
 import { logger } from './logger';
 import { defaultOperators, defaultIndicators, defaultSubindicatorsList, camperjPatients, unimedPatients } from './data/seed-data';
 
@@ -399,9 +400,12 @@ server.on('stream', async (stream: http2.ServerHttp2Stream, headers) => {
           return; // Early return because we don't send JSON response payload
         }
         case 'generateReport': {
-          const { spawn } = require('child_process');
           const scriptPath = path.join(__dirname, 'scripts', 'generate_report.py');
-          const pythonExec = path.join(__dirname, '..', 'venv', 'Scripts', 'python.exe');
+          
+          // Cross-platform python execution
+          const pythonExec = process.platform === 'win32'
+            ? path.join(__dirname, '..', 'venv', 'Scripts', 'python.exe')
+            : 'python3';
           
           const pythonProcess = spawn(pythonExec, [scriptPath]);
           let stdoutData = '';
