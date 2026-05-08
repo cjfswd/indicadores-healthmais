@@ -1,8 +1,9 @@
 services:
   backend:
     build: ./backend
-    ports:
-      - "3000:3000"
+    # Removido mapeamento de porta fixo para evitar conflitos no host
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -20,8 +21,9 @@ services:
       args:
         - VITE_PROXY_URL=${VITE_PROXY_URL:-/db/execute}
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-    ports:
-      - "80:80"
+    # Removido mapeamento de porta fixo para evitar conflitos no host
+    expose:
+      - "80"
     depends_on:
       - backend
     networks:
