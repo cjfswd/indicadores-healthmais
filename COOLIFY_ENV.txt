@@ -1,0 +1,15 @@
+# --- BACKEND VARIABLES ---
+PORT=3000
+NODE_ENV=production
+MONGO_URI=mongodb://usuario:senha@host:porta/database?opcoes
+DB_NAME=seu_nome_do_banco
+GOOGLE_CLIENT_ID=seu_client_id_aqui
+GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
+ALLOWED_DOMAIN=seu_dominio.com
+
+# --- FRONTEND (BUILD TIME) VARIABLES ---
+VITE_GOOGLE_CLIENT_ID=seu_client_id_aqui
+VITE_PROXY_URL=/db/execute
+
+# --- SYSTEM ---
+NIXPACKS_NODE_VERSION=22
