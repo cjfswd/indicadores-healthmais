@@ -1,19 +1,19 @@
 # Usa uma imagem leve do Node
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 # Habilita e instala o pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 COPY . .
 # Compila o TypeScript para a pasta dist/
 RUN pnpm run build
 
 # Stage de Runner (Apenas arquivos de produção)
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -26,7 +26,7 @@ RUN pip install --break-system-packages -r requirements.txt
 
 # Copia package.json para instalar apenas dependências de produção
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml ./
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --prod --frozen-lockfile
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --prod
 
 # Copia apenas o build final do TS e os scripts python
 COPY --from=builder /app/dist ./dist
