@@ -158,3 +158,15 @@ export const PatientSchema = BaseEntitySchema.extend({
   file: FileAttachmentSchema.nullable().optional().default(null),
 });
 export type Patient = z.infer<typeof PatientSchema>;
+
+// ─── Notification (entidade raiz para alertas do sistema) ──────
+
+export const NotificationSchema = BaseEntitySchema.extend({
+  title: z.string().min(1, 'O título é obrigatório').default(''),
+  message: z.string().min(1, 'A mensagem é obrigatória').default(''),
+  type: z.enum(['info', 'success', 'warning', 'error']).default('info'),
+  isRead: z.boolean().default(false),
+  link: z.string().optional(),
+});
+export type Notification = z.infer<typeof NotificationSchema>;
+

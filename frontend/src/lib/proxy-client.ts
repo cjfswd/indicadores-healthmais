@@ -1,17 +1,26 @@
 export async function dbExecute<T = any>(payload: any): Promise<{ result: T, total?: number, success: boolean, message?: string }> {
   try {
-    // Separa dados pesados (data) do metadata leve (action, collection, etc.)
     const { data, ...metadata } = payload
+    const token = localStorage.getItem('auth_token')
+    const baseURL = import.meta.env.VITE_API_URL || ''
     
-    const response = await fetch('http://localhost:3000/db/execute', {
+    const response = await fetch(`${baseURL}/db/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-db-meta': JSON.stringify(metadata)
+        'x-db-meta': JSON.stringify(metadata),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ data: data ?? {} })
     })
     
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
+      window.location.href = '/'
+      throw new Error('Unauthorized')
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status}`)
     }
@@ -49,11 +58,25 @@ export async function downloadFileFromDb(
   fileName: string,
   eventId?: string
 ): Promise<void> {
-  let url = `http://localhost:3000/db/file/${collection}/${docId}/0`
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  
+  let url = `${baseURL}/db/file/${collection}/${docId}/0`
   if (eventId) url += `?event_id=${eventId}`
   
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  })
   
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    window.location.href = '/'
+    throw new Error('Unauthorized')
+  }
+
   if (!response.ok) {
     throw new Error(`Download failed: ${response.status}`)
   }
@@ -76,7 +99,21 @@ export async function fetchEntityEvents<T = any>(
   streamType: string,
   streamId: string
 ): Promise<{ result: T[], total: number, success: boolean }> {
-  const response = await fetch(`http://localhost:3000/db/events/${streamType}/${streamId}`)
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  
+  const response = await fetch(`${baseURL}/db/events/${streamType}/${streamId}`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  })
+
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    window.location.href = '/'
+    throw new Error('Unauthorized')
+  }
 
   if (!response.ok) {
     throw new Error(`HTTP Error: ${response.status}`)

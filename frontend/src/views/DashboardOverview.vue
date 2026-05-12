@@ -1,7 +1,7 @@
 <template lang="pug">
 div(class="space-y-6 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h5.font-weight-bold Visão Geral
+    h2.text-h5.font-weight-bold Bem-vindo aos Indicadores Healthmais
 
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
@@ -57,6 +57,36 @@ div(class="space-y-6 animate-in fade-in duration-700")
           
           .text-caption.text-medium-emphasis.mt-4.text-center(v-else)
             | Nenhum subindicador configurado.
+
+  v-divider.my-6
+
+  .d-flex.justify-space-between.align-center.mb-4
+    h2.text-h6.font-weight-bold Relatórios Detalhados
+
+  v-row
+    v-col(cols="12" md="6")
+      v-card(elevation="1" class="h-100 d-flex flex-column")
+        v-card-title Eventos Adversos (Detalhamento)
+        v-card-text.flex-grow-1
+          v-list(lines="one" density="compact")
+            v-list-item.px-0(v-for="item in analytics.adverseEventsData" :key="item.name")
+              v-list-item-title.text-body-2.text-wrap {{ item.name }}
+              template(v-slot:append)
+                v-chip(size="small" color="error" variant="tonal") {{ item.eventos }}
+            v-list-item(v-if="!analytics.adverseEventsData.length")
+              v-list-item-title.text-medium-emphasis Nenhum evento adverso registrado.
+
+    v-col(cols="12" md="6")
+      v-card(elevation="1" class="h-100 d-flex flex-column")
+        v-card-title Ouvidorias (Detalhamento)
+        v-card-text.flex-grow-1
+          v-list(lines="one" density="compact")
+            v-list-item.px-0(v-for="item in analytics.ouvidoriasData" :key="item.name")
+              v-list-item-title.text-body-2.text-wrap {{ item.name }}
+              template(v-slot:append)
+                v-chip(size="small" color="warning" variant="tonal") {{ item.eventos }}
+            v-list-item(v-if="!analytics.ouvidoriasData.length")
+              v-list-item-title.text-medium-emphasis Nenhuma ouvidoria registrada.
 
 </template>
 

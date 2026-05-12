@@ -1,17 +1,19 @@
 services:
   backend:
     build: ./backend
-    # Removido mapeamento de porta fixo para evitar conflitos no host
     expose:
       - "3000"
     environment:
-      - NODE_ENV=production
       - PORT=3000
       - MONGO_URI=${MONGO_URI:-mongodb://root:whdQdCaV2ySMYmHiKIC0Eydm5Mf3U3Rxl5OZuiFJsPc1l5TDKdfqFGCKWkVcAVNu@ac4ljene7dzemo5naoldrcmv:27017/?directConnection=true}
       - DB_NAME=${DB_NAME:-mongodb-database-ac4ljene7dzemo5naoldrcmv}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - ALLOWED_DOMAIN=${ALLOWED_DOMAIN:-healthmaiscuidados.com}
+      - JWT_SECRET=${JWT_SECRET:-coringa_secret_key}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL}
     networks:
       - app-network
 
@@ -19,11 +21,9 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_PROXY_URL=${VITE_PROXY_URL:-/db/execute}
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-    # Removido mapeamento de porta fixo para evitar conflitos no host
-    expose:
-      - "80"
+    ports:
+      - "80:80"
     depends_on:
       - backend
     networks:

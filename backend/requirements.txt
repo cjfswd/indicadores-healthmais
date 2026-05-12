@@ -2,8 +2,8 @@ fastapi
 uvicorn
 motor
 python-dotenv
-google-auth
 PyJWT
 reportlab
-requests
 mongomock-motor
+pywebpush
+
