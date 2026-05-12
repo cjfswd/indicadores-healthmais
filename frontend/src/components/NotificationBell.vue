@@ -79,12 +79,10 @@ const requestPermission = async () => {
 const { 
   data: notificationsData, 
   update: updateNotif, 
-  delete: deleteNotif, 
+  remove: deleteNotif, 
   refetch 
 } = useCrud<Notification>('notifications', { 
-  defaultPageSize: 20,
-  sortBy: 'createdAt',
-  sortOrder: -1
+  defaultPageSize: 20
 })
 
 const notifications = computed(() => notificationsData.value || [])
