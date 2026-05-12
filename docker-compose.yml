@@ -16,6 +16,7 @@ services:
       - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL}
     networks:
       - app-network
+      - coolify
 
   frontend:
     build:
@@ -32,3 +33,5 @@ services:
 networks:
   app-network:
     driver: bridge
+  coolify:
+    external: true
