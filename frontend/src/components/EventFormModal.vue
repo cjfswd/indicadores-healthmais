@@ -98,6 +98,8 @@ import { z } from 'zod'
 import { useCrud } from '@/composables/useCrud'
 import { useQueryClient } from '@tanstack/vue-query'
 import { fileToBase64, downloadFileFromDb } from '@/lib/proxy-client'
+import { NotificationService } from '@/services/NotificationService'
+
 
 const EventFormSchema = z.object({
   patientId: z.string().min(1, 'A seleção de paciente é obrigatória'),
@@ -241,7 +243,16 @@ const saveEvent = async () => {
     }
     
     await updatePatient({ id: patient._id, data: { events: newEvents } })
+    
+    // Notifica se for um novo registro
+    if (!editingId.value) {
+      NotificationService.notifyNewEvent(patient.name, ind.name)
+    } else {
+      snackbar.show('Evento atualizado com sucesso!', 'success')
+    }
+
     close()
+
   } catch (e) {
     console.error(e)
     snackbar.show('Erro ao salvar evento', 'error')

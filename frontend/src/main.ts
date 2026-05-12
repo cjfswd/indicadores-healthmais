@@ -37,3 +37,13 @@ app.use(vuetify)
 app.use(VueQueryPlugin)
 
 app.mount('#app')
+
+// Registro do Service Worker para notificações em segundo plano
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registrado!', reg))
+      .catch(err => console.error('Erro ao registrar Service Worker:', err))
+  })
+}
+

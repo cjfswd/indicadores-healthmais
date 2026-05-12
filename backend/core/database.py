@@ -6,9 +6,6 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from bson import ObjectId
 from typing import Any, Optional
 
-MONGO_URI = os.getenv("MONGO_URI", "memory")
-DB_NAME = os.getenv("DB_NAME", "coringa_db")
-
 db_client: Optional[AsyncIOMotorClient] = None
 db: Optional[AsyncIOMotorDatabase] = None
 
@@ -33,19 +30,24 @@ def get_db() -> AsyncIOMotorDatabase:
 
 async def init_db():
     global db_client, db
-    if MONGO_URI == "memory":
-        try:
-            from mongomock_motor import AsyncMongoMockClient
-            db_client = AsyncMongoMockClient()
-            print("[OK] Connected to MongoDB (IN-MEMORY / MONGOMOCK)")
-        except ImportError:
-            print("[ERROR] Please install 'mongomock-motor' to use in-memory database.")
-            raise
-    else:
-        db_client = AsyncIOMotorClient(MONGO_URI)
-        print(f"[OK] Connected to MongoDB at {MONGO_URI}")
+    
+    import sys
+    mongo_uri = os.getenv("MONGO_URI", "memory")
+    db_name = os.getenv("DB_NAME", "coringa_db")
 
-    db = db_client[DB_NAME]
+    # Windows = dev local → sempre in-memory
+    # Linux   = produção (Docker/Coolify) → MongoDB real
+    is_dev = sys.platform == "win32"
+
+    if is_dev:
+        from mongomock_motor import AsyncMongoMockClient
+        db_client = AsyncMongoMockClient()
+        print("[OK] MongoDB IN-MEMORY (dev local / Windows)")
+    else:
+        db_client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        print(f"[OK] MongoDB remoto: {mongo_uri[:50]}...")
+
+    db = db_client[db_name]
 
     # Cria índices para o event store
     await db[EVENT_STORE_COLLECTION].create_index(

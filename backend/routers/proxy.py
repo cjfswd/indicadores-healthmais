@@ -91,6 +91,17 @@ async def db_execute(request: Request):
             )
             result = snapshot
 
+            # ─── REAL PUSH HOOK ───
+            if collection_name == "notifications":
+                from routers.notifications import send_push_notification
+                import asyncio
+                asyncio.create_task(send_push_notification(
+                    title=data.get("title", "Healthmais"),
+                    message=data.get("message", ""),
+                    link=data.get("link", "/")
+                ))
+
+
         elif action == "update":
             doc_id = metadata.get("id")
             update_data = body_data if body_data else metadata.get("data", {})

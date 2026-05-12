@@ -102,6 +102,28 @@ export function useDashboardAnalytics(
       return card;
     });
 
+    // Eventos Adversos Subindicators
+    const adverseEvents = eList.filter((e: any) => e.indicator?.name.toLowerCase().includes('adverso') && e.subindicator);
+    const subCountsAdv: Record<string, number> = {};
+    adverseEvents.forEach((e: any) => {
+      const label = e.subindicator.name;
+      subCountsAdv[label] = (subCountsAdv[label] || 0) + 1;
+    });
+    const adverseEventsData = Object.entries(subCountsAdv)
+      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '…' : name, eventos: count }))
+      .sort((a, b) => b.eventos - a.eventos);
+
+    // Ouvidorias Subindicators
+    const ouvidoriasEvents = eList.filter((e: any) => e.indicator?.name.toLowerCase().includes('ouvidoria') && e.subindicator);
+    const subCountsOuv: Record<string, number> = {};
+    ouvidoriasEvents.forEach((e: any) => {
+      const label = e.subindicator.name;
+      subCountsOuv[label] = (subCountsOuv[label] || 0) + 1;
+    });
+    const ouvidoriasData = Object.entries(subCountsOuv)
+      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '…' : name, eventos: count }))
+      .sort((a, b) => b.eventos - a.eventos);
+
     return {
       totalPatients: pList.length,
       totalEvents: eList.length,
@@ -109,6 +131,8 @@ export function useDashboardAnalytics(
       eventTrend,
       eventTrendDirection: eventTrend !== null ? (Number(eventTrend) >= 0 ? 'up' : 'down') : undefined,
       indicatorsCards,
+      adverseEventsData,
+      ouvidoriasData,
     };
   });
 }

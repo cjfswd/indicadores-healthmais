@@ -1,6 +1,11 @@
 <template lang="pug">
 v-app
-  DashboardLayout
+  template(v-if="route.name === 'login'")
+    router-view
+  template(v-else)
+    DashboardLayout
+      router-view
+
   ConfirmDialog
   
   v-snackbar(
@@ -15,10 +20,12 @@ v-app
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import DashboardLayout from '@/components/DashboardLayout.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
+const route = useRoute()
 const snackbar = useSnackbarStore()
 </script>
 
