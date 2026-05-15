@@ -1,7 +1,7 @@
 from bson import ObjectId
 from core.database import append_event, EVENT_STORE_COLLECTION
 from seed_data import (
-    default_operators, default_indicators, camperj_patients, unimed_patients
+    default_operators, default_indicators, default_patients
 )
 
 
@@ -16,7 +16,6 @@ async def seed_database(db):
     print("[SEED] Seeding database via Event Sourcing...")
 
     # ─── Operators ────────────────────────────────────────────────
-    operator_ids = {}
     for op in default_operators:
         op_id = str(ObjectId())
         await append_event(
@@ -26,7 +25,6 @@ async def seed_database(db):
             data={**op},
             actor="system-seeder"
         )
-        operator_ids[op["name"]] = op_id
 
     # ─── Indicators ───────────────────────────────────────────────
     for ind in default_indicators:
@@ -40,47 +38,20 @@ async def seed_database(db):
         )
 
     # ─── Patients ─────────────────────────────────────────────────
-    camperj_id = operator_ids.get("Camperj")
-    unimed_id = operator_ids.get("Unimed")
-
-    # Busca snapshots dos operators para pegar o ref completo
-    camperj_op = await db.operators.find_one({"_id": ObjectId(camperj_id)}) if camperj_id else None
-    unimed_op = await db.operators.find_one({"_id": ObjectId(unimed_id)}) if unimed_id else None
-
-    if camperj_op:
-        for name in camperj_patients:
-            pat_id = str(ObjectId())
-            await append_event(
-                stream_type="patients",
-                stream_id=pat_id,
-                event_type="CREATE",
-                data={
-                    "name": name,
-                    "operator": {"_id": str(camperj_op["_id"]), "name": camperj_op["name"]},
-                    "admissionDate": "",
-                    "birthDate": "",
-                    "observations": "",
-                    "events": [],
-                },
-                actor="system-seeder"
-            )
-
-    if unimed_op:
-        for name in unimed_patients:
-            pat_id = str(ObjectId())
-            await append_event(
-                stream_type="patients",
-                stream_id=pat_id,
-                event_type="CREATE",
-                data={
-                    "name": name,
-                    "operator": {"_id": str(unimed_op["_id"]), "name": unimed_op["name"]},
-                    "admissionDate": "",
-                    "birthDate": "",
-                    "observations": "",
-                    "events": [],
-                },
-                actor="system-seeder"
-            )
+    for name in default_patients:
+        pat_id = str(ObjectId())
+        await append_event(
+            stream_type="patients",
+            stream_id=pat_id,
+            event_type="CREATE",
+            data={
+                "name": name,
+                "admissionDate": "",
+                "birthDate": "",
+                "observations": "",
+                "events": [],
+            },
+            actor="system-seeder"
+        )
 
     print("[SEED] Database seeding completed via Event Sourcing.")
