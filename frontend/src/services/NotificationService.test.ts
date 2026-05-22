@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // ─── Setup Mocks ──────────────────────────────────────────────────
-let mockFetch: ReturnType<typeof vi.fn>
-let mockDbExecute: ReturnType<typeof vi.fn>
-let mockSnackbarShow: ReturnType<typeof vi.fn>
-let mockPostMessage: ReturnType<typeof vi.fn>
-let mockShowNotification: ReturnType<typeof vi.fn>
-let mockSubscribe: ReturnType<typeof vi.fn>
-let mockRequestPermission: ReturnType<typeof vi.fn>
+let mockFetch: any
+let mockDbExecute: any
+let mockSnackbarShow: any
+let mockPostMessage: any
+let mockShowNotification: any
+let mockSubscribe: any
+let mockRequestPermission: any
 
 vi.mock('@/lib/proxy-client', () => ({
   dbExecute: vi.fn((...args) => mockDbExecute(...args))
