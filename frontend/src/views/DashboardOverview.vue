@@ -110,27 +110,27 @@ div(class="space-y-6 animate-in fade-in duration-700")
       ) Exportar PPTX
 
   v-row
-    v-col(cols="12" lg="8")
+    v-col(cols="12")
       v-card(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold Eventos por Indicador
         v-card-text
           .chart-container(style="position: relative; height: 400px;")
             Bar(ref="barChartRef" :data="barChartData" :options="barOptions")
-    v-col(cols="12" lg="4")
-      v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Distribuição por Sub-indicador
-        v-card-text
-          v-select(
-            v-model="selectedIndicatorForPie"
-            :items="analytics.indicatorsCards.map(c => c.name)"
-            label="Selecionar Indicador"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-          )
-          .chart-container.mt-3(style="position: relative; height: 350px;")
-            Doughnut(ref="doughnutChartRef" :data="doughnutData" :options="doughnutOptions")
+
+  .d-flex.justify-space-between.align-center.mb-4.mt-6
+    h2.text-h6.font-weight-bold Distribuição por Sub-indicador
+
+  v-row
+    v-col(cols="12" sm="6" lg="4" v-for="(card, idx) in analytics.indicatorsCards" :key="'doughnut-' + card.id")
+      v-card(elevation="1" class="h-100 d-flex flex-column")
+        v-card-title.text-subtitle-2.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
+        v-card-text.flex-grow-1.d-flex.flex-column.justify-center
+          .chart-container(v-if="card.subindicators.length && card.totalEvents > 0" style="position: relative; height: 280px;")
+            Doughnut(:ref="el => setDoughnutRef(el, idx)" :data="getDoughnutDataForCard(card)" :options="doughnutOptions")
+          .text-center.text-caption.text-medium-emphasis.pa-4(v-else)
+            v-icon.mb-2(size="40" color="grey-lighten-1") mdi-chart-arc
+            div(v-if="!card.subindicators.length") Nenhum subindicador configurado.
+            div(v-else) Nenhum evento registrado.
 
   v-row.mt-4
     v-col(cols="12")
@@ -219,8 +219,11 @@ const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate
 // ── Chart refs ──
 const barChartRef = ref<any>(null)
 const lineChartRef = ref<any>(null)
-const doughnutChartRef = ref<any>(null)
-const selectedIndicatorForPie = ref('')
+const doughnutChartRefs = ref<Record<number, any>>({})
+
+const setDoughnutRef = (el: any, idx: number) => {
+  if (el) doughnutChartRefs.value[idx] = el
+}
 
 // ── Bar Chart ──
 const barChartData = computed(() => ({
@@ -307,30 +310,18 @@ const lineOptions = {
   },
 }
 
-// ── Doughnut Chart ──
-const doughnutData = computed(() => {
-  const card = analytics.value.indicatorsCards.find(c => c.name === selectedIndicatorForPie.value)
-  if (!card || !card.subindicators.length) {
-    return {
-      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '…' : c.name),
-      datasets: [{
-        data: analytics.value.indicatorsCards.map(c => c.totalEvents),
-        backgroundColor: CHART_COLORS,
-        borderWidth: 2,
-        hoverOffset: 8,
-      }],
-    }
-  }
+// ── Doughnut Chart (per-card) ──
+const getDoughnutDataForCard = (card: any) => {
   return {
-    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+    labels: card.subindicators.map((s: any) => s.name.length > 30 ? s.name.substring(0, 28) + '…' : s.name),
     datasets: [{
-      data: card.subindicators.map(s => s.eventos),
+      data: card.subindicators.map((s: any) => s.eventos),
       backgroundColor: CHART_COLORS,
       borderWidth: 2,
       hoverOffset: 8,
     }],
   }
-})
+}
 
 const doughnutOptions = {
   responsive: true,
@@ -338,7 +329,7 @@ const doughnutOptions = {
   plugins: {
     legend: {
       position: 'bottom' as const,
-      labels: { usePointStyle: true, padding: 10, font: { size: 10 } },
+      labels: { usePointStyle: true, padding: 8, font: { size: 10 } },
     },
     tooltip: {
       backgroundColor: '#1E293B',
@@ -362,8 +353,16 @@ function collectChartImages() {
   if (lineChartRef.value?.chart) {
     charts.push({ title: 'Evolução Mensal', image: lineChartRef.value.chart.toBase64Image() })
   }
-  if (doughnutChartRef.value?.chart) {
-    charts.push({ title: 'Distribuição por Sub-indicador', image: doughnutChartRef.value.chart.toBase64Image() })
+  // Captura todos os doughnuts individuais
+  const cards = analytics.value.indicatorsCards
+  for (const [idx, ref] of Object.entries(doughnutChartRefs.value)) {
+    if (ref?.chart) {
+      const card = cards[Number(idx)]
+      charts.push({
+        title: card ? card.name : `Distribuição ${idx}`,
+        image: ref.chart.toBase64Image(),
+      })
+    }
   }
   return charts
 }
