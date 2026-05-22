@@ -59,7 +59,8 @@ async def seed_database(db):
     unimed_op = await db.operators.find_one({"_id": ObjectId(unimed_id)}) if unimed_id else None
 
     if camperj_op:
-        for name in camperj_patients:
+        half = len(default_patients) // 2
+        for name in default_patients[:half]:
             existing = await db.patients.find_one({"name": name, "deletedAt": None})
             if existing:
                 continue
@@ -80,7 +81,8 @@ async def seed_database(db):
             )
 
     if unimed_op:
-        for name in unimed_patients:
+        half = len(default_patients) // 2
+        for name in default_patients[half:]:
             existing = await db.patients.find_one({"name": name, "deletedAt": None})
             if existing:
                 continue
