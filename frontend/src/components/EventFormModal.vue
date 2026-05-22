@@ -258,6 +258,8 @@ const saveEvent = async () => {
 
     if (isPadEvent.value && form.assistanceType) {
       payloadEvent.assistanceType = form.assistanceType
+    } else {
+      payloadEvent.assistanceType = null
     }
 
     // Se tem arquivo novo, converte para base64 e inclui no evento
@@ -269,7 +271,7 @@ const saveEvent = async () => {
 
     let newEvents: any[]
     if (editingId.value) {
-      newEvents = (patient.events || []).map((e: any) => e._id === editingId.value ? payloadEvent : e)
+      newEvents = (patient.events || []).map((e: any) => e._id === editingId.value ? { ...e, ...payloadEvent } : e)
     } else {
       newEvents = [...(patient.events || []), payloadEvent]
     }
