@@ -135,7 +135,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-row.mt-4
     v-col(cols="12")
       v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Evolução Mensal
+        v-card-title.text-subtitle-1.font-weight-bold Indicadores ao Longo do Tempo
         v-card-text
           .chart-container(style="position: relative; height: 400px;")
             Line(ref="lineChartRef" :data="lineChartData" :options="lineOptions")
@@ -144,7 +144,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-row.mt-4(v-if="analytics.reportTableData?.length")
     v-col(cols="12")
       v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Tabela Pivô Mensal
+        v-card-title.text-subtitle-1.font-weight-bold Tabela por Mês — {{ new Date().getFullYear() }}
         v-card-text
           v-table(density="compact" fixed-header hover)
             thead
@@ -383,7 +383,8 @@ async function downloadReport(format: 'pdf' | 'pptx') {
   loadingRef.value = true
   try {
     const token = localStorage.getItem('auth_token')
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/report/generate`, {
+    const baseURL = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${baseURL}/report/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
