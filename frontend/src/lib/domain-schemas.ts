@@ -140,6 +140,7 @@ export const EventSchema = z.object({
   indicator: IndicatorSchema.omit({ subindicators: true, _id: true }),
   subindicator: SubindicatorSchema,
   observations: z.string().max(500).optional().default(''),
+  assistanceType: z.enum(['enfermagem', 'fisioterapia', 'fonoaudiologia', 'medicina', 'nutrição', 'psicologia']).optional(),
   file: FileAttachmentSchema.nullable().optional().default(null),
   createdAt: z.union([z.date(), z.string()]).optional(),
   updatedBy: z.email('Email inválido').optional().or(z.literal('')).default(''),

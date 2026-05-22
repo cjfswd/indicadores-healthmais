@@ -110,9 +110,10 @@ export const NotificationService = {
 
     try {
       const registration = await navigator.serviceWorker.ready
+      const baseURL = import.meta.env.VITE_API_URL || ''
       
       // 1. Pega a chave pública do servidor
-      const response = await fetch('/push/vapid-public-key')
+      const response = await fetch(`${baseURL}/push/vapid-public-key`)
       const { publicKey } = await response.json()
       
       // 2. Inscreve no Push Manager
@@ -122,7 +123,7 @@ export const NotificationService = {
       })
       
       // 3. Envia a assinatura para o backend salvar
-      await fetch('/push/subscribe', {
+      await fetch(`${baseURL}/push/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription)
@@ -148,6 +149,22 @@ export const NotificationService = {
       outputArray[i] = rawData.charCodeAt(i)
     }
     return outputArray
+  },
+
+  /**
+   * Comunica-se com o Service Worker para fechar todas as notificações ativas no S.O.
+   */
+  async clearNativeNotifications() {
+    if (!('serviceWorker' in navigator)) return;
+    
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.active) {
+        reg.active.postMessage({ action: 'clear_notifications' });
+      }
+    } catch (e) {
+      console.error('Falha ao limpar notificações nativas:', e);
+    }
   }
 }
 

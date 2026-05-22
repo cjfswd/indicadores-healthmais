@@ -6,4 +6,5 @@ PyJWT
 reportlab
 mongomock-motor
 pywebpush
+python-pptx
 

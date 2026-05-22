@@ -1,12 +1,14 @@
 <template lang="pug">
 div(class="space-y-6 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h5.font-weight-bold Bem-vindo aos Indicadores Healthmais
+    div
+      h2.text-h5.font-weight-bold Relat&#243;rios e Gr&#225;ficos
+      .text-body-2.text-medium-emphasis Visualiza&#231;&#227;o consolidada dos indicadores
 
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
-        v-col(cols="12" sm="4" md="3")
+        v-col(cols="12" sm="3")
           v-text-field(
             v-model="startDate"
             type="date"
@@ -16,7 +18,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
             hide-details
             clearable
           )
-        v-col(cols="12" sm="4" md="3")
+        v-col(cols="12" sm="3")
           v-text-field(
             v-model="endDate"
             type="date"
@@ -26,99 +28,28 @@ div(class="space-y-6 animate-in fade-in duration-700")
             hide-details
             clearable
           )
-        v-col(cols="12" sm="4" md="6")
-          v-btn(
-            v-if="startDate || endDate"
-            variant="text"
-            color="primary"
-            prepend-icon="mdi-filter-off"
-            @click="clearFilters"
-          ) Limpar Filtros
-
-  v-row
-    v-col(cols="12" md="6" lg="4" v-for="card in analytics.indicatorsCards" :key="card.id")
-      v-card(elevation="1" class="h-100 d-flex flex-column")
-        v-card-title.text-subtitle-1.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
-        
-        v-card-text.flex-grow-1.d-flex.flex-column
-          .d-flex.align-center.mb-3
-            .text-h4.font-weight-bold.text-primary {{ card.totalEvents }}
-            .text-caption.text-medium-emphasis.ml-2 Eventos (Total)
-            
-          v-divider.mb-2
-          
-          v-list.flex-grow-1(lines="one" density="compact" v-if="card.subindicators.length")
-            v-list-item.px-0(v-for="sub in card.subindicators" :key="sub.name")
-              v-list-item-title.text-body-2.text-wrap {{ sub.name }}
-              template(v-slot:append)
-                v-chip(size="small" variant="tonal" :color="sub.eventos > 0 ? 'secondary' : 'grey'") {{ sub.eventos }}
-          
-          .text-caption.text-medium-emphasis.mt-4.text-center(v-else)
-            | Nenhum subindicador configurado.
-
-  v-divider.my-6
-
-  .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h6.font-weight-bold Relatórios Detalhados
-
-  v-row
-    v-col(cols="12" md="6")
-      v-card(elevation="1" class="h-100 d-flex flex-column")
-        v-card-title Eventos Adversos (Detalhamento)
-        v-card-text.flex-grow-1
-          v-list(lines="one" density="compact")
-            v-list-item.px-0(v-for="item in analytics.adverseEventsData" :key="item.name")
-              v-list-item-title.text-body-2.text-wrap {{ item.name }}
-              template(v-slot:append)
-                v-chip(size="small" color="error" variant="tonal") {{ item.eventos }}
-            v-list-item(v-if="!analytics.adverseEventsData.length")
-              v-list-item-title.text-medium-emphasis Nenhum evento adverso registrado.
-
-    v-col(cols="12" md="6")
-      v-card(elevation="1" class="h-100 d-flex flex-column")
-        v-card-title Ouvidorias (Detalhamento)
-        v-card-text.flex-grow-1
-          v-list(lines="one" density="compact")
-            v-list-item.px-0(v-for="item in analytics.ouvidoriasData" :key="item.name")
-              v-list-item-title.text-body-2.text-wrap {{ item.name }}
-              template(v-slot:append)
-                v-chip(size="small" color="warning" variant="tonal") {{ item.eventos }}
-            v-list-item(v-if="!analytics.ouvidoriasData.length")
-              v-list-item-title.text-medium-emphasis Nenhuma ouvidoria registrada.
-
-  v-divider.my-6
-
-  //- ── Charts & Export Section ──
-  .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h6.font-weight-bold Gráficos e Relatórios
-    .d-flex.gap-2
-      v-btn(
-        color="primary"
-        variant="elevated"
-        prepend-icon="mdi-file-pdf-box"
-        :loading="generatingReport"
-        :disabled="generatingReport"
-        @click="generateReport"
-      ) Exportar PDF
-      v-btn(
-        color="deep-orange"
-        variant="elevated"
-        prepend-icon="mdi-file-powerpoint-box"
-        :loading="generatingPptx"
-        :disabled="generatingPptx"
-        @click="generatePptx"
-      ) Exportar PPTX
+        v-col(cols="12" sm="6")
+          .d-flex.ga-2.justify-end
+            v-btn(
+              v-if="startDate || endDate"
+              variant="text"
+              color="primary"
+              prepend-icon="mdi-filter-off"
+              @click="clearFilters"
+            ) Limpar
+            v-btn(color="primary" variant="elevated" prepend-icon="mdi-file-pdf-box" @click="generateReport" :loading="generatingReport" :disabled="generatingReport") Exportar PDF
+            v-btn(color="deep-orange" variant="elevated" prepend-icon="mdi-file-powerpoint-box" @click="generatePptx" :loading="generatingPptx" :disabled="generatingPptx") Exportar PPTX
 
   v-row
     v-col(cols="12" lg="8")
-      v-card(elevation="1")
+      v-card(elevation="1" class="h-100")
         v-card-title.text-subtitle-1.font-weight-bold Eventos por Indicador
         v-card-text
-          .chart-container(style="position: relative; height: 400px;")
+          .chart-container(style="position: relative; height: 420px;")
             Bar(ref="barChartRef" :data="barChartData" :options="barOptions")
     v-col(cols="12" lg="4")
-      v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Distribuição por Sub-indicador
+      v-card(elevation="1" class="h-100")
+        v-card-title.text-subtitle-1.font-weight-bold Distribui&#231;&#227;o por Sub-indicador
         v-card-text
           v-select(
             v-model="selectedIndicatorForPie"
@@ -135,16 +66,15 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-row.mt-4
     v-col(cols="12")
       v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Evolução Mensal
+        v-card-title.text-subtitle-1.font-weight-bold Evolu&#231;&#227;o Mensal
         v-card-text
           .chart-container(style="position: relative; height: 400px;")
             Line(ref="lineChartRef" :data="lineChartData" :options="lineOptions")
 
-  //- ── Pivot Table ──
   v-row.mt-4(v-if="analytics.reportTableData?.length")
     v-col(cols="12")
       v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Tabela Pivô Mensal
+        v-card-title.text-subtitle-1.font-weight-bold Tabela Piv&#244; Mensal
         v-card-text
           v-table(density="compact" fixed-header hover)
             thead
@@ -165,6 +95,25 @@ div(class="space-y-6 animate-in fade-in duration-700")
                   :key="key"
                   :class="[key === 'indicador' ? 'text-left' : 'text-center', key === 'indicador' && String(row.indicador).includes(' > ') ? 'pl-8' : '']"
                 ) {{ key === 'indicador' ? row[key] : (row[key] ?? 0) }}
+
+  v-divider.my-6
+
+  v-row
+    v-col(cols="12" md="6" lg="4" v-for="card in analytics.indicatorsCards" :key="card.id")
+      v-card(elevation="1" class="h-100 d-flex flex-column")
+        v-card-title.text-subtitle-1.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
+        v-card-text.flex-grow-1.d-flex.flex-column
+          .d-flex.align-center.mb-3
+            .text-h4.font-weight-bold.text-primary {{ card.totalEvents }}
+            .text-caption.text-medium-emphasis.ml-2 Eventos (Total)
+          v-divider.mb-2
+          v-list.flex-grow-1(lines="one" density="compact" v-if="card.subindicators.length")
+            v-list-item.px-0(v-for="sub in card.subindicators" :key="sub.name")
+              v-list-item-title.text-body-2.text-wrap {{ sub.name }}
+              template(v-slot:append)
+                v-chip(size="small" variant="tonal" :color="sub.eventos > 0 ? 'secondary' : 'grey'") {{ sub.eventos }}
+          .text-caption.text-medium-emphasis.mt-4.text-center(v-else)
+            | Nenhum subindicador configurado.
 
 </template>
 
@@ -312,7 +261,7 @@ const doughnutData = computed(() => {
   const card = analytics.value.indicatorsCards.find(c => c.name === selectedIndicatorForPie.value)
   if (!card || !card.subindicators.length) {
     return {
-      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '…' : c.name),
+      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '\u2026' : c.name),
       datasets: [{
         data: analytics.value.indicatorsCards.map(c => c.totalEvents),
         backgroundColor: CHART_COLORS,
@@ -322,7 +271,7 @@ const doughnutData = computed(() => {
     }
   }
   return {
-    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '\u2026' : s.name),
     datasets: [{
       data: card.subindicators.map(s => s.eventos),
       backgroundColor: CHART_COLORS,
@@ -360,18 +309,18 @@ function collectChartImages() {
     charts.push({ title: 'Eventos por Indicador', image: barChartRef.value.chart.toBase64Image() })
   }
   if (lineChartRef.value?.chart) {
-    charts.push({ title: 'Evolução Mensal', image: lineChartRef.value.chart.toBase64Image() })
+    charts.push({ title: 'Evolucao Mensal', image: lineChartRef.value.chart.toBase64Image() })
   }
   if (doughnutChartRef.value?.chart) {
-    charts.push({ title: 'Distribuição por Sub-indicador', image: doughnutChartRef.value.chart.toBase64Image() })
+    charts.push({ title: 'Distribuicao por Sub-indicador', image: doughnutChartRef.value.chart.toBase64Image() })
   }
   return charts
 }
 
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
-    title: 'RELATÓRIO DE INDICADORES',
-    subtitle: `Período: ${startDate.value || 'Início'} a ${endDate.value || 'Atual'}`,
+    title: 'RELATORIO DE INDICADORES',
+    subtitle: `Periodo: ${startDate.value || 'Inicio'} a ${endDate.value || 'Atual'}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),

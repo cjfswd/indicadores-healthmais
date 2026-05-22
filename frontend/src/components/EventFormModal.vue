@@ -49,6 +49,14 @@ v-dialog(v-model="isOpen" max-width="800px")
               :error-messages="errors.subindicatorId"
               :disabled="!form.indicatorId"
             )
+          v-col(cols="12" v-if="isPadEvent")
+            v-select(
+              v-model="form.assistanceType"
+              :items="assistanceOptions"
+              label="Assistência (Qual?)"
+              variant="outlined"
+              :error-messages="errors.assistanceType"
+            )
           v-col(cols="12")
             v-textarea(
               v-model="form.observations"
@@ -97,7 +105,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { z } from 'zod'
 import { useCrud } from '@/composables/useCrud'
 import { useQueryClient } from '@tanstack/vue-query'
-import { fileToBase64, downloadFileFromDb } from '@/lib/proxy-client'
+import { fileToBase64, downloadFileFromDb, dbExecute } from '@/lib/proxy-client'
 import { NotificationService } from '@/services/NotificationService'
 
 
@@ -107,6 +115,7 @@ const EventFormSchema = z.object({
   indicatorId: z.string().min(1, 'O indicador é obrigatório'),
   subindicatorId: z.string().min(1, 'O sub-indicador é obrigatório'),
   observations: z.string().max(500, 'A observação deve ter no máximo 500 caracteres').optional(),
+  assistanceType: z.enum(['enfermagem', 'fisioterapia', 'fonoaudiologia', 'medicina', 'nutrição', 'psicologia']).optional().nullable(),
   file: z.any().nullable().optional().default(null)
 })
 
@@ -118,6 +127,8 @@ const queryClient = useQueryClient()
 import { useSnackbarStore } from '@/stores/snackbarStore'
 const snackbar = useSnackbarStore()
 
+const assistanceOptions = ['enfermagem', 'fisioterapia', 'fonoaudiologia', 'medicina', 'nutrição', 'psicologia']
+
 const isOpen = ref(false)
 const editingId = ref<string | null>(null)
 const editingPatientId = ref<string | null>(null)
@@ -128,9 +139,18 @@ const form = reactive({
   indicatorId: '',
   subindicatorId: '',
   observations: '',
+  assistanceType: null as string | null,
   file: null as { name: string; type: string; size: number } | null
 })
 const errors = reactive<Record<string, string>>({})
+
+const isPadEvent = computed(() => {
+  const ind = indicators.value?.find((i: any) => i._id === form.indicatorId)
+  const indName = ind?.name?.toLowerCase() || ''
+  const subName = form.subindicatorId?.toLowerCase() || ''
+  const combined = `${indName} ${subName}`
+  return combined.includes('pad') && (combined.includes('aumento') || combined.includes('redução') || combined.includes('reducao'))
+})
 
 const rawFiles = ref<File[]>([])
 
@@ -171,16 +191,24 @@ const isSaving = computed(() => isUpdating.value)
 const validateForm = () => {
   Object.keys(errors).forEach(k => delete errors[k])
   const result = EventFormSchema.safeParse(form)
+  
+  let valid = result.success
   if (!result.success) {
     result.error.issues.forEach(issue => {
       errors[issue.path[0] as string] = issue.message
     })
-    return false
   }
-  return true
+
+  if (isPadEvent.value && !form.assistanceType) {
+    errors.assistanceType = 'A assistência é obrigatória para este evento'
+    valid = false
+  }
+
+  return valid
 }
 
 const isValid = computed(() => {
+  if (isPadEvent.value && !form.assistanceType) return false
   return EventFormSchema.safeParse(form).success
 })
 
@@ -228,6 +256,10 @@ const saveEvent = async () => {
       observations: form.observations,
     }
 
+    if (isPadEvent.value && form.assistanceType) {
+      payloadEvent.assistanceType = form.assistanceType
+    }
+
     // Se tem arquivo novo, converte para base64 e inclui no evento
     if (pendingFile.value) {
       payloadEvent.file = await fileToBase64(pendingFile.value)
@@ -241,14 +273,21 @@ const saveEvent = async () => {
     } else {
       newEvents = [...(patient.events || []), payloadEvent]
     }
-    
-    await updatePatient({ id: patient._id, data: { events: newEvents } })
-    
-    // Notifica se for um novo registro
-    if (!editingId.value) {
-      NotificationService.notifyNewEvent(patient.name, ind.name)
+
+    if (editingId.value) {
+      // Edição: usa useCrud (snackbar automático "Registro atualizado")
+      await updatePatient({ id: patient._id, data: { events: newEvents } })
     } else {
-      snackbar.show('Evento atualizado com sucesso!', 'success')
+      // Criação: usa dbExecute direto para evitar snackbar duplicado
+      // O NotificationService.notify já cuida do feedback visual
+      await dbExecute({
+        action: 'update',
+        collection: 'patients',
+        id: patient._id,
+        data: { events: newEvents }
+      })
+      queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
+      await NotificationService.notifyNewEvent(patient.name, ind.name)
     }
 
     close()
@@ -273,11 +312,12 @@ const open = (event?: any) => {
       indicatorId: ind?._id || '',
       subindicatorId: event.subindicator?.name || '',
       observations: event.observations || '',
+      assistanceType: event.assistanceType || null,
       file: event.file ? { name: event.file.name, type: event.file.type, size: event.file.size } : null
     })
   } else {
     Object.assign(form, {
-      patientId: '', occurrenceDate: '', indicatorId: '', subindicatorId: '', observations: '', file: null
+      patientId: '', occurrenceDate: '', indicatorId: '', subindicatorId: '', observations: '', assistanceType: null, file: null
     })
     editingId.value = null
     editingPatientId.value = null

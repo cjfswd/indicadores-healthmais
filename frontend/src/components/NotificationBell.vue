@@ -53,14 +53,18 @@ v-menu(v-model="menu" :close-on-content-click="false" offset="10" transition="sc
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQueryClient } from '@tanstack/vue-query'
 import { useCrud } from '@/composables/useCrud'
+import { dbExecute } from '@/lib/proxy-client'
 import { NotificationService } from '@/services/NotificationService'
 import type { Notification } from '@/lib/domain-schemas'
 
+const POLLING_INTERVAL_MS = 30_000
 
 const router = useRouter()
+const queryClient = useQueryClient()
 const menu = ref(false)
 
 const permission = ref(typeof window !== 'undefined' ? (window.Notification?.permission || 'default') : 'default')
@@ -74,12 +78,8 @@ const requestPermission = async () => {
   permission.value = window.Notification.permission
 }
 
-
-
 const { 
   data: notificationsData, 
-  update: updateNotif, 
-  remove: deleteNotif, 
   refetch 
 } = useCrud<Notification>('notifications', { 
   defaultPageSize: 20
@@ -87,6 +87,27 @@ const {
 
 const notifications = computed(() => notificationsData.value || [])
 const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length)
+
+const invalidateNotifications = () => {
+  queryClient.invalidateQueries({ queryKey: ['notifications', 'list'] })
+}
+
+const markAsReadSilently = async (id: string) => {
+  await dbExecute({
+    action: 'update',
+    collection: 'notifications',
+    id,
+    data: { isRead: true }
+  })
+}
+
+const deleteSilently = async (id: string) => {
+  await dbExecute({
+    action: 'delete',
+    collection: 'notifications',
+    id
+  })
+}
 
 const getTypeColor = (type: string) => {
   switch (type) {
@@ -109,12 +130,24 @@ const getTypeIcon = (type: string) => {
 const formatTime = (dateStr: any) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+  const diffHours = Math.floor(diffMs / 3_600_000)
+  const diffDays = Math.floor(diffMs / 86_400_000)
+
+  if (diffMin < 1) return 'agora'
+  if (diffMin < 60) return `há ${diffMin} min`
+  if (diffHours < 24) return `há ${diffHours}h`
+  if (diffDays === 1) return 'ontem'
+  if (diffDays < 7) return `há ${diffDays}d`
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
 const handleNotifClick = async (notif: Notification) => {
   if (!notif.isRead) {
-    await updateNotif({ id: notif._id!, data: { isRead: true } })
+    await markAsReadSilently(notif._id!)
+    invalidateNotifications()
   }
   if (notif.link) {
     router.push(notif.link)
@@ -124,21 +157,31 @@ const handleNotifClick = async (notif: Notification) => {
 
 const markAllAsRead = async () => {
   const unread = notifications.value.filter(n => !n.isRead)
-  for (const n of unread) {
-    await updateNotif({ id: n._id!, data: { isRead: true } })
-  }
+  await Promise.all(unread.map(n => markAsReadSilently(n._id!)))
+  invalidateNotifications()
+  await NotificationService.clearNativeNotifications()
 }
 
 const clearHistory = async () => {
-  for (const n of notifications.value) {
-    await deleteNotif(n._id!)
-  }
+  await Promise.all(notifications.value.map(n => deleteSilently(n._id!)))
+  invalidateNotifications()
+  await NotificationService.clearNativeNotifications()
 }
 
-// Polling simples a cada 30 segundos (ou poderíamos usar WebSockets se tivéssemos suporte no backend)
-setInterval(() => {
-  refetch()
-}, 30000)
+let pollingTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  pollingTimer = setInterval(() => {
+    refetch()
+  }, POLLING_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+  if (pollingTimer !== null) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+})
 </script>
 
 <style scoped>

@@ -22,7 +22,9 @@ export async function dbExecute<T = any>(payload: any): Promise<{ result: T, tot
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status}`)
+      const body = await response.json().catch(() => null)
+      const detail = body?.detail ?? body?.error ?? `Erro do servidor (${response.status})`
+      throw new Error(detail)
     }
     
     return await response.json()

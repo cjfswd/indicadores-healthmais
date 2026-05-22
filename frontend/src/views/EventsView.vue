@@ -56,7 +56,7 @@ div(class="space-y-8 animate-in fade-in duration-700")
       v-card(elevation="1" class="h-100 d-flex flex-column")
         v-card-title.d-flex.justify-space-between.align-start
           .text-wrap.text-subtitle-1.font-weight-bold.pr-2(style="line-height: 1.2;") {{ item.patientName }}
-          .text-caption.text-medium-emphasis.flex-shrink-0.mt-1 {{ new Date(item.occurrenceDate).toLocaleDateString() }}
+          .text-caption.text-medium-emphasis.flex-shrink-0.mt-1 {{ formatDate(item.occurrenceDate) }}
         v-card-text.flex-grow-1
           .text-body-2.mb-2
             span.font-weight-bold Indicador: 
@@ -117,6 +117,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useCrud } from '@/composables/useCrud'
 import { useConfirm } from '@/composables/useConfirm'
 import { dbExecute, downloadFileFromDb } from '@/lib/proxy-client'
+import { formatDate } from '@/lib/date-utils'
 import EventFormModal from '@/components/EventFormModal.vue'
 
 const route = useRoute()

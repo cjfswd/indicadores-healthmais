@@ -1,6 +1,8 @@
+import os
 import json
 from datetime import datetime, timezone
 from bson import ObjectId
+import jwt
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 from core.database import (
@@ -9,6 +11,34 @@ from core.database import (
 )
 
 router = APIRouter(prefix="/db", tags=["proxy"])
+
+
+def _extract_actor(request: Request, data: dict, metadata: dict) -> str:
+    """Extrai o email do actor com fallback em cadeia:
+    1. JWT do header Authorization (fonte confiável)
+    2. Campo 'updatedBy' do data (fallback frontend)
+    3. Campo 'actor' do metadata (fallback explícito)
+    """
+    # 1. Tenta decodificar JWT
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        try:
+            secret = os.getenv("JWT_SECRET", "coringa_secret_key")
+            payload = jwt.decode(token, secret, algorithms=["HS256"])
+            email = payload.get("email", "")
+            if email:
+                return email
+        except (jwt.InvalidTokenError, Exception):
+            pass  # fallback para as próximas opções
+
+    # 2. Fallback: frontend envia no body
+    frontend_email = data.pop("updatedBy", "") if isinstance(data, dict) else ""
+    if frontend_email:
+        return frontend_email
+
+    # 3. Fallback: metadata explícito
+    return metadata.get("actor", "")
 
 
 @router.post("/execute")
@@ -77,6 +107,25 @@ async def db_execute(request: Request):
 
         elif action == "insert":
             data = body_data if body_data else metadata.get("data", {})
+            actor = _extract_actor(request, data, metadata)
+
+            # ─── Prevenção de duplicatas ───
+            if collection_name in ("patients", "operators"):
+                name = data.get("name", "").strip()
+                if name:
+                    dup_query = {"name": name, "deletedAt": None}
+                    if collection_name == "patients":
+                        op_id = ""
+                        if isinstance(data.get("operator"), dict):
+                            op_id = data["operator"].get("_id", "")
+                        if op_id:
+                            dup_query["operator._id"] = op_id
+                    existing = await col.find_one(dup_query)
+                    if existing:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Já existe um registro ativo com o nome '{name}'"
+                        )
 
             # Gera um novo ObjectId para o stream
             new_id = ObjectId()
@@ -87,7 +136,7 @@ async def db_execute(request: Request):
                 stream_id=stream_id,
                 event_type="CREATE",
                 data=data,
-                actor=data.pop("updatedBy", "") or metadata.get("actor", "")
+                actor=actor
             )
             result = snapshot
 
@@ -123,12 +172,14 @@ async def db_execute(request: Request):
                             if old_evt and isinstance(old_evt.get("file"), dict):
                                 evt["file"]["data"] = old_evt["file"].get("data", "")
 
+            actor = _extract_actor(request, update_data, metadata)
+
             snapshot = await append_event(
                 stream_type=collection_name,
                 stream_id=doc_id,
                 event_type="UPDATE",
                 data=update_data,
-                actor=update_data.pop("updatedBy", "") or metadata.get("actor", "")
+                actor=actor
             )
             result = snapshot
 
@@ -140,12 +191,14 @@ async def db_execute(request: Request):
             if not existing:
                 result = None
             else:
+                actor = _extract_actor(request, {}, metadata)
+
                 snapshot = await append_event(
                     stream_type=collection_name,
                     stream_id=doc_id,
                     event_type="SOFT_DELETE",
                     data={"deletedAt": datetime.now(timezone.utc).isoformat()},
-                    actor=metadata.get("actor", "")
+                    actor=actor
                 )
                 result = snapshot
 
@@ -162,6 +215,8 @@ async def db_execute(request: Request):
         return JSONResponse(
             content=json.loads(json.dumps(response_data, cls=JSONEncoder))
         )
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"DB Error: {e}")
         return JSONResponse(status_code=500, content={"success": False, "error": str(e)})

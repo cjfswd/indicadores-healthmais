@@ -1,5 +1,15 @@
 import { computed, type Ref } from 'vue';
 
+const MONTH_KEYS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const;
+const MONTH_LABELS: Record<string, string> = {
+  jan: 'Jan', fev: 'Fev', mar: 'Mar', abr: 'Abr', mai: 'Mai', jun: 'Jun',
+  jul: 'Jul', ago: 'Ago', set: 'Set', out: 'Out', nov: 'Nov', dez: 'Dez',
+};
+
+function getMonthKey(date: Date) {
+  return MONTH_KEYS[date.getMonth()];
+}
+
 export function useDashboardAnalytics(
   patients: Ref<any[] | undefined>,
   indicators: Ref<any[] | undefined>,
@@ -110,7 +120,7 @@ export function useDashboardAnalytics(
       subCountsAdv[label] = (subCountsAdv[label] || 0) + 1;
     });
     const adverseEventsData = Object.entries(subCountsAdv)
-      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '…' : name, eventos: count }))
+      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '.' : name, eventos: count }))
       .sort((a, b) => b.eventos - a.eventos);
 
     // Ouvidorias Subindicators
@@ -121,8 +131,92 @@ export function useDashboardAnalytics(
       subCountsOuv[label] = (subCountsOuv[label] || 0) + 1;
     });
     const ouvidoriasData = Object.entries(subCountsOuv)
-      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '…' : name, eventos: count }))
+      .map(([name, count]) => ({ name: name.length > 30 ? name.substring(0, 28) + '.' : name, eventos: count }))
       .sort((a, b) => b.eventos - a.eventos);
+
+    // ── Report Table Data (monthly pivot) ──
+    const activeMonths = new Set<string>();
+
+    eList.forEach(e => {
+      const d = new Date(e.occurrenceDate);
+      if (!isNaN(d.getTime())) {
+        activeMonths.add(getMonthKey(d));
+      }
+    });
+
+    const sortedMonths = MONTH_KEYS.filter(m => activeMonths.has(m));
+
+    const reportTableData: Record<string, any>[] = [];
+
+    for (const ind of iList) {
+      const indEvents = eList.filter((e: any) => e.indicator?.name === ind.name);
+
+      // Parent row
+      const parentRow: Record<string, any> = { indicador: ind.name, total: indEvents.length };
+      for (const m of sortedMonths) parentRow[m] = 0;
+
+      indEvents.forEach((e: any) => {
+        const d = new Date(e.occurrenceDate);
+        if (!isNaN(d.getTime())) {
+          const mk = getMonthKey(d);
+          if (mk in parentRow) parentRow[mk]++;
+        }
+      });
+
+      reportTableData.push(parentRow);
+
+      // Subindicator rows
+      for (const sub of (ind.subindicators || [])) {
+        const subEvents = indEvents.filter((e: any) => e.subindicator?.name === sub.name);
+        const subRow: Record<string, any> = { indicador: ` > ${sub.name}`, total: subEvents.length };
+        for (const m of sortedMonths) subRow[m] = 0;
+
+        subEvents.forEach((e: any) => {
+          const d = new Date(e.occurrenceDate);
+          if (!isNaN(d.getTime())) {
+            const mk = getMonthKey(d);
+            if (mk in subRow) subRow[mk]++;
+          }
+        });
+
+        reportTableData.push(subRow);
+      }
+    }
+
+    // ── Report Headers ──
+    const reportHeaders: Record<string, string> = { indicador: 'Indicador' };
+    for (const m of sortedMonths) {
+      reportHeaders[m] = MONTH_LABELS[m];
+    }
+    reportHeaders['total'] = 'Total';
+
+    // ── Chart Bar Data (indicator totals) ──
+    const chartBarData = {
+      labels: indicatorsCards.map(c => c.name.length > 30 ? c.name.substring(0, 28) + '…' : c.name),
+      datasets: [{
+        data: indicatorsCards.map(c => c.totalEvents),
+      }],
+    };
+
+    // ── Chart Line Data (monthly evolution per indicator) ──
+    const chartLineData = {
+      labels: sortedMonths.map(m => MONTH_LABELS[m]),
+      datasets: indicatorsCards
+        .filter(c => c.totalEvents > 0)
+        .map(c => {
+          const indEvents = eList.filter((e: any) => e.indicator?.name === c.name);
+          const monthlyCounts = sortedMonths.map(m => {
+            return indEvents.filter((e: any) => {
+              const d = new Date(e.occurrenceDate);
+              return !isNaN(d.getTime()) && getMonthKey(d) === m;
+            }).length;
+          });
+          return {
+            label: c.name.length > 25 ? c.name.substring(0, 23) + '…' : c.name,
+            data: monthlyCounts,
+          };
+        }),
+    };
 
     return {
       totalPatients: pList.length,
@@ -133,6 +227,10 @@ export function useDashboardAnalytics(
       indicatorsCards,
       adverseEventsData,
       ouvidoriasData,
+      reportTableData,
+      reportHeaders,
+      chartBarData,
+      chartLineData,
     };
   });
 }
