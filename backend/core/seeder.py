@@ -8,12 +8,16 @@ from seed_data import (
 async def seed_database(db):
     """Seeds via Event Sourcing: cada registro é criado como um evento CREATE."""
 
-    # Removemos o early return para permitir que novos operators (como "Particular")
-    # e novos indicadores sejam semeados em bancos já existentes.
-    # O guard interno em cada categoria cuidará de evitar duplicatas.
-    operator_ids = {}
+    # Verificação rápida: se todos os operators e indicators esperados já existem, pula.
+    existing_ops = await db.operators.count_documents({"deletedAt": None})
+    existing_inds = await db.indicators.count_documents({"deletedAt": None})
 
-    print("[SEED] Seeding database via Event Sourcing...")
+    if existing_ops >= len(default_operators) and existing_inds >= len(default_indicators):
+        print("[SEED] All seed data present. Skipping...")
+        return
+
+    print("[SEED] Seeding missing data...")
+    operator_ids = {}
 
     # ─── Operators ────────────────────────────────────────────────
     for op in default_operators:
