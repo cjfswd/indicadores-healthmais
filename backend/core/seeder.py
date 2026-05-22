@@ -8,10 +8,10 @@ from seed_data import (
 async def seed_database(db):
     """Seeds via Event Sourcing: cada registro é criado como um evento CREATE."""
 
-    events_count = await db[EVENT_STORE_COLLECTION].count_documents({})
-    if events_count > 0:
-        print("[SEED] Event store already populated. Skipping...")
-        return
+    # Removemos o early return para permitir que novos operators (como "Particular")
+    # e novos indicadores sejam semeados em bancos já existentes.
+    # O guard interno em cada categoria cuidará de evitar duplicatas.
+    operator_ids = {}
 
     print("[SEED] Seeding database via Event Sourcing...")
 
@@ -35,6 +35,12 @@ async def seed_database(db):
 
     # ─── Indicators ───────────────────────────────────────────────
     for ind in default_indicators:
+        # Guard: verifica se indicador já existe
+        existing_ind = await db.indicators.find_one({"name": ind["name"], "deletedAt": None})
+        if existing_ind:
+            print(f"[SEED] Indicator '{ind['name']}' já existe, pulando...")
+            continue
+
         ind_id = str(ObjectId())
         await append_event(
             stream_type="indicators",

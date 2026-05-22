@@ -1,6 +1,7 @@
 default_operators = [
     {"name": "Unimed"},
-    {"name": "Camperj"}
+    {"name": "Camperj"},
+    {"name": "Particular"}
 ]
 
 default_indicators = [
