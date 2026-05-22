@@ -188,11 +188,12 @@ import {
   Filler,
 } from 'chart.js'
 import { Bar, Line, Doughnut } from 'vue-chartjs'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement,
   PointElement, LineElement, ArcElement,
-  Title, Tooltip, Legend, Filler
+  Title, Tooltip, Legend, Filler, ChartDataLabels
 )
 
 const CHART_COLORS = [
@@ -243,6 +244,7 @@ const barOptions = {
   indexAxis: 'y' as const,
   plugins: {
     legend: { display: false },
+    datalabels: { display: false },
     tooltip: {
       backgroundColor: '#1E293B',
       titleFont: { size: 13 },
@@ -289,6 +291,7 @@ const lineOptions = {
       position: 'bottom' as const,
       labels: { usePointStyle: true, padding: 16, font: { size: 11 } },
     },
+    datalabels: { display: false },
     tooltip: {
       backgroundColor: '#1E293B',
       titleFont: { size: 13 },
@@ -338,8 +341,16 @@ const doughnutOptions = {
       padding: 12,
       cornerRadius: 8,
     },
+    datalabels: {
+      color: '#fff',
+      font: { weight: 'bold' as const, size: 13 },
+      formatter: (value: number) => value > 0 ? value : '',
+      anchor: 'center' as const,
+      align: 'center' as const,
+    },
   },
 }
+
 
 // ── Report export ──
 const generatingReport = ref(false)
