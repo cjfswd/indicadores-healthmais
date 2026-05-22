@@ -50,11 +50,14 @@ async def seed_database(db):
             actor="system-seeder"
         )
 
-    # ─── Patients ─────────────────────────────────────────────────
+    # ─── Patients (Comentado a pedido) ────────────────────────────
+    # A inserção automática de pacientes foi desativada para evitar
+    # sobrecarga ou eventuais conflits de deduplicação na produção.
+    
+    """
     camperj_id = operator_ids.get("Camperj")
     unimed_id = operator_ids.get("Unimed")
 
-    # Busca snapshots dos operators para pegar o ref completo
     camperj_op = await db.operators.find_one({"_id": ObjectId(camperj_id)}) if camperj_id else None
     unimed_op = await db.operators.find_one({"_id": ObjectId(unimed_id)}) if unimed_id else None
 
@@ -101,5 +104,6 @@ async def seed_database(db):
                 },
                 actor="system-seeder"
             )
+    """
 
     print("[SEED] Database seeding completed via Event Sourcing.")
