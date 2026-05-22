@@ -64,6 +64,9 @@ div(class="space-y-8 animate-in fade-in duration-700")
           .text-body-2.mb-2
             span.font-weight-bold Sub-Indicador: 
             | {{ item.subindicator?.name }}
+          .text-body-2.mb-2(v-if="item.assistanceType")
+            span.font-weight-bold Assistência: 
+            span.text-capitalize {{ item.assistanceType }}
           .text-body-2.mb-4
             span.font-weight-bold Obs: 
             span(v-if="item.observations") {{ item.observations }}
