@@ -217,6 +217,11 @@ const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 }
 
 const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate)
 
+const totalPatients = computed(() => {
+  if (!patients.value) return 0
+  return patients.value.length
+})
+
 // ── Chart refs ──
 const barChartRef = ref<any>(null)
 const lineChartRef = ref<any>(null)
@@ -326,7 +331,7 @@ const getDoughnutDataForCard = (card: any) => {
   }
 }
 
-const doughnutOptions = {
+const doughnutOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -343,13 +348,20 @@ const doughnutOptions = {
     },
     datalabels: {
       color: '#fff',
-      font: { weight: 'bold' as const, size: 13 },
-      formatter: (value: number) => value > 0 ? value : '',
+      font: { weight: 'bold' as const, size: 12 },
+      formatter: (value: number) => {
+        if (value <= 0) return ''
+        const total = totalPatients.value
+        if (total <= 0) return `${value}`
+        const pct = ((value / total) * 100).toFixed(1)
+        return `${value}\n(${pct}%)`
+      },
       anchor: 'center' as const,
       align: 'center' as const,
+      textAlign: 'center' as const,
     },
   },
-}
+}))
 
 
 // ── Report export ──
