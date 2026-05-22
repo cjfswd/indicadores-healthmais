@@ -1,7 +1,7 @@
 from bson import ObjectId
 from core.database import append_event, EVENT_STORE_COLLECTION
 from seed_data import (
-    default_operators, default_indicators, default_patients
+    default_operators, default_indicators
 )
 
 
@@ -17,14 +17,12 @@ async def seed_database(db):
         return
 
     print("[SEED] Seeding missing data...")
-    operator_ids = {}
 
     # ─── Operators ────────────────────────────────────────────────
     for op in default_operators:
         # Guard: verifica se operadora já existe
         existing = await db.operators.find_one({"name": op["name"], "deletedAt": None})
         if existing:
-            operator_ids[op["name"]] = str(existing["_id"])
             print(f"[SEED] Operator '{op['name']}' já existe, pulando...")
             continue
 
@@ -54,60 +52,8 @@ async def seed_database(db):
             actor="system-seeder"
         )
 
-    # ─── Patients (Comentado a pedido) ────────────────────────────
-    # A inserção automática de pacientes foi desativada para evitar
-    # sobrecarga ou eventuais conflits de deduplicação na produção.
-    
-    """
-    camperj_id = operator_ids.get("Camperj")
-    unimed_id = operator_ids.get("Unimed")
-
-    camperj_op = await db.operators.find_one({"_id": ObjectId(camperj_id)}) if camperj_id else None
-    unimed_op = await db.operators.find_one({"_id": ObjectId(unimed_id)}) if unimed_id else None
-
-    if camperj_op:
-        half = len(default_patients) // 2
-        for name in default_patients[:half]:
-            existing = await db.patients.find_one({"name": name, "deletedAt": None})
-            if existing:
-                continue
-            pat_id = str(ObjectId())
-            await append_event(
-                stream_type="patients",
-                stream_id=pat_id,
-                event_type="CREATE",
-                data={
-                    "name": name,
-                    "operator": {"_id": str(camperj_op["_id"]), "name": camperj_op["name"]},
-                    "admissionDate": "",
-                    "birthDate": "",
-                    "observations": "",
-                    "events": [],
-                },
-                actor="system-seeder"
-            )
-
-    if unimed_op:
-        half = len(default_patients) // 2
-        for name in default_patients[half:]:
-            existing = await db.patients.find_one({"name": name, "deletedAt": None})
-            if existing:
-                continue
-            pat_id = str(ObjectId())
-            await append_event(
-                stream_type="patients",
-                stream_id=pat_id,
-                event_type="CREATE",
-                data={
-                    "name": name,
-                    "operator": {"_id": str(unimed_op["_id"]), "name": unimed_op["name"]},
-                    "admissionDate": "",
-                    "birthDate": "",
-                    "observations": "",
-                    "events": [],
-                },
-                actor="system-seeder"
-            )
-    """
+    # ─── Patients ─────────────────────────────────────────────────
+    # Desativado a pedido do usuário para evitar duplicatas em produção.
+    # Pacientes devem ser cadastrados manualmente pela interface.
 
     print("[SEED] Database seeding completed via Event Sourcing.")
