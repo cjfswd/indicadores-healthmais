@@ -53,11 +53,11 @@ div(class="space-y-8 animate-in fade-in duration-700")
             | {{ item.operator?.name }}
           .text-body-2.mb-2
             span.font-weight-bold Admissão: 
-            span(v-if="item.admissionDate") {{ new Date(item.admissionDate).toLocaleDateString() }}
+            span(v-if="item.admissionDate") {{ formatDate(item.admissionDate) }}
             span.text-warning.font-italic(v-else) Falta adicionar
           .text-body-2.mb-2
             span.font-weight-bold Nasc.: 
-            span(v-if="item.birthDate") {{ new Date(item.birthDate).toLocaleDateString() }}
+            span(v-if="item.birthDate") {{ formatDate(item.birthDate) }}
             span.text-warning.font-italic(v-else) Falta adicionar
           .text-body-2.mb-4
             span.font-weight-bold Obs: 
@@ -113,6 +113,7 @@ import { ref, reactive } from 'vue'
 import { useCrud } from '@/composables/useCrud'
 import { useConfirm } from '@/composables/useConfirm'
 import { downloadFileFromDb } from '@/lib/proxy-client'
+import { formatDate } from '@/lib/date-utils'
 import PatientFormModal from '@/components/PatientFormModal.vue'
 
 const {

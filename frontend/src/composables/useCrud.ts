@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { dbExecute } from '@/lib/proxy-client'
 import { ref, computed } from 'vue'
 import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useAuthStore } from '@/stores/authStore'
 
 export interface CrudOptions {
   /** Optional custom query options for fetching the list */
@@ -13,6 +14,7 @@ export interface CrudOptions {
 export function useCrud<T extends { _id?: string }>(collectionName: string, options: CrudOptions = {}) {
   const queryClient = useQueryClient()
   const snackbar = useSnackbarStore()
+  const auth = useAuthStore()
   
   // State for pagination, filtering and sorting
   const page = ref(1)
@@ -72,9 +74,9 @@ export function useCrud<T extends { _id?: string }>(collectionName: string, opti
   const createMutation = useMutation({
     mutationFn: async (newData: Omit<T, '_id'>) => {
       const res = await dbExecute({
-        action: 'insert', // Changed 'insertOne' to 'insert' to match proxy-client
+        action: 'insert',
         collection: collectionName,
-        data: newData,    // Changed 'payload' to 'data' to match proxy-client
+        data: { ...newData, updatedBy: auth.user?.email ?? '' },
       })
       return res
     },
@@ -94,7 +96,7 @@ export function useCrud<T extends { _id?: string }>(collectionName: string, opti
         action: 'update',
         collection: collectionName,
         id: id,
-        data: data, // Removed forced $set wrapping so it supports $push/$pull
+        data: { ...data, updatedBy: auth.user?.email ?? '' },
       })
       return res
     },
@@ -111,9 +113,10 @@ export function useCrud<T extends { _id?: string }>(collectionName: string, opti
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await dbExecute({
-        action: 'delete', // Changed to 'delete'
+        action: 'delete',
         collection: collectionName,
-        id: id,           // Changed to 'id'
+        id: id,
+        actor: auth.user?.email ?? '',
       })
       return res
     },
