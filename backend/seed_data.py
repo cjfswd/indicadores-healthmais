@@ -67,7 +67,7 @@ default_indicators = [
     "targetValue": 0,
     "comparisonInterval": "ABSOLUTO",
     "subindicators": [
-      { "name": "6.1 - AD (Atenção Domiciliar)", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 },
+      { "name": "6.1 - AD (Assistência Domiciliar)", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 },
       { "name": "6.2 - ID (Internação Domiciliar)", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 }
     ]
   },
