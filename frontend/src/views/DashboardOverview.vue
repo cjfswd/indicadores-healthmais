@@ -126,9 +126,9 @@ div(class="space-y-6 animate-in fade-in duration-700")
         v-card-title.text-subtitle-2.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
         v-card-text.flex-grow-1.d-flex.flex-column.justify-center
           .chart-container(v-if="card.subindicators.length && card.totalEvents > 0" style="position: relative; height: 280px;")
-            Doughnut(:ref="el => setDoughnutRef(el, idx)" :data="getDoughnutDataForCard(card)" :options="doughnutOptions")
+            Bar(:ref="el => setDoughnutRef(el, idx)" :data="getSubBarDataForCard(card)" :options="subBarOptions")
           .text-center.text-caption.text-medium-emphasis.pa-4(v-else)
-            v-icon.mb-2(size="40" color="grey-lighten-1") mdi-chart-arc
+            v-icon.mb-2(size="40" color="grey-lighten-1") mdi-chart-bar
             div(v-if="!card.subindicators.length") Nenhum subindicador configurado.
             div(v-else) Nenhum evento registrado.
 
@@ -187,7 +187,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
-import { Bar, Line, Doughnut } from 'vue-chartjs'
+import { Bar, Line } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 
 ChartJS.register(
@@ -318,26 +318,29 @@ const lineOptions = {
   },
 }
 
-// ── Doughnut Chart (per-card) ──
-const getDoughnutDataForCard = (card: any) => {
-  return {
-    labels: card.subindicators.map((s: any) => s.name.length > 30 ? s.name.substring(0, 28) + '…' : s.name),
-    datasets: [{
-      data: card.subindicators.map((s: any) => s.eventos),
-      backgroundColor: CHART_COLORS,
-      borderWidth: 2,
-      hoverOffset: 8,
-    }],
-  }
-}
+// ── Sub-indicator Bar Chart (per-card) ──
+const getSubBarDataForCard = (card: any) => ({
+  labels: card.subindicators.map((s: any) => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+  datasets: [{
+    label: 'Eventos',
+    data: card.subindicators.map((s: any) => s.eventos),
+    backgroundColor: CHART_COLORS,
+    borderRadius: 4,
+    borderSkipped: false,
+  }],
+})
 
-const doughnutOptions = computed(() => ({
+const subBarOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      position: 'bottom' as const,
-      labels: { usePointStyle: true, padding: 8, font: { size: 10 } },
+    legend: { display: false },
+    datalabels: {
+      anchor: 'end' as const,
+      align: 'end' as const,
+      color: '#374151',
+      font: { weight: 'bold' as const, size: 10 },
+      formatter: (value: number) => value > 0 ? String(value) : '',
     },
     tooltip: {
       backgroundColor: '#1E293B',
@@ -345,20 +348,26 @@ const doughnutOptions = computed(() => ({
       bodyFont: { size: 12 },
       padding: 12,
       cornerRadius: 8,
-    },
-    datalabels: {
-      color: '#fff',
-      font: { weight: 'bold' as const, size: 12 },
-      formatter: (value: number) => {
-        if (value <= 0) return ''
-        const total = totalPatients.value
-        if (total <= 0) return `${value}`
-        const pct = ((value / total) * 100).toFixed(1)
-        return `${value}\n(${pct}%)`
+      callbacks: {
+        label: (ctx: any) => {
+          const value = ctx.parsed.y
+          const total = totalPatients.value
+          if (total <= 0) return ` ${value}`
+          const pct = ((value / total) * 100).toFixed(1)
+          return ` ${value} (${pct}% dos pacientes)`
+        },
       },
-      anchor: 'center' as const,
-      align: 'center' as const,
-      textAlign: 'center' as const,
+    },
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { font: { size: 9 }, maxRotation: 45 },
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: 'rgba(0,0,0,0.06)' },
+      ticks: { font: { size: 10 }, stepSize: 1 },
     },
   },
 }))
