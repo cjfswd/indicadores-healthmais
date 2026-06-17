@@ -1,4 +1,8 @@
 export async function dbExecute<T = any>(payload: any): Promise<{ result: T, total?: number, success: boolean, message?: string }> {
+  if (import.meta.env.DEV) {
+    const { mockDbExecute } = await import('./mock-data')
+    return mockDbExecute<T>(payload)
+  }
   try {
     const { data, ...metadata } = payload
     const token = localStorage.getItem('auth_token')
