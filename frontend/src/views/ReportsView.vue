@@ -247,12 +247,26 @@ const lineOptions = {
   },
 }
 
+function generateColorLabels(chart: any): any[] {
+  const labels: string[] = chart.data.labels || []
+  const bg = chart.data.datasets[0]?.backgroundColor
+  return labels.map((label: string, i: number) => ({
+    text: label,
+    fillStyle: Array.isArray(bg) ? bg[i % bg.length] : (bg ?? '#ccc'),
+    strokeStyle: 'transparent',
+    lineWidth: 0,
+    hidden: false,
+    index: i,
+    datasetIndex: 0,
+  }))
+}
+
 // ── Sub-indicator Bar Chart ──
 const subBarData = computed(() => {
   const card = analytics.value.indicatorsCards.find(c => c.name === selectedIndicatorForPie.value)
   if (!card || !card.subindicators.length) {
     return {
-      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '…' : c.name),
+      labels: analytics.value.indicatorsCards.map(c => c.name),
       datasets: [{
         label: 'Eventos',
         data: analytics.value.indicatorsCards.map(c => c.totalEvents),
@@ -263,7 +277,7 @@ const subBarData = computed(() => {
     }
   }
   return {
-    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+    labels: card.subindicators.map(s => s.name),
     datasets: [{
       label: 'Eventos',
       data: card.subindicators.map(s => s.eventos),
@@ -278,7 +292,19 @@ const subBarOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: false },
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        generateLabels: generateColorLabels,
+        usePointStyle: true,
+        pointStyle: 'rectRounded' as const,
+        padding: 8,
+        font: { size: 10 },
+        boxWidth: 10,
+        boxHeight: 10,
+      },
+    },
     datalabels: {
       anchor: 'end' as const,
       align: 'end' as const,
@@ -306,7 +332,7 @@ const subBarOptions = computed(() => ({
   scales: {
     x: {
       grid: { display: false },
-      ticks: { font: { size: 9 }, maxRotation: 45 },
+      ticks: { display: false },
     },
     y: {
       beginAtZero: true,
