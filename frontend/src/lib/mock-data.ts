@@ -350,6 +350,10 @@ const store: Record<string, any[]> = {
   notifications: [...NOTIFICATIONS],
 }
 
+export function getDeletedPatients() {
+  return store.patients.filter(p => !!p.deletedAt)
+}
+
 // ── Mock dbExecute handler ────────────────────────────────────────────────────
 
 export async function mockDbExecute<T = any>(
@@ -386,9 +390,33 @@ export async function mockDbExecute<T = any>(
   }
 
   if (action === 'update') {
+    const existing = col.find(d => d._id === docId)
+    const existingEventIds = new Set((existing?.events ?? []).map((e: any) => e._id))
+
     store[collection] = col.map(doc =>
       doc._id === docId ? { ...doc, ...data, updatedAt: new Date().toISOString() } : doc,
     )
+
+    // Auto-inativação: Alta Domiciliar (01/1.1) ou Óbito (04)
+    if (collection === 'patients' && Array.isArray(data?.events)) {
+      const newEvents = (data.events as any[]).filter(e => !existingEventIds.has(e._id))
+      for (const evt of newEvents) {
+        const indName: string = evt.indicator?.name ?? ''
+        const subName: string = evt.subindicator?.name ?? ''
+        const isObito = indName.startsWith('04')
+        const isAlta = indName.startsWith('01') && subName.startsWith('1.1')
+        if (isObito || isAlta) {
+          const reason = isObito ? 'obito' : 'alta'
+          store[collection] = store[collection].map(doc =>
+            doc._id === docId && !doc.deletedAt
+              ? { ...doc, deletedAt: new Date().toISOString(), inactivationReason: reason }
+              : doc,
+          )
+          break
+        }
+      }
+    }
+
     return { result: store[collection].find(d => d._id === docId) as unknown as T, success: true }
   }
 
