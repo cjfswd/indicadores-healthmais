@@ -28,6 +28,41 @@ div(class="space-y-6 animate-in fade-in duration-700")
             @click="filterStore.clear()"
           ) Limpar Filtro
 
+  //- ── Filtros rápidos: modalidade AD/ID e convênio ──
+  v-card.mb-4(elevation="0" border)
+    v-card-text.pa-3
+      .d-flex.align-center.flex-wrap.ga-2
+        v-icon.mr-1(size="18" color="grey-darken-1") mdi-filter-variant
+        span.text-caption.text-medium-emphasis.mr-1 Pacientes em:
+        v-chip(
+          color="blue"
+          variant="tonal"
+          size="small"
+          clickable
+          prepend-icon="mdi-home-heart"
+          @click="openByModalityAndOperator('AD')"
+        ) AD
+        v-chip(
+          color="teal"
+          variant="tonal"
+          size="small"
+          clickable
+          prepend-icon="mdi-hospital-box"
+          @click="openByModalityAndOperator('ID')"
+        ) ID
+        v-divider.mx-1(vertical style="height:20px; align-self:center")
+        span.text-caption.text-medium-emphasis.mr-1 Por convênio:
+        v-chip(
+          v-for="op in (operators ?? [])"
+          :key="op._id"
+          color="deep-orange"
+          variant="tonal"
+          size="small"
+          clickable
+          prepend-icon="mdi-card-account-details"
+          @click="openByModalityAndOperator(undefined, op._id)"
+        ) {{ op.name }}
+
   //- ── Card de destaque: Taxa de Internação Hospitalar ──
   v-row.mb-2(v-if="hospitalizationRate !== null")
     v-col(cols="12" md="6" lg="4")
@@ -211,9 +246,13 @@ div(class="space-y-6 animate-in fade-in duration-700")
             v-for="(row, i) in drilldownRows"
             :key="i"
             :title="row.patient"
-            :subtitle="row.subindicator + ' · ' + row.date"
             prepend-icon="mdi-account"
           )
+            template(v-slot:subtitle)
+              .d-flex.align-center.flex-wrap.ga-1
+                v-chip(size="x-small" color="deep-orange" variant="tonal") {{ row.operator }}
+                span.text-caption.text-medium-emphasis · {{ row.subindicator }}
+                span.text-caption.text-medium-emphasis · {{ row.date }}
       v-card-actions.pa-4
         .text-caption.text-medium-emphasis {{ drilldownRows.length }} registro(s)
         v-spacer
@@ -263,6 +302,19 @@ const { startDate, endDate } = storeToRefs(filterStore)
 
 const { data: patients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
+const { data: operators } = useCrud<any>('operators', { defaultPageSize: 100 })
+
+const operatorMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const op of operators.value ?? []) map[String(op._id)] = op.name
+  return map
+})
+
+function resolveOperator(p: any): string {
+  if (!p.operator) return '—'
+  if (typeof p.operator === 'object' && p.operator?.name) return p.operator.name
+  return operatorMap.value[String(p.operator)] ?? '—'
+}
 
 const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate)
 
@@ -286,28 +338,61 @@ const socialCard = computed(() =>
 )
 
 // ── Drill-down ──
+interface DrilldownRow {
+  patient: string
+  operator: string
+  subindicator: string
+  date: string
+}
+
 const drilldownDialog = ref(false)
 const drilldownTitle = ref('')
-const drilldownRows = ref<{ patient: string; subindicator: string; date: string }[]>([])
+const drilldownRows = ref<DrilldownRow[]>([])
+
+const IND06_PREFIX = '06'
 
 function openDrilldown(indicatorName: string, subindicatorName?: string) {
   const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
   const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const rows: DrilldownRow[] = []
 
-  const rows: { patient: string; subindicator: string; date: string }[] = []
+  // Ind.06: mostrar pacientes pelo estado atual (último evento AD/ID no período)
+  if (indicatorName.startsWith(IND06_PREFIX)) {
+    for (const p of patients.value ?? []) {
+      const ind06Events = (p.events ?? [])
+        .filter((e: any) => (e.indicator?.name ?? '').startsWith(IND06_PREFIX))
+        .filter((e: any) => {
+          const d = new Date(e.occurrenceDate)
+          return (!startD || d >= startD) && (!endD || d <= endD)
+        })
+        .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
 
-  for (const p of patients.value ?? []) {
-    for (const e of p.events ?? []) {
-      if (e.indicator?.name !== indicatorName) continue
-      if (subindicatorName && e.subindicator?.name !== subindicatorName) continue
-      const d = new Date(e.occurrenceDate)
-      if (startD && d < startD) continue
-      if (endD && d > endD) continue
+      if (!ind06Events.length) continue
+      const lastEvent = ind06Events[0]
+      const sub: string = lastEvent.subindicator?.name ?? ''
+      if (subindicatorName && sub !== subindicatorName) continue
       rows.push({
         patient: p.name,
-        subindicator: e.subindicator?.name ?? '—',
-        date: d.toLocaleDateString('pt-BR'),
+        operator: resolveOperator(p),
+        subindicator: sub || '—',
+        date: new Date(lastEvent.occurrenceDate).toLocaleDateString('pt-BR'),
       })
+    }
+  } else {
+    for (const p of patients.value ?? []) {
+      for (const e of p.events ?? []) {
+        if (e.indicator?.name !== indicatorName) continue
+        if (subindicatorName && e.subindicator?.name !== subindicatorName) continue
+        const d = new Date(e.occurrenceDate)
+        if (startD && d < startD) continue
+        if (endD && d > endD) continue
+        rows.push({
+          patient: p.name,
+          operator: resolveOperator(p),
+          subindicator: e.subindicator?.name ?? '—',
+          date: d.toLocaleDateString('pt-BR'),
+        })
+      }
     }
   }
 
@@ -315,6 +400,48 @@ function openDrilldown(indicatorName: string, subindicatorName?: string) {
   drilldownTitle.value = subindicatorName
     ? `${indicatorName} › ${subindicatorName}`
     : indicatorName
+  drilldownRows.value = rows
+  drilldownDialog.value = true
+}
+
+// Abre modal filtrando por modalidade (AD/ID) e/ou convênio
+function openByModalityAndOperator(modality?: string, operatorId?: string) {
+  const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
+  const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const rows: DrilldownRow[] = []
+
+  for (const p of patients.value ?? []) {
+    if (operatorId) {
+      const opId = typeof p.operator === 'object' ? p.operator?._id : p.operator
+      if (String(opId) !== String(operatorId)) continue
+    }
+
+    const ind06Events = (p.events ?? [])
+      .filter((e: any) => (e.indicator?.name ?? '').startsWith(IND06_PREFIX))
+      .filter((e: any) => {
+        const d = new Date(e.occurrenceDate)
+        return (!startD || d >= startD) && (!endD || d <= endD)
+      })
+      .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
+
+    if (!ind06Events.length) continue
+    const sub: string = ind06Events[0].subindicator?.name ?? ''
+    if (modality && !sub.includes(modality)) continue
+
+    rows.push({
+      patient: p.name,
+      operator: resolveOperator(p),
+      subindicator: sub || '—',
+      date: new Date(ind06Events[0].occurrenceDate).toLocaleDateString('pt-BR'),
+    })
+  }
+
+  rows.sort((a, b) => a.patient.localeCompare(b.patient))
+
+  const parts: string[] = []
+  if (modality) parts.push(modality)
+  if (operatorId) parts.push(operatorMap.value[String(operatorId)] ?? operatorId)
+  drilldownTitle.value = `Pacientes${parts.length ? ' — ' + parts.join(' · ') : ' AD/ID'}`
   drilldownRows.value = rows
   drilldownDialog.value = true
 }
