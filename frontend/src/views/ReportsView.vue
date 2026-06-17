@@ -8,34 +8,26 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
-        v-col(cols="12" sm="3")
-          v-text-field(
-            v-model="startDate"
-            type="date"
-            label="Data Inicial"
+        v-col(cols="12" sm="4" md="3")
+          v-select(
+            v-model="filterStore.selectedBimester"
+            :items="BIMESTER_OPTIONS"
+            item-title="label"
+            item-value="value"
+            label="Período"
             density="compact"
             variant="outlined"
             hide-details
-            clearable
+            prepend-inner-icon="mdi-calendar-range"
           )
-        v-col(cols="12" sm="3")
-          v-text-field(
-            v-model="endDate"
-            type="date"
-            label="Data Final"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-          )
-        v-col(cols="12" sm="6")
-          .d-flex.ga-2.justify-end
+        v-col(cols="12" sm="8" md="9")
+          .d-flex.ga-2.justify-end.align-center
             v-btn(
-              v-if="startDate || endDate"
+              v-if="filterStore.selectedBimester !== 'all'"
               variant="text"
               color="primary"
               prepend-icon="mdi-filter-off"
-              @click="clearFilters"
+              @click="filterStore.clear()"
             ) Limpar
             v-btn(color="primary" variant="elevated" prepend-icon="mdi-file-pdf-box" @click="generateReport" :loading="generatingReport" :disabled="generatingReport") Exportar PDF
             v-btn(color="deep-orange" variant="elevated" prepend-icon="mdi-file-powerpoint-box" @click="generatePptx" :loading="generatingPptx" :disabled="generatingPptx") Exportar PPTX
@@ -119,9 +111,11 @@ div(class="space-y-6 animate-in fade-in duration-700")
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useCrud } from '@/composables/useCrud'
 import { useDashboardAnalytics } from '@/composables/useDashboardAnalytics'
 import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useFilterStore, BIMESTER_OPTIONS } from '@/stores/filterStore'
 
 import {
   Chart as ChartJS,
@@ -152,14 +146,8 @@ const CHART_COLORS = [
 ]
 
 const snackbar = useSnackbarStore()
-
-const startDate = ref('')
-const endDate = ref('')
-
-const clearFilters = () => {
-  startDate.value = ''
-  endDate.value = ''
-}
+const filterStore = useFilterStore()
+const { startDate, endDate } = storeToRefs(filterStore)
 
 const { data: patients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
@@ -349,7 +337,7 @@ function collectChartImages() {
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
     title: 'RELATORIO DE INDICADORES',
-    subtitle: `Periodo: ${startDate.value || 'Inicio'} a ${endDate.value || 'Atual'}`,
+    subtitle: `Periodo: ${filterStore.active.label}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),

@@ -6,34 +6,26 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
-        v-col(cols="12" sm="4" md="3")
-          v-text-field(
-            v-model="startDate"
-            type="date"
-            label="Data Inicial"
+        v-col(cols="12" sm="5" md="4")
+          v-select(
+            v-model="filterStore.selectedBimester"
+            :items="BIMESTER_OPTIONS"
+            item-title="label"
+            item-value="value"
+            label="Período"
             density="compact"
             variant="outlined"
             hide-details
-            clearable
+            prepend-inner-icon="mdi-calendar-range"
           )
         v-col(cols="12" sm="4" md="3")
-          v-text-field(
-            v-model="endDate"
-            type="date"
-            label="Data Final"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-          )
-        v-col(cols="12" sm="4" md="6")
           v-btn(
-            v-if="startDate || endDate"
+            v-if="filterStore.selectedBimester !== 'all'"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
-            @click="clearFilters"
-          ) Limpar Filtros
+            @click="filterStore.clear()"
+          ) Limpar Filtro
 
   v-row
     v-col(cols="12" md="6" lg="4" v-for="card in analytics.indicatorsCards" :key="card.id")
@@ -169,10 +161,12 @@ div(class="space-y-6 animate-in fade-in duration-700")
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useCrud } from '@/composables/useCrud'
 import { useDashboardAnalytics } from '@/composables/useDashboardAnalytics'
 import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useFilterStore, BIMESTER_OPTIONS } from '@/stores/filterStore'
 
 import {
   Chart as ChartJS,
@@ -203,14 +197,8 @@ const CHART_COLORS = [
 ]
 
 const snackbar = useSnackbarStore()
-
-const startDate = ref('')
-const endDate = ref('')
-
-const clearFilters = () => {
-  startDate.value = ''
-  endDate.value = ''
-}
+const filterStore = useFilterStore()
+const { startDate, endDate } = storeToRefs(filterStore)
 
 const { data: patients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
@@ -249,7 +237,13 @@ const barOptions = {
   indexAxis: 'y' as const,
   plugins: {
     legend: { display: false },
-    datalabels: { display: false },
+    datalabels: {
+      anchor: 'end' as const,
+      align: 'right' as const,
+      color: '#374151',
+      font: { weight: 'bold' as const, size: 11 },
+      formatter: (value: number) => value > 0 ? value : '',
+    },
     tooltip: {
       backgroundColor: '#1E293B',
       titleFont: { size: 13 },
@@ -402,7 +396,7 @@ function collectChartImages() {
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
     title: 'RELATÓRIO DE INDICADORES',
-    subtitle: `Período: ${startDate.value || 'Início'} a ${endDate.value || 'Atual'}`,
+    subtitle: `Período: ${filterStore.active.label}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),
