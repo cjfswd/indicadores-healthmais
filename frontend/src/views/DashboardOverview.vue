@@ -101,31 +101,6 @@ div(class="space-y-6 animate-in fade-in duration-700")
           .text-caption.text-medium-emphasis.mt-4.text-center(v-else)
             | Nenhum subindicador configurado.
 
-  //- ── Seção: Indicadores Sociais ──
-  template(v-if="socialCard")
-    v-divider.my-6
-    .d-flex.align-center.mb-4
-      v-icon.mr-2(color="deep-purple") mdi-account-group
-      h2.text-h6.font-weight-bold Indicadores Sociais
-    v-row
-      v-col(cols="12" md="8" lg="6")
-        v-card(elevation="1")
-          v-card-text
-            .d-flex.align-center.mb-4
-              .text-h3.font-weight-bold.text-deep-purple {{ socialCard.totalEvents }}
-              .text-body-2.text-medium-emphasis.ml-3 ocorrências no período
-            v-row(dense)
-              v-col(cols="12" sm="6" v-for="sub in socialCard.subindicators" :key="sub.name")
-                v-card(
-                  variant="tonal"
-                  :color="sub.eventos > 0 ? 'deep-purple' : 'grey'"
-                  class="pa-3"
-                  :style="sub.eventos > 0 ? 'cursor:pointer' : ''"
-                  @click="sub.eventos > 0 && openDrilldown(socialCard.name, sub.name)"
-                )
-                  .text-h5.font-weight-bold {{ sub.eventos }}
-                  .text-caption.text-wrap {{ sub.name }}
-
   v-divider.my-6
 
   //- ── Relatórios Detalhados ──
@@ -374,11 +349,6 @@ const hospitalizationRate = computed(() => {
   if (adIdTotal.value <= 0) return null
   return ((hospitalizationRateAbs.value / adIdTotal.value) * 100).toFixed(1)
 })
-
-// ── Social indicators card (ind 10) ──
-const socialCard = computed(() =>
-  analytics.value.indicatorsCards.find(c => c.name.startsWith('10')) ?? null,
-)
 
 // ── Drill-down ──
 interface DrilldownRow {
