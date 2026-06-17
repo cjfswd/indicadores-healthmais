@@ -3,11 +3,11 @@ div(class="space-y-6 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
     h2.text-h5.font-weight-bold Bem-vindo aos Indicadores Healthmais
 
-  //- ── Filtro de período ──
+  //- ── Filtros globais ──
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
-        v-col(cols="12" sm="5" md="4")
+        v-col(cols="12" sm="4" md="3")
           v-select(
             v-model="filterStore.selectedBimester"
             :items="BIMESTER_OPTIONS"
@@ -20,48 +20,43 @@ div(class="space-y-6 animate-in fade-in duration-700")
             prepend-inner-icon="mdi-calendar-range"
           )
         v-col(cols="12" sm="4" md="3")
+          v-select(
+            v-model="selectedOperatorId"
+            :items="[{ _id: '', name: 'Todos os convênios' }, ...(operators ?? [])]"
+            item-title="name"
+            item-value="_id"
+            label="Convênio"
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="mdi-card-account-details"
+            clearable
+            @click:clear="selectedOperatorId = ''"
+          )
+        v-col(cols="12" sm="4" md="3")
+          v-btn-toggle(
+            v-model="selectedModality"
+            density="compact"
+            variant="outlined"
+            color="primary"
+            divided
+            style="width:100%"
+          )
+            v-btn(value="" style="flex:1" size="small") Todos
+            v-btn(value="AD" style="flex:1" size="small")
+              v-icon(start size="14") mdi-home-heart
+              | AD
+            v-btn(value="ID" style="flex:1" size="small")
+              v-icon(start size="14") mdi-hospital-box
+              | ID
+        v-col(cols="12" sm="12" md="3")
           v-btn(
-            v-if="filterStore.selectedBimester !== 'all'"
+            v-if="filterStore.selectedBimester !== 'all' || selectedOperatorId || selectedModality"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
-            @click="filterStore.clear()"
-          ) Limpar Filtro
-
-  //- ── Filtros rápidos: modalidade AD/ID e convênio ──
-  v-card.mb-4(elevation="0" border)
-    v-card-text.pa-3
-      .d-flex.align-center.flex-wrap.ga-2
-        v-icon.mr-1(size="18" color="grey-darken-1") mdi-filter-variant
-        span.text-caption.text-medium-emphasis.mr-1 Pacientes em:
-        v-chip(
-          color="blue"
-          variant="tonal"
-          size="small"
-          clickable
-          prepend-icon="mdi-home-heart"
-          @click="openByModalityAndOperator('AD')"
-        ) AD
-        v-chip(
-          color="teal"
-          variant="tonal"
-          size="small"
-          clickable
-          prepend-icon="mdi-hospital-box"
-          @click="openByModalityAndOperator('ID')"
-        ) ID
-        v-divider.mx-1(vertical style="height:20px; align-self:center")
-        span.text-caption.text-medium-emphasis.mr-1 Por convênio:
-        v-chip(
-          v-for="op in (operators ?? [])"
-          :key="op._id"
-          color="deep-orange"
-          variant="tonal"
-          size="small"
-          clickable
-          prepend-icon="mdi-card-account-details"
-          @click="openByModalityAndOperator(undefined, op._id)"
-        ) {{ op.name }}
+            @click="clearAllFilters"
+          ) Limpar Filtros
 
   //- ── Card de destaque: Taxa de Internação Hospitalar ──
   v-row.mb-2(v-if="hospitalizationRate !== null")
@@ -304,6 +299,16 @@ const { data: patients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 const { data: operators } = useCrud<any>('operators', { defaultPageSize: 100 })
 
+// ── Filtros locais (convênio + modalidade) ──
+const selectedOperatorId = ref('')
+const selectedModality = ref('')
+
+function clearAllFilters() {
+  filterStore.clear()
+  selectedOperatorId.value = ''
+  selectedModality.value = ''
+}
+
 const operatorMap = computed(() => {
   const map: Record<string, string> = {}
   for (const op of operators.value ?? []) map[String(op._id)] = op.name
@@ -316,9 +321,47 @@ function resolveOperator(p: any): string {
   return operatorMap.value[String(p.operator)] ?? '—'
 }
 
-const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate)
+// Mapa do último evento ind.06 por paciente (modalidade atual)
+const patientModalityMap = computed(() => {
+  const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
+  const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const map = new Map<string, string>()
+  for (const p of patients.value ?? []) {
+    const ind06 = (p.events ?? [])
+      .filter((e: any) => (e.indicator?.name ?? '').startsWith('06'))
+      .filter((e: any) => {
+        const d = new Date(e.occurrenceDate)
+        return (!startD || d >= startD) && (!endD || d <= endD)
+      })
+      .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
+    if (ind06.length) {
+      const sub: string = ind06[0].subindicator?.name ?? ''
+      map.set(String(p._id), sub.includes('AD') ? 'AD' : sub.includes('ID') ? 'ID' : '')
+    }
+  }
+  return map
+})
 
-const totalPatients = computed(() => patients.value?.length ?? 0)
+// Pacientes filtrados pelos filtros locais — alimenta o analytics
+const filteredPatients = computed(() => {
+  let list = patients.value ?? []
+  if (selectedOperatorId.value) {
+    list = list.filter(p => {
+      const opId = typeof p.operator === 'object' ? p.operator?._id : p.operator
+      return String(opId) === selectedOperatorId.value
+    })
+  }
+  if (selectedModality.value) {
+    list = list.filter(p =>
+      patientModalityMap.value.get(String(p._id)) === selectedModality.value,
+    )
+  }
+  return list
+})
+
+const analytics = useDashboardAnalytics(filteredPatients as any, indicators, startDate, endDate)
+
+const totalPatients = computed(() => filteredPatients.value.length)
 
 // ── Hospitalization rate (ind 03 / total AD+ID patients) ──
 const hospitalizationRateAbs = computed(() => {
