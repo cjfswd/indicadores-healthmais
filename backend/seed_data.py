@@ -108,6 +108,21 @@ default_indicators = [
       { "name": "9.2 - Sugestões", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 },
       { "name": "9.3 - Reclamações e Solicitações", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
     ]
+  },
+  {
+    "name": "10 - Indicadores Sociais",
+    "targetType": "NÚMERICO",
+    "targetDirection": "MENOR",
+    "targetValue": 0,
+    "comparisonInterval": "ABSOLUTO",
+    "subindicators": [
+      { "name": "10.1 - Abuso sexual", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.2 - Violência doméstica", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.3 - Agressão suspeita", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.4 - Abandono/negligência", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.5 - Afastamento familiar", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.6 - Intervenção com familiares", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
+    ]
   }
 ]
 

@@ -98,6 +98,19 @@ export const INDICATORS = [
       { name: '9.3 - Reclamações e Solicitações' },
     ],
   },
+  {
+    _id: id(),
+    name: '10 - Indicadores Sociais',
+    targetType: 'NÚMERICO', targetDirection: 'MENOR', targetValue: 0, comparisonInterval: 'ABSOLUTO',
+    subindicators: [
+      { name: '10.1 - Abuso sexual' },
+      { name: '10.2 - Violência doméstica' },
+      { name: '10.3 - Agressão suspeita' },
+      { name: '10.4 - Abandono/negligência' },
+      { name: '10.5 - Afastamento familiar' },
+      { name: '10.6 - Intervenção com familiares' },
+    ],
+  },
 ]
 
 // Lookup by indicator name
@@ -136,6 +149,7 @@ export const PATIENTS: any[] = [
       event('06 - Quantitativo de pacientes AD e ID', '6.1 - AD (Assistência Domiciliar)', 2026, 1, 1),
       event('08 - Nº de eventos adversos', '8.1 - Quedas', 2026, 2, 10),
       event('09 - Nº de ouvidorias', '9.1 - Elogios', 2026, 4, 15),
+      event('10 - Indicadores Sociais', '10.4 - Abandono/negligência', 2026, 3, 8),
     ],
   },
   {
@@ -154,6 +168,7 @@ export const PATIENTS: any[] = [
       event('06 - Quantitativo de pacientes AD e ID', '6.2 - ID (Internação Domiciliar)', 2026, 1, 1),
       event('05 - Taxa de Alterações de PAD', '5.1 - ↑ PAD', 2026, 2, 14),
       event('08 - Nº de eventos adversos', '8.3 - Lesão por pressão', 2026, 5, 20),
+      event('10 - Indicadores Sociais', '10.2 - Violência doméstica', 2026, 4, 3),
     ],
   },
   {
@@ -244,6 +259,7 @@ export const PATIENTS: any[] = [
       event('06 - Quantitativo de pacientes AD e ID', '6.1 - AD (Assistência Domiciliar)', 2026, 1, 1),
       event('08 - Nº de eventos adversos', '8.1 - Quedas', 2026, 4, 6),
       event('09 - Nº de ouvidorias', '9.2 - Sugestões', 2026, 6, 8),
+      event('10 - Indicadores Sociais', '10.5 - Afastamento familiar', 2026, 5, 14),
     ],
   },
   {
@@ -288,6 +304,8 @@ export const PATIENTS: any[] = [
       event('06 - Quantitativo de pacientes AD e ID', '6.1 - AD (Assistência Domiciliar)', 2026, 1, 1),
       event('09 - Nº de ouvidorias', '9.1 - Elogios', 2026, 3, 19),
       event('08 - Nº de eventos adversos', '8.2 - Broncoaspiração', 2026, 5, 30),
+      event('10 - Indicadores Sociais', '10.3 - Agressão suspeita', 2026, 2, 22),
+      event('10 - Indicadores Sociais', '10.6 - Intervenção com familiares', 2026, 4, 17),
     ],
   },
   {
@@ -307,6 +325,7 @@ export const PATIENTS: any[] = [
       event('08 - Nº de eventos adversos', '8.1 - Quedas', 2026, 1, 31),
       event('05 - Taxa de Alterações de PAD', '5.1 - ↑ PAD', 2026, 3, 25),
       event('09 - Nº de ouvidorias', '9.3 - Reclamações e Solicitações', 2026, 6, 6),
+      event('10 - Indicadores Sociais', '10.1 - Abuso sexual', 2026, 5, 11),
     ],
   },
 ]
