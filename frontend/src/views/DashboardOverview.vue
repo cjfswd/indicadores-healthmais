@@ -328,9 +328,24 @@ const setDoughnutRef = (el: any, idx: number) => {
   if (el) doughnutChartRefs.value[idx] = el
 }
 
+// Gera um item de legenda por barra com a cor exata da barra
+function generateColorLabels(chart: any): any[] {
+  const labels: string[] = chart.data.labels || []
+  const bg = chart.data.datasets[0]?.backgroundColor
+  return labels.map((label: string, i: number) => ({
+    text: label,
+    fillStyle: Array.isArray(bg) ? bg[i % bg.length] : (bg ?? '#ccc'),
+    strokeStyle: 'transparent',
+    lineWidth: 0,
+    hidden: false,
+    index: i,
+    datasetIndex: 0,
+  }))
+}
+
 // ── Main Bar Chart ──
 const barChartData = computed(() => ({
-  labels: analytics.value.chartBarData?.labels || [],
+  labels: analytics.value.indicatorsCards.map(c => c.name),
   datasets: [{
     label: 'Total de Eventos',
     data: analytics.value.chartBarData?.datasets?.[0]?.data || [],
@@ -351,7 +366,19 @@ const barOptions = computed(() => ({
     if (name) openDrilldown(name)
   },
   plugins: {
-    legend: { display: false },
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        generateLabels: generateColorLabels,
+        usePointStyle: true,
+        pointStyle: 'rectRounded' as const,
+        padding: 10,
+        font: { size: 10 },
+        boxWidth: 12,
+        boxHeight: 12,
+      },
+    },
     datalabels: {
       anchor: 'end' as const,
       align: 'right' as const,
@@ -374,7 +401,7 @@ const barOptions = computed(() => ({
     },
     y: {
       grid: { display: false },
-      ticks: { font: { size: 11 } },
+      ticks: { display: false },
     },
   },
 }))
@@ -429,7 +456,7 @@ const lineOptions = {
 
 // ── Sub-indicator Bar Charts (per-card) ──
 const getSubBarDataForCard = (card: any) => ({
-  labels: card.subindicators.map((s: any) => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+  labels: card.subindicators.map((s: any) => s.name),
   datasets: [{
     label: 'Eventos',
     data: card.subindicators.map((s: any) => s.eventos),
@@ -449,7 +476,19 @@ const getSubBarOptions = (card: any) => ({
     if (sub?.eventos > 0) openDrilldown(card.name, sub.name)
   },
   plugins: {
-    legend: { display: false },
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        generateLabels: generateColorLabels,
+        usePointStyle: true,
+        pointStyle: 'rectRounded' as const,
+        padding: 8,
+        font: { size: 10 },
+        boxWidth: 10,
+        boxHeight: 10,
+      },
+    },
     datalabels: {
       anchor: 'end' as const,
       align: 'end' as const,
@@ -477,7 +516,7 @@ const getSubBarOptions = (card: any) => ({
   scales: {
     x: {
       grid: { display: false },
-      ticks: { font: { size: 9 }, maxRotation: 45 },
+      ticks: { display: false },
     },
     y: {
       beginAtZero: true,
