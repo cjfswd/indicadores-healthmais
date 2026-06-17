@@ -1,4 +1,4 @@
-<template lang="pug">
+﻿<template lang="pug">
 div(class="space-y-6 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
     div
@@ -61,7 +61,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
             clearable
           )
           .chart-container.mt-3(style="position: relative; height: 350px;")
-            Doughnut(ref="doughnutChartRef" :data="doughnutData" :options="doughnutOptions")
+            Bar(ref="subBarChartRef" :data="subBarData" :options="subBarOptions")
 
   v-row.mt-4
     v-col(cols="12")
@@ -136,12 +136,13 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
-import { Bar, Line, Doughnut } from 'vue-chartjs'
+import { Bar, Line } from 'vue-chartjs'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement,
   PointElement, LineElement, ArcElement,
-  Title, Tooltip, Legend, Filler
+  Title, Tooltip, Legend, Filler, ChartDataLabels
 )
 
 const CHART_COLORS = [
@@ -168,8 +169,10 @@ const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate
 // ── Chart refs ──
 const barChartRef = ref<any>(null)
 const lineChartRef = ref<any>(null)
-const doughnutChartRef = ref<any>(null)
+const subBarChartRef = ref<any>(null)
 const selectedIndicatorForPie = ref('')
+
+const totalPatients = computed(() => patients.value?.length || 0)
 
 // ── Bar Chart ──
 const barChartData = computed(() => ({
@@ -256,38 +259,44 @@ const lineOptions = {
   },
 }
 
-// ── Doughnut Chart ──
-const doughnutData = computed(() => {
+// ── Sub-indicator Bar Chart ──
+const subBarData = computed(() => {
   const card = analytics.value.indicatorsCards.find(c => c.name === selectedIndicatorForPie.value)
   if (!card || !card.subindicators.length) {
     return {
-      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '\u2026' : c.name),
+      labels: analytics.value.indicatorsCards.map(c => c.name.length > 25 ? c.name.substring(0, 23) + '…' : c.name),
       datasets: [{
+        label: 'Eventos',
         data: analytics.value.indicatorsCards.map(c => c.totalEvents),
         backgroundColor: CHART_COLORS,
-        borderWidth: 2,
-        hoverOffset: 8,
+        borderRadius: 4,
+        borderSkipped: false,
       }],
     }
   }
   return {
-    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '\u2026' : s.name),
+    labels: card.subindicators.map(s => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
     datasets: [{
+      label: 'Eventos',
       data: card.subindicators.map(s => s.eventos),
       backgroundColor: CHART_COLORS,
-      borderWidth: 2,
-      hoverOffset: 8,
+      borderRadius: 4,
+      borderSkipped: false,
     }],
   }
 })
 
-const doughnutOptions = {
+const subBarOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      position: 'bottom' as const,
-      labels: { usePointStyle: true, padding: 10, font: { size: 10 } },
+    legend: { display: false },
+    datalabels: {
+      anchor: 'end' as const,
+      align: 'end' as const,
+      color: '#374151',
+      font: { weight: 'bold' as const, size: 10 },
+      formatter: (value: number) => value > 0 ? String(value) : '',
     },
     tooltip: {
       backgroundColor: '#1E293B',
@@ -295,9 +304,29 @@ const doughnutOptions = {
       bodyFont: { size: 12 },
       padding: 12,
       cornerRadius: 8,
+      callbacks: {
+        label: (ctx: any) => {
+          const value = ctx.parsed.y
+          const total = totalPatients.value
+          if (total <= 0) return ` ${value}`
+          const pct = ((value / total) * 100).toFixed(1)
+          return ` ${value} (${pct}% dos pacientes)`
+        },
+      },
     },
   },
-}
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { font: { size: 9 }, maxRotation: 45 },
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: 'rgba(0,0,0,0.06)' },
+      ticks: { font: { size: 10 }, stepSize: 1 },
+    },
+  },
+}))
 
 // ── Report export ──
 const generatingReport = ref(false)
@@ -311,8 +340,8 @@ function collectChartImages() {
   if (lineChartRef.value?.chart) {
     charts.push({ title: 'Evolucao Mensal', image: lineChartRef.value.chart.toBase64Image() })
   }
-  if (doughnutChartRef.value?.chart) {
-    charts.push({ title: 'Distribuicao por Sub-indicador', image: doughnutChartRef.value.chart.toBase64Image() })
+  if (subBarChartRef.value?.chart) {
+    charts.push({ title: 'Distribuicao por Sub-indicador', image: subBarChartRef.value.chart.toBase64Image() })
   }
   return charts
 }
