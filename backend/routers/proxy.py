@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 from bson import ObjectId
 import jwt
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import JSONResponse
 from core.database import (
     get_db, JSONEncoder,
@@ -11,6 +11,26 @@ from core.database import (
 )
 
 router = APIRouter(prefix="/db", tags=["proxy"])
+
+
+# ── Indicadores que disparam inativação automática ──
+_INACTIVATION_RULES = [
+    # (prefixo do indicador, prefixo do subindicador ou None, motivo)
+    ("04", None, "obito"),
+    ("01", "1.1", "alta"),
+]
+
+
+def _inactivation_reason(event: dict) -> str | None:
+    """Retorna o motivo de inativação se o evento deve inativar o paciente, ou None."""
+    ind_name = (event.get("indicator") or {}).get("name", "")
+    sub_name = (event.get("subindicator") or {}).get("name", "")
+    for ind_prefix, sub_prefix, reason in _INACTIVATION_RULES:
+        if not ind_name.startswith(ind_prefix):
+            continue
+        if sub_prefix is None or sub_name.startswith(sub_prefix):
+            return reason
+    return None
 
 
 def _extract_actor(request: Request, data: dict, metadata: dict) -> str:
@@ -183,6 +203,32 @@ async def db_execute(request: Request):
             )
             result = snapshot
 
+            # ── Auto-inativação em Alta ou Óbito ──
+            if collection_name == "patients" and "events" in update_data:
+                existing_ids = {
+                    str(e.get("_id"))
+                    for e in (existing_doc.get("events") or [])
+                } if existing_doc else set()
+
+                for evt in update_data.get("events", []):
+                    if str(evt.get("_id", "")) in existing_ids:
+                        continue  # evento já existia, ignora
+                    reason = _inactivation_reason(evt)
+                    if reason:
+                        still_active = await col.find_one({"_id": ObjectId(doc_id), "deletedAt": None})
+                        if still_active:
+                            await append_event(
+                                stream_type=collection_name,
+                                stream_id=doc_id,
+                                event_type="SOFT_DELETE",
+                                data={
+                                    "deletedAt": datetime.now(timezone.utc).isoformat(),
+                                    "inactivationReason": reason,
+                                },
+                                actor=actor,
+                            )
+                        break
+
         elif action == "delete":
             doc_id = metadata.get("id")
 
@@ -284,3 +330,121 @@ async def get_entity_events(stream_type: str, stream_id: str):
             "total": len(events)
         }, cls=JSONEncoder))
     )
+
+
+@router.get("/patients/deleted")
+async def get_deleted_patients():
+    """Retorna pacientes inativados (soft-deleted) com o motivo da inativação."""
+    db = get_db()
+    col = db["patients"]
+
+    cursor = col.find({"deletedAt": {"$ne": None}}).sort("deletedAt", -1)
+    docs = await cursor.to_list(length=1000)
+
+    result = []
+    for doc in docs:
+        events = await get_stream_events("patients", str(doc["_id"]))
+        delete_event = next(
+            (e for e in reversed(events) if e.get("eventType") == "SOFT_DELETE"),
+            None,
+        )
+        reason = (delete_event or {}).get("data", {}).get("inactivationReason")
+        result.append({
+            **doc,
+            "deletedAt": doc.get("deletedAt"),
+            "inactivationReason": reason,
+            "deletedBy": (delete_event or {}).get("actor"),
+        })
+
+    return JSONResponse(
+        content=json.loads(json.dumps({
+            "success": True,
+            "result": result,
+            "total": len(result),
+        }, cls=JSONEncoder))
+    )
+
+
+@router.get("/analytics/hospitalization-rate")
+async def get_hospitalization_rate(
+    start: str = Query(None, description="Data inicial (YYYY-MM-DD)"),
+    end: str = Query(None, description="Data final (YYYY-MM-DD)"),
+):
+    """
+    Calcula a taxa de internação hospitalar:
+    (eventos do indicador 03 no período / pacientes em AD ou ID no período) × 100
+    """
+    db = get_db()
+    col = db["patients"]
+
+    start_dt = datetime.fromisoformat(start + "T00:00:00") if start else None
+    end_dt = datetime.fromisoformat(end + "T23:59:59") if end else None
+
+    patients = await col.find({"deletedAt": None}).to_list(length=10000)
+    inactivated = await col.find({"deletedAt": {"$ne": None}}).to_list(length=10000)
+    all_patients = patients + inactivated
+
+    hosp_events = 0
+    ad_id_patients: set[str] = set()
+
+    for p in all_patients:
+        p_events = p.get("events") or []
+
+        for evt in p_events:
+            occ = evt.get("occurrenceDate")
+            if occ:
+                try:
+                    d = datetime.fromisoformat(occ.replace("Z", "+00:00")).replace(tzinfo=None)
+                except Exception:
+                    d = None
+                if d:
+                    if start_dt and d < start_dt:
+                        continue
+                    if end_dt and d > end_dt:
+                        continue
+            ind_name = (evt.get("indicator") or {}).get("name", "")
+            if ind_name.startswith("03"):
+                hosp_events += 1
+
+        # Último evento do indicador 06 para determinar modalidade atual
+        ind06 = [
+            e for e in p_events
+            if (e.get("indicator") or {}).get("name", "").startswith("06")
+        ]
+        if start_dt or end_dt:
+            ind06 = [
+                e for e in ind06
+                if _date_in_range(e.get("occurrenceDate"), start_dt, end_dt)
+            ]
+        if ind06:
+            ind06.sort(key=lambda e: e.get("occurrenceDate", ""))
+            sub = (ind06[-1].get("subindicator") or {}).get("name", "")
+            if "AD" in sub or "ID" in sub:
+                ad_id_patients.add(str(p["_id"]))
+
+    ad_id_total = len(ad_id_patients)
+    rate = round((hosp_events / ad_id_total) * 100, 2) if ad_id_total > 0 else None
+
+    return JSONResponse(content={
+        "success": True,
+        "result": {
+            "hospitalizationEvents": hosp_events,
+            "adIdPatients": ad_id_total,
+            "rate": rate,
+            "period": {"start": start, "end": end},
+        },
+    })
+
+
+def _date_in_range(occ: str | None, start_dt, end_dt) -> bool:
+    if not occ:
+        return True
+    try:
+        d = datetime.fromisoformat(occ.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return True
+    if start_dt and d < start_dt:
+        return False
+    if end_dt and d > end_dt:
+        return False
+    return True

@@ -129,6 +129,83 @@ export async function fetchEntityEvents<T = any>(
 }
 
 /**
+ * Retorna pacientes inativados (soft-deleted) com motivo e responsável.
+ */
+export async function fetchDeletedPatients(): Promise<{
+  result: any[]
+  total: number
+  success: boolean
+}> {
+  if (import.meta.env.DEV) {
+    const { getDeletedPatients } = await import('./mock-data')
+    const deleted = getDeletedPatients()
+    return { result: deleted, total: deleted.length, success: true }
+  }
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  const response = await fetch(`${baseURL}/db/patients/deleted`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  return response.json()
+}
+
+/**
+ * Calcula a taxa de internação hospitalar no backend.
+ */
+export async function fetchHospitalizationRate(start?: string, end?: string): Promise<{
+  result: { hospitalizationEvents: number; adIdPatients: number; rate: number | null; period: any }
+  success: boolean
+}> {
+  if (import.meta.env.DEV) {
+    // Calcula localmente com os mesmos dados do mock
+    const { PATIENTS: mockPatients } = await import('./mock-data')
+    const startD = start ? new Date(start + 'T00:00:00') : null
+    const endD = end ? new Date(end + 'T23:59:59') : null
+    let hosp = 0
+    const adIdIds = new Set<string>()
+    for (const p of mockPatients) {
+      for (const e of p.events ?? []) {
+        const d = new Date(e.occurrenceDate)
+        if (startD && d < startD) continue
+        if (endD && d > endD) continue
+        if ((e.indicator?.name ?? '').startsWith('03')) hosp++
+      }
+      const ind06 = (p.events ?? []).filter((e: any) => (e.indicator?.name ?? '').startsWith('06'))
+      const filtered06 = ind06.filter((e: any) => {
+        const d = new Date(e.occurrenceDate)
+        return (!startD || d >= startD) && (!endD || d <= endD)
+      })
+      if (filtered06.length) {
+        const last = filtered06.sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)[0]
+        const sub: string = last.subindicator?.name ?? ''
+        if (sub.includes('AD') || sub.includes('ID')) adIdIds.add(p._id)
+      }
+    }
+    const total = adIdIds.size
+    return {
+      success: true,
+      result: {
+        hospitalizationEvents: hosp,
+        adIdPatients: total,
+        rate: total > 0 ? parseFloat(((hosp / total) * 100).toFixed(2)) : null,
+        period: { start: start ?? null, end: end ?? null },
+      },
+    }
+  }
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  const params = new URLSearchParams()
+  if (start) params.set('start', start)
+  if (end) params.set('end', end)
+  const response = await fetch(`${baseURL}/analytics/hospitalization-rate?${params}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  return response.json()
+}
+
+/**
  * Busca logs do event store com filtros (para a view de auditoria).
  * Usa o endpoint genérico find sobre a collection events_store.
  */
