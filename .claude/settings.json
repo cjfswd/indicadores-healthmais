@@ -1,0 +1,17 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules", ".deno"],
+    "baseRef": "head"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(deno *)",
+      "Bash(docker *)",
+      "Bash(pnpm *)"
+    ]
+  }
+}

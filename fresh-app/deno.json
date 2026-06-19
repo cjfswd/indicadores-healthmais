@@ -1,0 +1,59 @@
+{
+  "tasks": {
+    "dev": "deno run -A npm:vite",
+    "build": "deno run -A npm:vite build",
+    "start": "deno serve -A _fresh/server.js",
+    "check": "deno check **/*.ts **/*.tsx",
+    "test": "deno test -A tests/",
+    "preview": "deno run -A main.ts"
+  },
+  "imports": {
+    "fresh": "jsr:@fresh/core@2.3.3",
+    "fresh/internal": "jsr:@fresh/core@2.3.3/internal",
+    "fresh/runtime-client": "jsr:@fresh/core@2.3.3/runtime-client",
+    "fresh/": "jsr:@fresh/core@2.3.3/",
+    "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@1.1.2",
+    "preact": "npm:preact@^10",
+    "@preact/signals": "npm:@preact/signals@^2",
+    "@preact/signals-core": "npm:@preact/signals-core@^1",
+    "npm:mongodb": "npm:mongodb@^6.0.0",
+    "npm:jose": "npm:jose@^5.0.0",
+    "npm:zod": "npm:zod@^3.23.0",
+    "npm:chart.js": "npm:chart.js@^4.4.0",
+    "npm:chartjs-plugin-datalabels": "npm:chartjs-plugin-datalabels@^2.2.0",
+    "npm:web-push": "npm:web-push@^3.6.7",
+    "npm:lucide-preact": "npm:lucide-preact@^0.511.0",
+    "preact-render-to-string": "npm:preact-render-to-string@^6.7.0",
+    "vite": "npm:vite@^7",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4",
+    "tailwindcss": "npm:tailwindcss@^4",
+    "$std/": "https://deno.land/std@0.208.0/",
+    "@/": "./"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "preact",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns"
+    ],
+    "types": [
+      "vite/client"
+    ]
+  },
+  "nodeModulesDir": "auto",
+  "exclude": [
+    "**/_fresh/*",
+    "**/node_modules/*"
+  ],
+  "lint": {
+    "rules": {
+      "tags": [
+        "fresh",
+        "recommended"
+      ]
+    }
+  }
+}

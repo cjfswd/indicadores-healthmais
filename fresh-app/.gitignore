@@ -1,0 +1,13 @@
+# Fresh build
+_fresh/
+*.js.map
+
+# dotenv
+.env
+
+# Node (caso npm: imports gerem cache)
+node_modules/
+.npm/
+
+# Deno cache
+.deno/
