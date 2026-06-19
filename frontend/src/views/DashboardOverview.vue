@@ -3,61 +3,107 @@ div(class="space-y-6 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
     h2.text-h5.font-weight-bold Bem-vindo aos Indicadores Healthmais
 
+  //- ── Filtros globais ──
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
         v-col(cols="12" sm="4" md="3")
-          v-text-field(
-            v-model="startDate"
-            type="date"
-            label="Data Inicial"
+          v-select(
+            v-model="filterStore.selectedBimester"
+            :items="BIMESTER_OPTIONS"
+            item-title="label"
+            item-value="value"
+            label="Período"
             density="compact"
             variant="outlined"
             hide-details
-            clearable
+            prepend-inner-icon="mdi-calendar-range"
           )
         v-col(cols="12" sm="4" md="3")
-          v-text-field(
-            v-model="endDate"
-            type="date"
-            label="Data Final"
+          v-select(
+            v-model="selectedOperatorId"
+            :items="[{ _id: '', name: 'Todos os convênios' }, ...(operators ?? [])]"
+            item-title="name"
+            item-value="_id"
+            label="Convênio"
             density="compact"
             variant="outlined"
             hide-details
+            prepend-inner-icon="mdi-card-account-details"
             clearable
+            @click:clear="selectedOperatorId = ''"
           )
-        v-col(cols="12" sm="4" md="6")
+        v-col(cols="12" sm="4" md="3")
+          v-btn-toggle(
+            v-model="selectedModality"
+            density="compact"
+            variant="outlined"
+            color="primary"
+            divided
+            style="width:100%"
+          )
+            v-btn(value="" style="flex:1" size="small") Todos
+            v-btn(value="AD" style="flex:1" size="small")
+              v-icon(start size="14") mdi-home-heart
+              | AD
+            v-btn(value="ID" style="flex:1" size="small")
+              v-icon(start size="14") mdi-hospital-box
+              | ID
+        v-col(cols="12" sm="12" md="3")
           v-btn(
-            v-if="startDate || endDate"
+            v-if="filterStore.selectedBimester !== 'all' || selectedOperatorId || selectedModality"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
-            @click="clearFilters"
+            @click="clearAllFilters"
           ) Limpar Filtros
 
+  //- ── Card de destaque: Taxa de Internação Hospitalar ──
+  v-row.mb-2(v-if="hospitalizationRate !== null")
+    v-col(cols="12" md="6" lg="4")
+      v-card(elevation="2" color="blue-darken-4" theme="dark")
+        v-card-text.pa-5
+          .text-caption.text-blue-lighten-3.font-weight-bold.mb-1 TAXA DE INTERNAÇÃO HOSPITALAR
+          .d-flex.align-end.ga-2
+            span.text-h2.font-weight-bold {{ hospitalizationRate }}%
+            span.text-body-1.mb-2.text-blue-lighten-3 ({{ hospitalizationRateAbs }} internações / {{ adIdTotal }} pacientes AD+ID)
+          .text-caption.text-blue-lighten-3.mt-1 Indicador 03 sobre total de pacientes em AD/ID
+
+  //- ── Cards de indicadores ──
   v-row
     v-col(cols="12" md="6" lg="4" v-for="card in analytics.indicatorsCards" :key="card.id")
       v-card(elevation="1" class="h-100 d-flex flex-column")
         v-card-title.text-subtitle-1.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
-        
+
         v-card-text.flex-grow-1.d-flex.flex-column
           .d-flex.align-center.mb-3
             .text-h4.font-weight-bold.text-primary {{ card.totalEvents }}
             .text-caption.text-medium-emphasis.ml-2 Eventos (Total)
-            
+
           v-divider.mb-2
-          
+
           v-list.flex-grow-1(lines="one" density="compact" v-if="card.subindicators.length")
-            v-list-item.px-0(v-for="sub in card.subindicators" :key="sub.name")
+            v-list-item.px-0(
+              v-for="sub in card.subindicators"
+              :key="sub.name"
+              :class="sub.eventos > 0 ? 'cursor-pointer' : ''"
+              @click="sub.eventos > 0 && openDrilldown(card.name, sub.name)"
+            )
               v-list-item-title.text-body-2.text-wrap {{ sub.name }}
               template(v-slot:append)
-                v-chip(size="small" variant="tonal" :color="sub.eventos > 0 ? 'secondary' : 'grey'") {{ sub.eventos }}
-          
+                v-chip(
+                  size="small"
+                  variant="tonal"
+                  :color="sub.eventos > 0 ? 'secondary' : 'grey'"
+                  :style="sub.eventos > 0 ? 'cursor:pointer' : ''"
+                ) {{ sub.eventos }}
+
           .text-caption.text-medium-emphasis.mt-4.text-center(v-else)
             | Nenhum subindicador configurado.
 
   v-divider.my-6
 
+  //- ── Relatórios Detalhados ──
   .d-flex.justify-space-between.align-center.mb-4
     h2.text-h6.font-weight-bold Relatórios Detalhados
 
@@ -88,45 +134,34 @@ div(class="space-y-6 animate-in fade-in duration-700")
 
   v-divider.my-6
 
-  //- ── Charts & Export Section ──
+  //- ── Gráficos & Exportação ──
   .d-flex.justify-space-between.align-center.mb-4
     h2.text-h6.font-weight-bold Gráficos e Relatórios
     .d-flex.gap-2
-      v-btn(
-        color="primary"
-        variant="elevated"
-        prepend-icon="mdi-file-pdf-box"
-        :loading="generatingReport"
-        :disabled="generatingReport"
-        @click="generateReport"
-      ) Exportar PDF
-      v-btn(
-        color="deep-orange"
-        variant="elevated"
-        prepend-icon="mdi-file-powerpoint-box"
-        :loading="generatingPptx"
-        :disabled="generatingPptx"
-        @click="generatePptx"
-      ) Exportar PPTX
+      v-btn(color="primary" variant="elevated" prepend-icon="mdi-file-pdf-box" :loading="generatingReport" :disabled="generatingReport" @click="generateReport") Exportar PDF
+      v-btn(color="deep-orange" variant="elevated" prepend-icon="mdi-file-powerpoint-box" :loading="generatingPptx" :disabled="generatingPptx" @click="generatePptx") Exportar PPTX
 
   v-row
     v-col(cols="12")
       v-card(elevation="1")
-        v-card-title.text-subtitle-1.font-weight-bold Eventos por Indicador
+        v-card-title.text-subtitle-1.font-weight-bold
+          | Eventos por Indicador
+          span.text-caption.text-medium-emphasis.ml-2 (clique na barra para ver pacientes)
         v-card-text
           .chart-container(style="position: relative; height: 400px;")
             Bar(ref="barChartRef" :data="barChartData" :options="barOptions")
 
   .d-flex.justify-space-between.align-center.mb-4.mt-6
     h2.text-h6.font-weight-bold Distribuição por Sub-indicador
+    span.text-caption.text-medium-emphasis clique na barra para ver pacientes
 
   v-row
-    v-col(cols="12" sm="6" lg="4" v-for="(card, idx) in analytics.indicatorsCards" :key="'doughnut-' + card.id")
+    v-col(cols="12" sm="6" lg="4" v-for="(card, idx) in analytics.indicatorsCards" :key="'bar-' + card.id")
       v-card(elevation="1" class="h-100 d-flex flex-column")
         v-card-title.text-subtitle-2.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
         v-card-text.flex-grow-1.d-flex.flex-column.justify-center
           .chart-container(v-if="card.subindicators.length && card.totalEvents > 0" style="position: relative; height: 280px;")
-            Bar(:ref="el => setDoughnutRef(el, idx)" :data="getSubBarDataForCard(card)" :options="subBarOptions")
+            Bar(:ref="el => setDoughnutRef(el, idx)" :data="getSubBarDataForCard(card)" :options="getSubBarOptions(card)")
           .text-center.text-caption.text-medium-emphasis.pa-4(v-else)
             v-icon.mb-2(size="40" color="grey-lighten-1") mdi-chart-bar
             div(v-if="!card.subindicators.length") Nenhum subindicador configurado.
@@ -140,7 +175,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
           .chart-container(style="position: relative; height: 400px;")
             Line(ref="lineChartRef" :data="lineChartData" :options="lineOptions")
 
-  //- ── Pivot Table ──
+  //- ── Tabela Pivot ──
   v-row.mt-4(v-if="analytics.reportTableData?.length")
     v-col(cols="12")
       v-card(elevation="1")
@@ -166,13 +201,42 @@ div(class="space-y-6 animate-in fade-in duration-700")
                   :class="[key === 'indicador' ? 'text-left' : 'text-center', key === 'indicador' && String(row.indicador).includes(' > ') ? 'pl-8' : '']"
                 ) {{ key === 'indicador' ? row[key] : (row[key] ?? 0) }}
 
+  //- ── Modal de Drill-down ──
+  v-dialog(v-model="drilldownDialog" max-width="700" scrollable)
+    v-card
+      v-card-title.d-flex.justify-space-between.align-center.pa-4
+        span.text-subtitle-1.font-weight-bold.text-wrap {{ drilldownTitle }}
+        v-btn(icon="mdi-close" variant="text" @click="drilldownDialog = false")
+      v-divider
+      v-card-text.pa-0
+        .text-caption.text-medium-emphasis.pa-4(v-if="!drilldownRows.length")
+          | Nenhum paciente encontrado para este filtro.
+        v-list(v-else density="compact" lines="two")
+          v-list-item(
+            v-for="(row, i) in drilldownRows"
+            :key="i"
+            :title="row.patient"
+            prepend-icon="mdi-account"
+          )
+            template(v-slot:subtitle)
+              .d-flex.align-center.flex-wrap.ga-1
+                v-chip(size="x-small" color="deep-orange" variant="tonal") {{ row.operator }}
+                span.text-caption.text-medium-emphasis · {{ row.subindicator }}
+                span.text-caption.text-medium-emphasis · {{ row.date }}
+      v-card-actions.pa-4
+        .text-caption.text-medium-emphasis {{ drilldownRows.length }} registro(s)
+        v-spacer
+        v-btn(variant="tonal" @click="drilldownDialog = false") Fechar
+
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useCrud } from '@/composables/useCrud'
 import { useDashboardAnalytics } from '@/composables/useDashboardAnalytics'
 import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useFilterStore, BIMESTER_OPTIONS } from '@/stores/filterStore'
 
 import {
   Chart as ChartJS,
@@ -203,24 +267,197 @@ const CHART_COLORS = [
 ]
 
 const snackbar = useSnackbarStore()
-
-const startDate = ref('')
-const endDate = ref('')
-
-const clearFilters = () => {
-  startDate.value = ''
-  endDate.value = ''
-}
+const filterStore = useFilterStore()
+const { startDate, endDate } = storeToRefs(filterStore)
 
 const { data: patients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
+const { data: operators } = useCrud<any>('operators', { defaultPageSize: 100 })
 
-const analytics = useDashboardAnalytics(patients, indicators, startDate, endDate)
+// ── Filtros locais (convênio + modalidade) ──
+const selectedOperatorId = ref('')
+const selectedModality = ref('')
 
-const totalPatients = computed(() => {
-  if (!patients.value) return 0
-  return patients.value.length
+function clearAllFilters() {
+  filterStore.clear()
+  selectedOperatorId.value = ''
+  selectedModality.value = ''
+}
+
+const operatorMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const op of operators.value ?? []) map[String(op._id)] = op.name
+  return map
 })
+
+function resolveOperator(p: any): string {
+  if (!p.operator) return '—'
+  if (typeof p.operator === 'object' && p.operator?.name) return p.operator.name
+  return operatorMap.value[String(p.operator)] ?? '—'
+}
+
+// Mapa do último evento ind.06 por paciente (modalidade atual)
+const patientModalityMap = computed(() => {
+  const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
+  const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const map = new Map<string, string>()
+  for (const p of patients.value ?? []) {
+    const ind06 = (p.events ?? [])
+      .filter((e: any) => (e.indicator?.name ?? '').startsWith('06'))
+      .filter((e: any) => {
+        const d = new Date(e.occurrenceDate)
+        return (!startD || d >= startD) && (!endD || d <= endD)
+      })
+      .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
+    if (ind06.length) {
+      const sub: string = ind06[0].subindicator?.name ?? ''
+      map.set(String(p._id), sub.includes('AD') ? 'AD' : sub.includes('ID') ? 'ID' : '')
+    }
+  }
+  return map
+})
+
+// Pacientes filtrados pelos filtros locais — alimenta o analytics
+const filteredPatients = computed(() => {
+  let list = patients.value ?? []
+  if (selectedOperatorId.value) {
+    list = list.filter(p => {
+      const opId = typeof p.operator === 'object' ? p.operator?._id : p.operator
+      return String(opId) === selectedOperatorId.value
+    })
+  }
+  if (selectedModality.value) {
+    list = list.filter(p =>
+      patientModalityMap.value.get(String(p._id)) === selectedModality.value,
+    )
+  }
+  return list
+})
+
+const analytics = useDashboardAnalytics(filteredPatients as any, indicators, startDate, endDate)
+
+const totalPatients = computed(() => filteredPatients.value.length)
+
+// ── Hospitalization rate (ind 03 / total AD+ID patients) ──
+const hospitalizationRateAbs = computed(() => {
+  return analytics.value.indicatorsCards.find(c => c.name.startsWith('03'))?.totalEvents ?? 0
+})
+const adIdTotal = computed(() => {
+  return analytics.value.indicatorsCards.find(c => c.name.startsWith('06'))?.totalEvents ?? 0
+})
+const hospitalizationRate = computed(() => {
+  if (adIdTotal.value <= 0) return null
+  return ((hospitalizationRateAbs.value / adIdTotal.value) * 100).toFixed(1)
+})
+
+// ── Drill-down ──
+interface DrilldownRow {
+  patient: string
+  operator: string
+  subindicator: string
+  date: string
+}
+
+const drilldownDialog = ref(false)
+const drilldownTitle = ref('')
+const drilldownRows = ref<DrilldownRow[]>([])
+
+const IND06_PREFIX = '06'
+
+function openDrilldown(indicatorName: string, subindicatorName?: string) {
+  const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
+  const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const rows: DrilldownRow[] = []
+
+  // Ind.06: mostrar pacientes pelo estado atual (último evento AD/ID no período)
+  if (indicatorName.startsWith(IND06_PREFIX)) {
+    for (const p of patients.value ?? []) {
+      const ind06Events = (p.events ?? [])
+        .filter((e: any) => (e.indicator?.name ?? '').startsWith(IND06_PREFIX))
+        .filter((e: any) => {
+          const d = new Date(e.occurrenceDate)
+          return (!startD || d >= startD) && (!endD || d <= endD)
+        })
+        .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
+
+      if (!ind06Events.length) continue
+      const lastEvent = ind06Events[0]
+      const sub: string = lastEvent.subindicator?.name ?? ''
+      if (subindicatorName && sub !== subindicatorName) continue
+      rows.push({
+        patient: p.name,
+        operator: resolveOperator(p),
+        subindicator: sub || '—',
+        date: new Date(lastEvent.occurrenceDate).toLocaleDateString('pt-BR'),
+      })
+    }
+  } else {
+    for (const p of patients.value ?? []) {
+      for (const e of p.events ?? []) {
+        if (e.indicator?.name !== indicatorName) continue
+        if (subindicatorName && e.subindicator?.name !== subindicatorName) continue
+        const d = new Date(e.occurrenceDate)
+        if (startD && d < startD) continue
+        if (endD && d > endD) continue
+        rows.push({
+          patient: p.name,
+          operator: resolveOperator(p),
+          subindicator: e.subindicator?.name ?? '—',
+          date: d.toLocaleDateString('pt-BR'),
+        })
+      }
+    }
+  }
+
+  rows.sort((a, b) => a.patient.localeCompare(b.patient))
+  drilldownTitle.value = subindicatorName
+    ? `${indicatorName} › ${subindicatorName}`
+    : indicatorName
+  drilldownRows.value = rows
+  drilldownDialog.value = true
+}
+
+// Abre modal filtrando por modalidade (AD/ID) e/ou convênio
+function openByModalityAndOperator(modality?: string, operatorId?: string) {
+  const startD = startDate.value ? new Date(startDate.value + 'T00:00:00') : null
+  const endD = endDate.value ? new Date(endDate.value + 'T23:59:59') : null
+  const rows: DrilldownRow[] = []
+
+  for (const p of patients.value ?? []) {
+    if (operatorId) {
+      const opId = typeof p.operator === 'object' ? p.operator?._id : p.operator
+      if (String(opId) !== String(operatorId)) continue
+    }
+
+    const ind06Events = (p.events ?? [])
+      .filter((e: any) => (e.indicator?.name ?? '').startsWith(IND06_PREFIX))
+      .filter((e: any) => {
+        const d = new Date(e.occurrenceDate)
+        return (!startD || d >= startD) && (!endD || d <= endD)
+      })
+      .sort((a: any, b: any) => a.occurrenceDate < b.occurrenceDate ? 1 : -1)
+
+    if (!ind06Events.length) continue
+    const sub: string = ind06Events[0].subindicator?.name ?? ''
+    if (modality && !sub.includes(modality)) continue
+
+    rows.push({
+      patient: p.name,
+      operator: resolveOperator(p),
+      subindicator: sub || '—',
+      date: new Date(ind06Events[0].occurrenceDate).toLocaleDateString('pt-BR'),
+    })
+  }
+
+  rows.sort((a, b) => a.patient.localeCompare(b.patient))
+
+  const parts: string[] = []
+  if (modality) parts.push(modality)
+  if (operatorId) parts.push(operatorMap.value[String(operatorId)] ?? operatorId)
+  drilldownTitle.value = `Pacientes${parts.length ? ' — ' + parts.join(' · ') : ' AD/ID'}`
+  drilldownRows.value = rows
+  drilldownDialog.value = true
+}
 
 // ── Chart refs ──
 const barChartRef = ref<any>(null)
@@ -231,9 +468,24 @@ const setDoughnutRef = (el: any, idx: number) => {
   if (el) doughnutChartRefs.value[idx] = el
 }
 
-// ── Bar Chart ──
+// Gera um item de legenda por barra com a cor exata da barra
+function generateColorLabels(chart: any): any[] {
+  const labels: string[] = chart.data.labels || []
+  const bg = chart.data.datasets[0]?.backgroundColor
+  return labels.map((label: string, i: number) => ({
+    text: label,
+    fillStyle: Array.isArray(bg) ? bg[i % bg.length] : (bg ?? '#ccc'),
+    strokeStyle: 'transparent',
+    lineWidth: 0,
+    hidden: false,
+    index: i,
+    datasetIndex: 0,
+  }))
+}
+
+// ── Main Bar Chart ──
 const barChartData = computed(() => ({
-  labels: analytics.value.chartBarData?.labels || [],
+  labels: analytics.value.indicatorsCards.map(c => c.name),
   datasets: [{
     label: 'Total de Eventos',
     data: analytics.value.chartBarData?.datasets?.[0]?.data || [],
@@ -243,13 +495,37 @@ const barChartData = computed(() => ({
   }],
 }))
 
-const barOptions = {
+const barOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   indexAxis: 'y' as const,
+  onClick: (_: any, elements: any[]) => {
+    if (!elements.length) return
+    const idx = elements[0].index
+    const name = analytics.value.indicatorsCards[idx]?.name
+    if (name) openDrilldown(name)
+  },
   plugins: {
-    legend: { display: false },
-    datalabels: { display: false },
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        generateLabels: generateColorLabels,
+        usePointStyle: true,
+        pointStyle: 'rectRounded' as const,
+        padding: 10,
+        font: { size: 10 },
+        boxWidth: 12,
+        boxHeight: 12,
+      },
+    },
+    datalabels: {
+      anchor: 'end' as const,
+      align: 'right' as const,
+      color: '#374151',
+      font: { weight: 'bold' as const, size: 11 },
+      formatter: (value: number) => value > 0 ? value : '',
+    },
     tooltip: {
       backgroundColor: '#1E293B',
       titleFont: { size: 13 },
@@ -265,10 +541,10 @@ const barOptions = {
     },
     y: {
       grid: { display: false },
-      ticks: { font: { size: 11 } },
+      ticks: { display: false },
     },
   },
-}
+}))
 
 // ── Line Chart ──
 const lineChartData = computed(() => {
@@ -318,9 +594,9 @@ const lineOptions = {
   },
 }
 
-// ── Sub-indicator Bar Chart (per-card) ──
+// ── Sub-indicator Bar Charts (per-card) ──
 const getSubBarDataForCard = (card: any) => ({
-  labels: card.subindicators.map((s: any) => s.name.length > 25 ? s.name.substring(0, 23) + '…' : s.name),
+  labels: card.subindicators.map((s: any) => s.name),
   datasets: [{
     label: 'Eventos',
     data: card.subindicators.map((s: any) => s.eventos),
@@ -330,11 +606,29 @@ const getSubBarDataForCard = (card: any) => ({
   }],
 })
 
-const subBarOptions = computed(() => ({
+const getSubBarOptions = (card: any) => ({
   responsive: true,
   maintainAspectRatio: false,
+  onClick: (_: any, elements: any[]) => {
+    if (!elements.length) return
+    const idx = elements[0].index
+    const sub = card.subindicators[idx]
+    if (sub?.eventos > 0) openDrilldown(card.name, sub.name)
+  },
   plugins: {
-    legend: { display: false },
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        generateLabels: generateColorLabels,
+        usePointStyle: true,
+        pointStyle: 'rectRounded' as const,
+        padding: 8,
+        font: { size: 10 },
+        boxWidth: 10,
+        boxHeight: 10,
+      },
+    },
     datalabels: {
       anchor: 'end' as const,
       align: 'end' as const,
@@ -362,7 +656,7 @@ const subBarOptions = computed(() => ({
   scales: {
     x: {
       grid: { display: false },
-      ticks: { font: { size: 9 }, maxRotation: 45 },
+      ticks: { display: false },
     },
     y: {
       beginAtZero: true,
@@ -370,8 +664,7 @@ const subBarOptions = computed(() => ({
       ticks: { font: { size: 10 }, stepSize: 1 },
     },
   },
-}))
-
+})
 
 // ── Report export ──
 const generatingReport = ref(false)
@@ -379,21 +672,15 @@ const generatingPptx = ref(false)
 
 function collectChartImages() {
   const charts: { title: string; image: string }[] = []
-  if (barChartRef.value?.chart) {
+  if (barChartRef.value?.chart)
     charts.push({ title: 'Eventos por Indicador', image: barChartRef.value.chart.toBase64Image() })
-  }
-  if (lineChartRef.value?.chart) {
+  if (lineChartRef.value?.chart)
     charts.push({ title: 'Evolução Mensal', image: lineChartRef.value.chart.toBase64Image() })
-  }
-  // Captura todos os doughnuts individuais
   const cards = analytics.value.indicatorsCards
-  for (const [idx, ref] of Object.entries(doughnutChartRefs.value)) {
-    if (ref?.chart) {
+  for (const [idx, r] of Object.entries(doughnutChartRefs.value)) {
+    if (r?.chart) {
       const card = cards[Number(idx)]
-      charts.push({
-        title: card ? card.name : `Distribuição ${idx}`,
-        image: ref.chart.toBase64Image(),
-      })
+      charts.push({ title: card ? card.name : `Distribuição ${idx}`, image: r.chart.toBase64Image() })
     }
   }
   return charts
@@ -402,7 +689,7 @@ function collectChartImages() {
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
     title: 'RELATÓRIO DE INDICADORES',
-    subtitle: `Período: ${startDate.value || 'Início'} a ${endDate.value || 'Atual'}`,
+    subtitle: `Período: ${filterStore.active.label}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),
@@ -425,7 +712,6 @@ async function downloadReport(format: 'pdf' | 'pptx') {
       body: JSON.stringify(buildPayload(format)),
     })
     if (!response.ok) throw new Error(`Falha ao gerar ${format.toUpperCase()}`)
-
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
