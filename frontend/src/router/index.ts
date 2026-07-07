@@ -29,7 +29,7 @@ const router = createRouter({
       component: DashboardOverview
     },
     {
-      path: '/assistencia-social',
+      path: '/registros-de-ocorrencias',
       name: 'social-assistance-reports',
       component: () => import('@/views/SocialAssistanceReportsView.vue')
     },
