@@ -172,6 +172,7 @@ export const SocialAssistanceReportSchema = BaseEntitySchema.extend({
   occurrenceDate: z.string().min(1, 'A data da ocorrência é obrigatória').default(''),
   indicator: IndicatorSchema.omit({ subindicators: true, _id: true }),
   subindicator: SubindicatorSchema,
+  reporterName: z.string().max(200).optional().default(''),
   observations: z.string().max(500).optional().default(''),
   file: FileAttachmentSchema.nullable().optional().default(null),
   status: SocialAssistanceReportStatusEnum.default('pendente'),

@@ -4,8 +4,8 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
   v-card.pa-4.pa-sm-8(elevation="8" rounded="lg" max-width="640" width="100%" v-if="!submitted")
     .text-center.mb-6
       v-icon(color="primary" size="40") mdi-hand-heart-outline
-      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência — Assistência Social
-      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência de assistência social referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
+      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência — Assistência Social e Ouvidoria
+      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência de assistência social ou de ouvidoria (elogio, sugestão, reclamação) referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
 
     v-form(@submit.prevent="submit")
       v-text-field.mb-2(
@@ -22,14 +22,31 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
         :error-messages="errors.occurrenceDate"
       )
       v-select.mb-2(
+        v-model="form.indicatorName"
+        :items="categoryOptions"
+        item-title="name"
+        item-value="name"
+        label="Categoria *"
+        variant="outlined"
+        :loading="isLoadingIndicators"
+        :error-messages="errors.indicatorName"
+        @update:model-value="form.subindicatorName = ''"
+      )
+      v-select.mb-2(
         v-model="form.subindicatorName"
         :items="subindicatorOptions"
         item-title="name"
         item-value="name"
         label="Tipo de ocorrência *"
         variant="outlined"
-        :loading="isLoadingIndicators"
+        :disabled="!form.indicatorName"
         :error-messages="errors.subindicatorName"
+      )
+      v-text-field.mb-2(
+        v-model="form.reporterName"
+        label="Nome de quem está denunciando (Opcional)"
+        variant="outlined"
+        :error-messages="errors.reporterName"
       )
       v-textarea.mb-2(
         v-model="form.observations"
@@ -73,29 +90,38 @@ import { useCrud } from '@/composables/useCrud'
 import { dbExecute, fileToBase64 } from '@/lib/proxy-client'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
-const SOCIAL_INDICATOR_PREFIX = '10 -'
+// Categorias permitidas no formulário público: Indicadores Sociais e Ouvidorias
+const ALLOWED_INDICATOR_PREFIXES = ['09 -', '10 -']
 
 const snackbar = useSnackbarStore()
 
 const { data: indicators, isLoading: isLoadingIndicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 
-const socialIndicator = computed(() =>
-  indicators.value?.find((i: any) => i.name?.startsWith(SOCIAL_INDICATOR_PREFIX)) ?? null
+const categoryOptions = computed(() =>
+  (indicators.value ?? []).filter((i: any) => ALLOWED_INDICATOR_PREFIXES.some(p => i.name?.startsWith(p)))
 )
 
-const subindicatorOptions = computed(() => socialIndicator.value?.subindicators ?? [])
+const selectedIndicator = computed(() =>
+  categoryOptions.value.find((i: any) => i.name === form.indicatorName) ?? null
+)
+
+const subindicatorOptions = computed(() => selectedIndicator.value?.subindicators ?? [])
 
 const FormSchema = z.object({
   patientNameRaw: z.string().min(1, 'O nome do paciente é obrigatório'),
   occurrenceDate: z.string().min(1, 'A data da ocorrência é obrigatória'),
+  indicatorName: z.string().min(1, 'A categoria é obrigatória'),
   subindicatorName: z.string().min(1, 'O tipo de ocorrência é obrigatório'),
+  reporterName: z.string().max(200, 'O nome deve ter no máximo 200 caracteres').optional(),
   observations: z.string().max(500, 'A observação deve ter no máximo 500 caracteres').optional(),
 })
 
 const form = reactive({
   patientNameRaw: '',
   occurrenceDate: new Date().toISOString().slice(0, 10),
+  indicatorName: '',
   subindicatorName: '',
+  reporterName: '',
   observations: '',
   file: null as { name: string; type: string; size: number } | null,
 })
@@ -140,12 +166,12 @@ const submitted = ref(false)
 
 const submit = async () => {
   if (!validate()) return
-  if (!socialIndicator.value) {
-    snackbar.show('Não foi possível carregar o indicador. Tente novamente.', 'error')
+  if (!selectedIndicator.value) {
+    snackbar.show('Não foi possível carregar a categoria selecionada. Tente novamente.', 'error')
     return
   }
 
-  const sub = socialIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
+  const sub = selectedIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
   if (!sub) return
 
   isSubmitting.value = true
@@ -154,11 +180,11 @@ const submit = async () => {
       patientNameRaw: form.patientNameRaw,
       occurrenceDate: form.occurrenceDate,
       indicator: {
-        name: socialIndicator.value.name,
-        targetType: socialIndicator.value.targetType,
-        targetDirection: socialIndicator.value.targetDirection,
-        targetValue: socialIndicator.value.targetValue,
-        comparisonInterval: socialIndicator.value.comparisonInterval,
+        name: selectedIndicator.value.name,
+        targetType: selectedIndicator.value.targetType,
+        targetDirection: selectedIndicator.value.targetDirection,
+        targetValue: selectedIndicator.value.targetValue,
+        comparisonInterval: selectedIndicator.value.comparisonInterval,
       },
       subindicator: {
         name: sub.name,
@@ -166,6 +192,7 @@ const submit = async () => {
         targetDirection: sub.targetDirection,
         targetValue: sub.targetValue,
       },
+      reporterName: form.reporterName,
       observations: form.observations,
       status: 'pendente',
       linkedPatientId: null,
@@ -196,7 +223,9 @@ const submit = async () => {
 const resetForm = () => {
   form.patientNameRaw = ''
   form.occurrenceDate = new Date().toISOString().slice(0, 10)
+  form.indicatorName = ''
   form.subindicatorName = ''
+  form.reporterName = ''
   form.observations = ''
   form.file = null
   pendingFile.value = null
