@@ -19,7 +19,7 @@ const router = createRouter({
       component: LoginView
     },
     {
-      path: '/formulario/assistencia-social',
+      path: '/formulario/registro-de-ocorrencia',
       name: 'social-assistance-form',
       component: SocialAssistanceFormView
     },
@@ -29,7 +29,7 @@ const router = createRouter({
       component: DashboardOverview
     },
     {
-      path: '/assistencia-social',
+      path: '/registros-de-ocorrencias',
       name: 'social-assistance-reports',
       component: () => import('@/views/SocialAssistanceReportsView.vue')
     },

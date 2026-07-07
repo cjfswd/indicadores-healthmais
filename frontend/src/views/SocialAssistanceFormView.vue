@@ -4,8 +4,8 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
   v-card.pa-4.pa-sm-8(elevation="8" rounded="lg" max-width="640" width="100%" v-if="!submitted")
     .text-center.mb-6
       v-icon(color="primary" size="40") mdi-hand-heart-outline
-      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência — Assistência Social e Ouvidoria
-      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência de assistência social ou de ouvidoria (elogio, sugestão, reclamação) referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
+      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência
+      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência (elogio, sugestão, reclamação, solicitação ou evento adverso) referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
 
     v-form(@submit.prevent="submit")
       v-text-field.mb-2(
@@ -45,7 +45,7 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
       )
       v-textarea.mb-2(
         v-model="form.observations"
-        label="Observações *"
+        label="Relato *"
         variant="outlined"
         rows="3"
         counter="500"
@@ -85,8 +85,16 @@ import { useCrud } from '@/composables/useCrud'
 import { dbExecute, fileToBase64 } from '@/lib/proxy-client'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
-// Categorias permitidas no formulário público: Indicadores Sociais e Ouvidorias
-const ALLOWED_INDICATOR_PREFIXES = ['09 -', '10 -']
+// Categorias permitidas no formulário público: Eventos adversos e Ouvidoria
+const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -']
+
+// Apenas estes subindicadores (sem numeração) ficam disponíveis como "Tipo de ocorrência".
+const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações e Solicitações']
+
+// "Evento adverso" não é escolhido por subindicador aqui: fica no nível do indicador
+// "08 - Nº de eventos adversos". A categoria específica (Quedas, Broncoaspiração etc.)
+// é definida depois pelas coordenações, no momento de vincular o registro ao paciente.
+const EVENTO_ADVERSO_VALUE = '__evento_adverso__'
 
 const snackbar = useSnackbarStore()
 
@@ -105,8 +113,14 @@ const stripNumbering = (name: string) => name.replace(/^\d+(\.\d+)?\s*-\s*/, '')
 const occurrenceOptions = computed(() => {
   const opts: { title: string; value: string; indicatorName: string }[] = []
   for (const ind of categoryOptions.value) {
+    if (ind.name?.startsWith('08 -')) {
+      opts.push({ title: 'Evento adverso', value: EVENTO_ADVERSO_VALUE, indicatorName: ind.name })
+      continue
+    }
     for (const sub of ind.subindicators ?? []) {
-      opts.push({ title: stripNumbering(sub.name), value: sub.name, indicatorName: ind.name })
+      const label = stripNumbering(sub.name)
+      if (!ALLOWED_SUBINDICATOR_LABELS.includes(label)) continue
+      opts.push({ title: label, value: sub.name, indicatorName: ind.name })
     }
   }
   return opts
@@ -126,7 +140,7 @@ const FormSchema = z.object({
   subindicatorName: z.string().min(1, 'O tipo de ocorrência é obrigatório'),
   reporterName: z.string().max(200, 'O nome deve ter no máximo 200 caracteres').optional(),
   reporterContact: z.string().max(200, 'O contato deve ter no máximo 200 caracteres').optional(),
-  observations: z.string().min(1, 'A observação é obrigatória').max(500, 'A observação deve ter no máximo 500 caracteres'),
+  observations: z.string().min(1, 'O relato é obrigatório').max(500, 'O relato deve ter no máximo 500 caracteres'),
 })
 
 const form = reactive({
@@ -184,8 +198,11 @@ const submit = async () => {
     return
   }
 
-  const sub = selectedIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
-  if (!sub) return
+  const isEventoAdverso = form.subindicatorName === EVENTO_ADVERSO_VALUE
+  const sub = isEventoAdverso
+    ? null
+    : selectedIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
+  if (!isEventoAdverso && !sub) return
 
   isSubmitting.value = true
   try {
@@ -199,12 +216,16 @@ const submit = async () => {
         targetValue: selectedIndicator.value.targetValue,
         comparisonInterval: selectedIndicator.value.comparisonInterval,
       },
-      subindicator: {
-        name: sub.name,
-        targetType: sub.targetType,
-        targetDirection: sub.targetDirection,
-        targetValue: sub.targetValue,
-      },
+      // Para "Evento adverso" a categoria específica ainda não foi definida:
+      // fica null até a coordenação categorizar no momento de vincular ao paciente.
+      subindicator: sub
+        ? {
+            name: sub.name,
+            targetType: sub.targetType,
+            targetDirection: sub.targetDirection,
+            targetValue: sub.targetValue,
+          }
+        : null,
       reporterName: form.reporterName,
       reporterContact: form.reporterContact,
       observations: form.observations,
