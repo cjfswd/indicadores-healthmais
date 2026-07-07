@@ -23,10 +23,12 @@ div(class="space-y-8 animate-in fade-in duration-700")
           .text-body-2.mb-2(v-if="item.reporterName")
             span.font-weight-bold Denunciante:
             | {{ item.reporterName }}
+          .text-body-2.mb-2(v-if="item.reporterContact")
+            span.font-weight-bold Contato:
+            | {{ item.reporterContact }}
           .text-body-2.mb-2
             span.font-weight-bold Obs:
-            span(v-if="item.observations") {{ item.observations }}
-            span.text-grey.font-italic(v-else) Nenhuma observação
+            | {{ item.observations }}
           .d-flex.flex-wrap.gap-1.mt-auto
             v-chip(
               v-if="item.file"
@@ -141,8 +143,14 @@ const confirmLink = async () => {
   try {
     const report = activeReport.value
 
-    const observations = report.reporterName
-      ? `Denunciante: ${report.reporterName}${report.observations ? `\n\n${report.observations}` : ''}`
+    const reporterLine = report.reporterName
+      ? `Denunciante: ${report.reporterName}${report.reporterContact ? ` (contato: ${report.reporterContact})` : ''}`
+      : report.reporterContact
+        ? `Contato do denunciante: ${report.reporterContact}`
+        : ''
+
+    const observations = reporterLine
+      ? `${reporterLine}\n\n${report.observations}`
       : report.observations
 
     const newEvent = {

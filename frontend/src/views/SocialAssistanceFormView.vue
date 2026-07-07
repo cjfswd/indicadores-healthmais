@@ -22,24 +22,13 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
         :error-messages="errors.occurrenceDate"
       )
       v-select.mb-2(
-        v-model="form.indicatorName"
-        :items="categoryOptions"
-        item-title="name"
-        item-value="name"
-        label="Categoria *"
-        variant="outlined"
-        :loading="isLoadingIndicators"
-        :error-messages="errors.indicatorName"
-        @update:model-value="form.subindicatorName = ''"
-      )
-      v-select.mb-2(
         v-model="form.subindicatorName"
-        :items="subindicatorOptions"
-        item-title="name"
-        item-value="name"
+        :items="occurrenceOptions"
+        item-title="title"
+        item-value="value"
         label="Tipo de ocorrência *"
         variant="outlined"
-        :disabled="!form.indicatorName"
+        :loading="isLoadingIndicators"
         :error-messages="errors.subindicatorName"
       )
       v-text-field.mb-2(
@@ -48,9 +37,15 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
         variant="outlined"
         :error-messages="errors.reporterName"
       )
+      v-text-field.mb-2(
+        v-model="form.reporterContact"
+        label="Contato de quem está denunciando (Opcional)"
+        variant="outlined"
+        :error-messages="errors.reporterContact"
+      )
       v-textarea.mb-2(
         v-model="form.observations"
-        label="Observações (Opcional)"
+        label="Observações *"
         variant="outlined"
         rows="3"
         counter="500"
@@ -101,27 +96,45 @@ const categoryOptions = computed(() =>
   (indicators.value ?? []).filter((i: any) => ALLOWED_INDICATOR_PREFIXES.some(p => i.name?.startsWith(p)))
 )
 
-const selectedIndicator = computed(() =>
-  categoryOptions.value.find((i: any) => i.name === form.indicatorName) ?? null
+// Remove a numeração ("10.1 - ", "9.3 - ") do nome do sub-indicador para exibição.
+const stripNumbering = (name: string) => name.replace(/^\d+(\.\d+)?\s*-\s*/, '')
+
+// Achata os sub-indicadores das categorias permitidas em uma única lista de opções.
+// O "de-para" entre o rótulo amigável (sem numeração) e o indicador/sub-indicador
+// completo (com numeração, usado no armazenamento) acontece no envio do formulário.
+const occurrenceOptions = computed(() => {
+  const opts: { title: string; value: string; indicatorName: string }[] = []
+  for (const ind of categoryOptions.value) {
+    for (const sub of ind.subindicators ?? []) {
+      opts.push({ title: stripNumbering(sub.name), value: sub.name, indicatorName: ind.name })
+    }
+  }
+  return opts
+})
+
+const selectedOption = computed(() =>
+  occurrenceOptions.value.find(o => o.value === form.subindicatorName) ?? null
 )
 
-const subindicatorOptions = computed(() => selectedIndicator.value?.subindicators ?? [])
+const selectedIndicator = computed(() =>
+  categoryOptions.value.find((i: any) => i.name === selectedOption.value?.indicatorName) ?? null
+)
 
 const FormSchema = z.object({
   patientNameRaw: z.string().min(1, 'O nome do paciente é obrigatório'),
   occurrenceDate: z.string().min(1, 'A data da ocorrência é obrigatória'),
-  indicatorName: z.string().min(1, 'A categoria é obrigatória'),
   subindicatorName: z.string().min(1, 'O tipo de ocorrência é obrigatório'),
   reporterName: z.string().max(200, 'O nome deve ter no máximo 200 caracteres').optional(),
-  observations: z.string().max(500, 'A observação deve ter no máximo 500 caracteres').optional(),
+  reporterContact: z.string().max(200, 'O contato deve ter no máximo 200 caracteres').optional(),
+  observations: z.string().min(1, 'A observação é obrigatória').max(500, 'A observação deve ter no máximo 500 caracteres'),
 })
 
 const form = reactive({
   patientNameRaw: '',
   occurrenceDate: new Date().toISOString().slice(0, 10),
-  indicatorName: '',
   subindicatorName: '',
   reporterName: '',
+  reporterContact: '',
   observations: '',
   file: null as { name: string; type: string; size: number } | null,
 })
@@ -167,7 +180,7 @@ const submitted = ref(false)
 const submit = async () => {
   if (!validate()) return
   if (!selectedIndicator.value) {
-    snackbar.show('Não foi possível carregar a categoria selecionada. Tente novamente.', 'error')
+    snackbar.show('Não foi possível carregar o tipo de ocorrência selecionado. Tente novamente.', 'error')
     return
   }
 
@@ -193,6 +206,7 @@ const submit = async () => {
         targetValue: sub.targetValue,
       },
       reporterName: form.reporterName,
+      reporterContact: form.reporterContact,
       observations: form.observations,
       status: 'pendente',
       linkedPatientId: null,
@@ -223,9 +237,9 @@ const submit = async () => {
 const resetForm = () => {
   form.patientNameRaw = ''
   form.occurrenceDate = new Date().toISOString().slice(0, 10)
-  form.indicatorName = ''
   form.subindicatorName = ''
   form.reporterName = ''
+  form.reporterContact = ''
   form.observations = ''
   form.file = null
   pendingFile.value = null
