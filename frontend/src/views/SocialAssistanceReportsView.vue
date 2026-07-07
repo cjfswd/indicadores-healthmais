@@ -1,7 +1,7 @@
 <template lang="pug">
 div(class="space-y-8 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h5.font-weight-bold Formulário de Assistência Social e Ouvidoria
+    h2.text-h5.font-weight-bold Registro de Ocorrência
     v-btn(variant="text" color="primary" prepend-icon="mdi-content-copy" @click="copyPublicLink") Copiar link público
 
   v-tabs(v-model="statusFilter" class="mb-4")
