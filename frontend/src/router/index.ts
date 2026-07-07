@@ -19,7 +19,7 @@ const router = createRouter({
       component: LoginView
     },
     {
-      path: '/formulario/assistencia-social',
+      path: '/formulario/registro-de-ocorrencia',
       name: 'social-assistance-form',
       component: SocialAssistanceFormView
     },

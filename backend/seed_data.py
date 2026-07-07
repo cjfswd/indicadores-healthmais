@@ -94,7 +94,8 @@ default_indicators = [
       { "name": "8.2 - Broncoaspiração", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
       { "name": "8.3 - Lesão por pressão", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
       { "name": "8.4 - Decanulação", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
-      { "name": "8.5 - Saída acidental da GTT", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
+      { "name": "8.5 - Saída acidental da GTT", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "8.6 - Evento adverso", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
     ]
   },
   {

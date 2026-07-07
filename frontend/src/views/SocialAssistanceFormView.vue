@@ -4,8 +4,8 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
   v-card.pa-4.pa-sm-8(elevation="8" rounded="lg" max-width="640" width="100%" v-if="!submitted")
     .text-center.mb-6
       v-icon(color="primary" size="40") mdi-hand-heart-outline
-      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência — Assistência Social e Ouvidoria
-      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência de assistência social ou de ouvidoria (elogio, sugestão, reclamação) referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
+      h1.text-h5.font-weight-bold.mt-2 Registro de Ocorrência
+      p.text-body-2.text-medium-emphasis.mt-2 Use este formulário para relatar uma ocorrência (elogio, sugestão, reclamação, solicitação ou evento adverso) referente a um paciente. Um responsável irá analisar e vincular o registro ao paciente correto.
 
     v-form(@submit.prevent="submit")
       v-text-field.mb-2(
@@ -45,7 +45,7 @@ v-container.fill-height.fluid.pa-4.d-flex.align-center.justify-center
       )
       v-textarea.mb-2(
         v-model="form.observations"
-        label="Observações *"
+        label="Relato *"
         variant="outlined"
         rows="3"
         counter="500"
@@ -85,8 +85,13 @@ import { useCrud } from '@/composables/useCrud'
 import { dbExecute, fileToBase64 } from '@/lib/proxy-client'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
-// Categorias permitidas no formulário público: Indicadores Sociais e Ouvidorias
-const ALLOWED_INDICATOR_PREFIXES = ['09 -', '10 -']
+// Categorias permitidas no formulário público: Eventos adversos e Ouvidoria
+const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -']
+
+// Apenas estes subindicadores (sem numeração) ficam disponíveis como "Tipo de ocorrência".
+// "Evento adverso" é um registro genérico: a categoria específica (Quedas, Broncoaspiração
+// etc.) é definida depois pelas coordenações na área administrativa.
+const ALLOWED_SUBINDICATOR_LABELS = ['Evento adverso', 'Elogios', 'Sugestões', 'Reclamações e Solicitações']
 
 const snackbar = useSnackbarStore()
 
@@ -106,7 +111,9 @@ const occurrenceOptions = computed(() => {
   const opts: { title: string; value: string; indicatorName: string }[] = []
   for (const ind of categoryOptions.value) {
     for (const sub of ind.subindicators ?? []) {
-      opts.push({ title: stripNumbering(sub.name), value: sub.name, indicatorName: ind.name })
+      const label = stripNumbering(sub.name)
+      if (!ALLOWED_SUBINDICATOR_LABELS.includes(label)) continue
+      opts.push({ title: label, value: sub.name, indicatorName: ind.name })
     }
   }
   return opts
@@ -126,7 +133,7 @@ const FormSchema = z.object({
   subindicatorName: z.string().min(1, 'O tipo de ocorrência é obrigatório'),
   reporterName: z.string().max(200, 'O nome deve ter no máximo 200 caracteres').optional(),
   reporterContact: z.string().max(200, 'O contato deve ter no máximo 200 caracteres').optional(),
-  observations: z.string().min(1, 'A observação é obrigatória').max(500, 'A observação deve ter no máximo 500 caracteres'),
+  observations: z.string().min(1, 'O relato é obrigatório').max(500, 'O relato deve ter no máximo 500 caracteres'),
 })
 
 const form = reactive({
