@@ -160,6 +160,26 @@ export const PatientSchema = BaseEntitySchema.extend({
 });
 export type Patient = z.infer<typeof PatientSchema>;
 
+// ─── SocialAssistanceReport (entidade raiz, submissão pública) ──
+// Preenchido via formulário público (sem login), restrito ao indicador
+// "10 - Indicadores Sociais". Fica pendente até um admin vincular a um
+// paciente existente, momento em que o evento é copiado para Patient.events.
+
+export const SocialAssistanceReportStatusEnum = z.enum(['pendente', 'vinculado', 'descartado']);
+
+export const SocialAssistanceReportSchema = BaseEntitySchema.extend({
+  patientNameRaw: z.string().min(1, 'O nome do paciente é obrigatório').default(''),
+  occurrenceDate: z.string().min(1, 'A data da ocorrência é obrigatória').default(''),
+  indicator: IndicatorSchema.omit({ subindicators: true, _id: true }),
+  subindicator: SubindicatorSchema,
+  observations: z.string().max(500).optional().default(''),
+  file: FileAttachmentSchema.nullable().optional().default(null),
+  status: SocialAssistanceReportStatusEnum.default('pendente'),
+  linkedPatientId: ObjectIdSchema.nullable().optional().default(null),
+  linkedAt: z.union([z.date(), z.string()]).nullable().optional().default(null),
+});
+export type SocialAssistanceReport = z.infer<typeof SocialAssistanceReportSchema>;
+
 // ─── Notification (entidade raiz para alertas do sistema) ──────
 
 export const NotificationSchema = BaseEntitySchema.extend({
