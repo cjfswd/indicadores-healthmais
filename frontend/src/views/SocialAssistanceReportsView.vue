@@ -19,7 +19,7 @@ div(class="space-y-8 animate-in fade-in duration-700")
           v-chip.mb-2(size="x-small" :color="categoryColor(item)" variant="tonal") {{ categoryLabel(item) }}
           .text-body-2.mb-2
             span.font-weight-bold Tipo:
-            | {{ item.subindicator?.name }}
+            | {{ item.subindicator?.name ?? 'Evento adverso (a categorizar)' }}
           .text-body-2.mb-2(v-if="item.reporterName")
             span.font-weight-bold Denunciante:
             | {{ item.reporterName }}
@@ -55,7 +55,7 @@ div(class="space-y-8 animate-in fade-in duration-700")
       v-card-title.text-h6.font-weight-bold.pa-4 Vincular a paciente
       v-card-text.pa-4
         p.text-body-2.text-medium-emphasis.mb-4 Selecione o paciente cadastrado que corresponde a "{{ activeReport?.patientNameRaw }}". Isso criará um evento no histórico do paciente.
-        v-autocomplete(
+        v-autocomplete.mb-2(
           v-model="selectedPatientId"
           :items="patients"
           item-title="name"
@@ -65,10 +65,20 @@ div(class="space-y-8 animate-in fade-in duration-700")
           :loading="isLoadingPatients"
           hide-details
         )
+        v-select(
+          v-if="needsCategorization"
+          v-model="selectedCategorySubindicatorName"
+          :items="eventoAdversoCategoryOptions"
+          item-title="title"
+          item-value="value"
+          label="Categoria do evento adverso *"
+          variant="outlined"
+          hide-details
+        )
       v-card-actions.pa-4.pt-0
         v-spacer
         v-btn(variant="text" @click="linkDialogOpen = false") Cancelar
-        v-btn(color="primary" variant="flat" :disabled="!selectedPatientId" :loading="isLinking" @click="confirmLink") Vincular
+        v-btn(color="primary" variant="flat" :disabled="!selectedPatientId || (needsCategorization && !selectedCategorySubindicatorName)" :loading="isLinking" @click="confirmLink") Vincular
 </template>
 
 <script setup lang="ts">
@@ -92,7 +102,16 @@ const {
 } = useCrud<any>('social_assistance_reports', { defaultPageSize: 200 })
 
 const { data: patients, isLoading: isLoadingPatients } = useCrud<any>('patients', { defaultPageSize: 1000 })
+const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 const queryClient = useQueryClient()
+
+// Indicador usado para categorizar os registros genéricos de "Evento adverso".
+const eventoAdversoIndicator = computed(() =>
+  (indicators.value ?? []).find((i: any) => i.name?.startsWith('08 -'))
+)
+const eventoAdversoCategoryOptions = computed(() =>
+  (eventoAdversoIndicator.value?.subindicators ?? []).map((s: any) => ({ title: s.name, value: s.name }))
+)
 
 const statusFilter = ref('pendente')
 
@@ -134,11 +153,15 @@ const discard = async (item: any) => {
 const linkDialogOpen = ref(false)
 const activeReport = ref<any | null>(null)
 const selectedPatientId = ref<string | null>(null)
+const selectedCategorySubindicatorName = ref<string | null>(null)
 const isLinking = ref(false)
+
+const needsCategorization = computed(() => !!activeReport.value && !activeReport.value.subindicator)
 
 const openLinkDialog = (item: any) => {
   activeReport.value = item
   selectedPatientId.value = null
+  selectedCategorySubindicatorName.value = null
   linkDialogOpen.value = true
 }
 
@@ -149,9 +172,20 @@ const confirmLink = async () => {
   const patient = patients.value?.find((p: any) => p._id === selectedPatientId.value)
   if (!patient) return
 
+  if (needsCategorization.value && !selectedCategorySubindicatorName.value) return
+
   isLinking.value = true
   try {
     const report = activeReport.value
+
+    // Registros de "Evento adverso" chegam sem subindicador; a categoria específica
+    // é escolhida agora, no mesmo passo em que se vincula ao paciente.
+    const subindicator = report.subindicator
+      ?? eventoAdversoIndicator.value?.subindicators.find((s: any) => s.name === selectedCategorySubindicatorName.value)
+    if (!subindicator) {
+      snackbar.show('Selecione a categoria do evento adverso.', 'error')
+      return
+    }
 
     const reporterLine = report.reporterName
       ? `Denunciante: ${report.reporterName}${report.reporterContact ? ` (contato: ${report.reporterContact})` : ''}`
@@ -167,7 +201,7 @@ const confirmLink = async () => {
       _id: generateObjectId(),
       occurrenceDate: report.occurrenceDate,
       indicator: report.indicator,
-      subindicator: { _id: generateObjectId(), ...report.subindicator },
+      subindicator: { _id: generateObjectId(), ...subindicator },
       observations,
       file: report.file ?? null,
     }
@@ -186,6 +220,7 @@ const confirmLink = async () => {
       id: report._id,
       data: {
         status: 'vinculado',
+        subindicator,
         linkedPatientId: patient._id,
         linkedPatientName: patient.name,
         linkedAt: new Date().toISOString(),

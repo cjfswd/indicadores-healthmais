@@ -89,9 +89,12 @@ import { useSnackbarStore } from '@/stores/snackbarStore'
 const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -']
 
 // Apenas estes subindicadores (sem numeração) ficam disponíveis como "Tipo de ocorrência".
-// "Evento adverso" é um registro genérico: a categoria específica (Quedas, Broncoaspiração
-// etc.) é definida depois pelas coordenações na área administrativa.
-const ALLOWED_SUBINDICATOR_LABELS = ['Evento adverso', 'Elogios', 'Sugestões', 'Reclamações e Solicitações']
+const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações e Solicitações']
+
+// "Evento adverso" não é escolhido por subindicador aqui: fica no nível do indicador
+// "08 - Nº de eventos adversos". A categoria específica (Quedas, Broncoaspiração etc.)
+// é definida depois pelas coordenações, no momento de vincular o registro ao paciente.
+const EVENTO_ADVERSO_VALUE = '__evento_adverso__'
 
 const snackbar = useSnackbarStore()
 
@@ -110,6 +113,10 @@ const stripNumbering = (name: string) => name.replace(/^\d+(\.\d+)?\s*-\s*/, '')
 const occurrenceOptions = computed(() => {
   const opts: { title: string; value: string; indicatorName: string }[] = []
   for (const ind of categoryOptions.value) {
+    if (ind.name?.startsWith('08 -')) {
+      opts.push({ title: 'Evento adverso', value: EVENTO_ADVERSO_VALUE, indicatorName: ind.name })
+      continue
+    }
     for (const sub of ind.subindicators ?? []) {
       const label = stripNumbering(sub.name)
       if (!ALLOWED_SUBINDICATOR_LABELS.includes(label)) continue
@@ -191,8 +198,11 @@ const submit = async () => {
     return
   }
 
-  const sub = selectedIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
-  if (!sub) return
+  const isEventoAdverso = form.subindicatorName === EVENTO_ADVERSO_VALUE
+  const sub = isEventoAdverso
+    ? null
+    : selectedIndicator.value.subindicators.find((s: any) => s.name === form.subindicatorName)
+  if (!isEventoAdverso && !sub) return
 
   isSubmitting.value = true
   try {
@@ -206,12 +216,16 @@ const submit = async () => {
         targetValue: selectedIndicator.value.targetValue,
         comparisonInterval: selectedIndicator.value.comparisonInterval,
       },
-      subindicator: {
-        name: sub.name,
-        targetType: sub.targetType,
-        targetDirection: sub.targetDirection,
-        targetValue: sub.targetValue,
-      },
+      // Para "Evento adverso" a categoria específica ainda não foi definida:
+      // fica null até a coordenação categorizar no momento de vincular ao paciente.
+      subindicator: sub
+        ? {
+            name: sub.name,
+            targetType: sub.targetType,
+            targetDirection: sub.targetDirection,
+            targetValue: sub.targetValue,
+          }
+        : null,
       reporterName: form.reporterName,
       reporterContact: form.reporterContact,
       observations: form.observations,
