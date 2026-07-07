@@ -1,7 +1,7 @@
 <template lang="pug">
 div(class="space-y-8 animate-in fade-in duration-700")
   .d-flex.justify-space-between.align-center.mb-4
-    h2.text-h5.font-weight-bold Formulário de Assistência Social
+    h2.text-h5.font-weight-bold Formulário de Assistência Social e Ouvidoria
     v-btn(variant="text" color="primary" prepend-icon="mdi-content-copy" @click="copyPublicLink") Copiar link público
 
   v-tabs(v-model="statusFilter" class="mb-4")
@@ -16,9 +16,13 @@ div(class="space-y-8 animate-in fade-in duration-700")
           .text-wrap.text-subtitle-1.font-weight-bold.pr-2(style="line-height: 1.2;") {{ item.patientNameRaw }}
           .text-caption.text-medium-emphasis.flex-shrink-0.mt-1 {{ formatDate(item.occurrenceDate) }}
         v-card-text.flex-grow-1
+          v-chip.mb-2(size="x-small" :color="isOuvidoria(item) ? 'info' : 'secondary'" variant="tonal") {{ isOuvidoria(item) ? 'Ouvidoria' : 'Assistência Social' }}
           .text-body-2.mb-2
             span.font-weight-bold Tipo:
             | {{ item.subindicator?.name }}
+          .text-body-2.mb-2(v-if="item.reporterName")
+            span.font-weight-bold Denunciante:
+            | {{ item.reporterName }}
           .text-body-2.mb-2
             span.font-weight-bold Obs:
             span(v-if="item.observations") {{ item.observations }}
@@ -98,6 +102,8 @@ const filteredReports = computed(() =>
     .sort((a, b) => new Date(b.occurrenceDate).getTime() - new Date(a.occurrenceDate).getTime())
 )
 
+const isOuvidoria = (item: any) => !!item.indicator?.name?.startsWith('09')
+
 const downloadFile = (file: any, reportId: string) => {
   downloadFileFromDb('social_assistance_reports', reportId, 0, file.name)
 }
@@ -135,12 +141,16 @@ const confirmLink = async () => {
   try {
     const report = activeReport.value
 
+    const observations = report.reporterName
+      ? `Denunciante: ${report.reporterName}${report.observations ? `\n\n${report.observations}` : ''}`
+      : report.observations
+
     const newEvent = {
       _id: generateObjectId(),
       occurrenceDate: report.occurrenceDate,
       indicator: report.indicator,
       subindicator: { _id: generateObjectId(), ...report.subindicator },
-      observations: report.observations,
+      observations,
       file: report.file ?? null,
     }
 
