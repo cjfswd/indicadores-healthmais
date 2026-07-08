@@ -23,7 +23,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
         v-col(cols="12" sm="8" md="9")
           .d-flex.ga-2.justify-end.align-center
             v-btn(
-              v-if="filterStore.selectedBimester !== 'all'"
+              v-if="filterStore.selectedBimester !== 'all' || filterStore.customStartDate || filterStore.customEndDate"
               variant="text"
               color="primary"
               prepend-icon="mdi-filter-off"
@@ -363,7 +363,7 @@ function collectChartImages() {
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
     title: 'RELATORIO DE INDICADORES',
-    subtitle: `Periodo: ${filterStore.active.label}`,
+    subtitle: `Periodo: ${filterStore.periodLabel}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),

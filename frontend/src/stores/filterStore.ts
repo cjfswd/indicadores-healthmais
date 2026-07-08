@@ -15,17 +15,33 @@ export const BIMESTER_OPTIONS = [
 
 export const useFilterStore = defineStore('filter', () => {
   const selectedBimester = ref('all')
+  const customStartDate = ref('')
+  const customEndDate = ref('')
 
   const active = computed(() =>
     BIMESTER_OPTIONS.find(b => b.value === selectedBimester.value) ?? BIMESTER_OPTIONS[0],
   )
 
-  const startDate = computed(() => active.value.start)
-  const endDate = computed(() => active.value.end)
+  // Um intervalo de data personalizado (De/Até) tem prioridade sobre o bimestre selecionado.
+  const startDate = computed(() => customStartDate.value || active.value.start)
+  const endDate = computed(() => customEndDate.value || active.value.end)
+
+  const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
+
+  const periodLabel = computed(() => {
+    if (customStartDate.value || customEndDate.value) {
+      const from = customStartDate.value ? formatDate(customStartDate.value) : '…'
+      const to = customEndDate.value ? formatDate(customEndDate.value) : '…'
+      return `${from} – ${to}`
+    }
+    return active.value.label
+  })
 
   function clear() {
     selectedBimester.value = 'all'
+    customStartDate.value = ''
+    customEndDate.value = ''
   }
 
-  return { selectedBimester, startDate, endDate, active, clear }
+  return { selectedBimester, customStartDate, customEndDate, startDate, endDate, active, periodLabel, clear }
 })
