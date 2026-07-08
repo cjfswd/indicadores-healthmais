@@ -7,19 +7,27 @@ div(class="space-y-6 animate-in fade-in duration-700")
   v-card.mb-6(elevation="0" border)
     v-card-text.pa-3
       v-row(dense align="center")
-        v-col(cols="12" sm="4" md="3")
-          v-select(
-            v-model="filterStore.selectedBimester"
-            :items="BIMESTER_OPTIONS"
-            item-title="label"
-            item-value="value"
-            label="Período"
+        v-col(cols="6" sm="3" md="2")
+          v-text-field(
+            v-model="filterStore.customStartDate"
+            label="De"
+            type="date"
             density="compact"
             variant="outlined"
             hide-details
-            prepend-inner-icon="mdi-calendar-range"
+            prepend-inner-icon="mdi-calendar-start"
           )
-        v-col(cols="12" sm="4" md="3")
+        v-col(cols="6" sm="3" md="2")
+          v-text-field(
+            v-model="filterStore.customEndDate"
+            label="Até"
+            type="date"
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="mdi-calendar-end"
+          )
+        v-col(cols="12" sm="6" md="3")
           v-select(
             v-model="selectedOperatorId"
             :items="[{ _id: '', name: 'Todos os convênios' }, ...(operators ?? [])]"
@@ -33,7 +41,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
             clearable
             @click:clear="selectedOperatorId = ''"
           )
-        v-col(cols="12" sm="4" md="3")
+        v-col(cols="12" sm="6" md="3")
           v-btn-toggle(
             v-model="selectedModality"
             density="compact"
@@ -49,25 +57,14 @@ div(class="space-y-6 animate-in fade-in duration-700")
             v-btn(value="ID" style="flex:1" size="small")
               v-icon(start size="14") mdi-hospital-box
               | ID
-        v-col(cols="12" sm="12" md="3")
+        v-col(cols="12" sm="12" md="2")
           v-btn(
-            v-if="filterStore.selectedBimester !== 'all' || selectedOperatorId || selectedModality"
+            v-if="filterStore.customStartDate || filterStore.customEndDate || selectedOperatorId || selectedModality"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
             @click="clearAllFilters"
           ) Limpar Filtros
-
-  //- ── Card de destaque: Taxa de Internação Hospitalar ──
-  v-row.mb-2(v-if="hospitalizationRate !== null")
-    v-col(cols="12" md="6" lg="4")
-      v-card(elevation="2" color="blue-darken-4" theme="dark")
-        v-card-text.pa-5
-          .text-caption.text-blue-lighten-3.font-weight-bold.mb-1 TAXA DE INTERNAÇÃO HOSPITALAR
-          .d-flex.align-end.ga-2
-            span.text-h2.font-weight-bold {{ hospitalizationRate }}%
-            span.text-body-1.mb-2.text-blue-lighten-3 ({{ hospitalizationRateAbs }} internações / {{ adIdTotal }} pacientes AD+ID)
-          .text-caption.text-blue-lighten-3.mt-1 Indicador 03 sobre total de pacientes em AD/ID
 
   //- ── Cards de indicadores ──
   v-row
@@ -236,7 +233,7 @@ import { storeToRefs } from 'pinia'
 import { useCrud } from '@/composables/useCrud'
 import { useDashboardAnalytics } from '@/composables/useDashboardAnalytics'
 import { useSnackbarStore } from '@/stores/snackbarStore'
-import { useFilterStore, BIMESTER_OPTIONS } from '@/stores/filterStore'
+import { useFilterStore } from '@/stores/filterStore'
 
 import {
   Chart as ChartJS,
@@ -337,18 +334,6 @@ const filteredPatients = computed(() => {
 const analytics = useDashboardAnalytics(filteredPatients as any, indicators, startDate, endDate)
 
 const totalPatients = computed(() => filteredPatients.value.length)
-
-// ── Hospitalization rate (ind 03 / total AD+ID patients) ──
-const hospitalizationRateAbs = computed(() => {
-  return analytics.value.indicatorsCards.find(c => c.name.startsWith('03'))?.totalEvents ?? 0
-})
-const adIdTotal = computed(() => {
-  return analytics.value.indicatorsCards.find(c => c.name.startsWith('06'))?.totalEvents ?? 0
-})
-const hospitalizationRate = computed(() => {
-  if (adIdTotal.value <= 0) return null
-  return ((hospitalizationRateAbs.value / adIdTotal.value) * 100).toFixed(1)
-})
 
 // ── Drill-down ──
 interface DrilldownRow {
@@ -689,7 +674,7 @@ function collectChartImages() {
 function buildPayload(format: 'pdf' | 'pptx') {
   return {
     title: 'RELATÓRIO DE INDICADORES',
-    subtitle: `Período: ${filterStore.active.label}`,
+    subtitle: `Período: ${filterStore.periodLabel}`,
     headers: analytics.value.reportHeaders,
     data: analytics.value.reportTableData,
     charts: collectChartImages(),
