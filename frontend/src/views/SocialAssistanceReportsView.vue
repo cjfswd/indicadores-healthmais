@@ -68,10 +68,10 @@ div(class="space-y-8 animate-in fade-in duration-700")
         v-select(
           v-if="needsCategorization"
           v-model="selectedCategorySubindicatorName"
-          :items="eventoAdversoCategoryOptions"
+          :items="categorySubindicatorOptions"
           item-title="title"
           item-value="value"
-          label="Categoria do evento adverso *"
+          label="Categoria específica *"
           variant="outlined"
           hide-details
         )
@@ -105,13 +105,33 @@ const { data: patients, isLoading: isLoadingPatients } = useCrud<any>('patients'
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 const queryClient = useQueryClient()
 
-// Indicador usado para categorizar os registros genéricos de "Evento adverso".
-const eventoAdversoIndicator = computed(() =>
-  (indicators.value ?? []).find((i: any) => i.name?.startsWith('08 -'))
-)
-const eventoAdversoCategoryOptions = computed(() =>
-  (eventoAdversoIndicator.value?.subindicators ?? []).map((s: any) => ({ title: s.name, value: s.name }))
-)
+// Indicadores cujo registro público chega "não categorizado" e precisa de uma categoria
+// específica escolhida depois, no momento de vincular ao paciente:
+// - 08 (Evento adverso): chega sem subindicador algum (null)
+// - 10 (Indicadores Sociais / Denúncias): chega com o subindicador placeholder abaixo
+const UNCATEGORIZED_SUBINDICATOR_SUFFIX_BY_PREFIX: Record<string, string> = {
+  '10': 'Denúncias não categorizadas',
+}
+
+// Indicador de origem do registro ativo — usado para listar as categorias específicas
+// disponíveis (ex: Quedas/Broncoaspiração para Evento adverso, Abuso sexual/Violência
+// doméstica etc. para Denúncias).
+const categorizationIndicator = computed(() => {
+  const report = activeReport.value
+  if (!report) return null
+  const prefix = report.indicator?.name?.slice(0, 2)
+  return (indicators.value ?? []).find((i: any) => i.name?.startsWith(`${prefix} -`))
+})
+
+const categorySubindicatorOptions = computed(() => {
+  const ind = categorizationIndicator.value
+  if (!ind) return []
+  const prefix = ind.name?.slice(0, 2)
+  const excludeSuffix = UNCATEGORIZED_SUBINDICATOR_SUFFIX_BY_PREFIX[prefix]
+  return (ind.subindicators ?? [])
+    .filter((s: any) => !excludeSuffix || !s.name?.endsWith(excludeSuffix))
+    .map((s: any) => ({ title: s.name, value: s.name }))
+})
 
 const statusFilter = ref('pendente')
 
@@ -126,12 +146,14 @@ const filteredReports = computed(() =>
 const categoryLabel = (item: any) => {
   if (item.indicator?.name?.startsWith('08')) return 'Evento Adverso'
   if (item.indicator?.name?.startsWith('09')) return 'Ouvidoria'
+  if (item.indicator?.name?.startsWith('10')) return 'Indicador Social'
   return 'Assistência Social'
 }
 
 const categoryColor = (item: any) => {
   if (item.indicator?.name?.startsWith('08')) return 'warning'
   if (item.indicator?.name?.startsWith('09')) return 'info'
+  if (item.indicator?.name?.startsWith('10')) return 'deep-purple'
   return 'secondary'
 }
 
@@ -156,7 +178,14 @@ const selectedPatientId = ref<string | null>(null)
 const selectedCategorySubindicatorName = ref<string | null>(null)
 const isLinking = ref(false)
 
-const needsCategorization = computed(() => !!activeReport.value && !activeReport.value.subindicator)
+const needsCategorization = computed(() => {
+  const report = activeReport.value
+  if (!report) return false
+  if (!report.subindicator) return true
+  const prefix = report.indicator?.name?.slice(0, 2)
+  const suffix = UNCATEGORIZED_SUBINDICATOR_SUFFIX_BY_PREFIX[prefix]
+  return !!suffix && !!report.subindicator.name?.endsWith(suffix)
+})
 
 const openLinkDialog = (item: any) => {
   activeReport.value = item
@@ -178,12 +207,13 @@ const confirmLink = async () => {
   try {
     const report = activeReport.value
 
-    // Registros de "Evento adverso" chegam sem subindicador; a categoria específica
-    // é escolhida agora, no mesmo passo em que se vincula ao paciente.
-    const subindicator = report.subindicator
-      ?? eventoAdversoIndicator.value?.subindicators.find((s: any) => s.name === selectedCategorySubindicatorName.value)
+    // Registros ainda não categorizados (Evento adverso ou Denúncias) têm a categoria
+    // específica escolhida agora, no mesmo passo em que se vincula ao paciente.
+    const subindicator = needsCategorization.value
+      ? categorizationIndicator.value?.subindicators.find((s: any) => s.name === selectedCategorySubindicatorName.value)
+      : report.subindicator
     if (!subindicator) {
-      snackbar.show('Selecione a categoria do evento adverso.', 'error')
+      snackbar.show('Selecione a categoria específica antes de vincular.', 'error')
       return
     }
 
