@@ -90,9 +90,9 @@ const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -', '10 -']
 
 // Apenas estes subindicadores (sem numeração) ficam disponíveis como "Tipo de ocorrência".
 // "Reclamações e Solicitações" (unificado) não entra aqui de propósito: fica só no
-// histórico/dados para não perder os registros antigos, mas não é mais selecionável —
-// daqui pra frente o denunciante escolhe "Reclamações" ou "Solicitações" separadamente.
-const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações', 'Solicitações']
+// histórico/dados para não perder os registros antigos. "Solicitações" também não fica
+// selecionável no formulário público (a pedido), mas continua existindo nos dados.
+const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações']
 
 // "Evento adverso" não é escolhido por subindicador aqui: fica no nível do indicador
 // "08 - Nº de eventos adversos". A categoria específica (Quedas, Broncoaspiração etc.)
