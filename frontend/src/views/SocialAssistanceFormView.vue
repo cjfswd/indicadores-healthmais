@@ -85,16 +85,24 @@ import { useCrud } from '@/composables/useCrud'
 import { dbExecute, fileToBase64 } from '@/lib/proxy-client'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
-// Categorias permitidas no formulário público: Eventos adversos e Ouvidoria
-const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -']
+// Categorias permitidas no formulário público: Eventos adversos, Ouvidoria e Indicadores Sociais
+const ALLOWED_INDICATOR_PREFIXES = ['08 -', '09 -', '10 -']
 
 // Apenas estes subindicadores (sem numeração) ficam disponíveis como "Tipo de ocorrência".
-const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações e Solicitações']
+// "Reclamações e Solicitações" (unificado) não entra aqui de propósito: fica só no
+// histórico/dados para não perder os registros antigos, mas não é mais selecionável —
+// daqui pra frente o denunciante escolhe "Reclamações" ou "Solicitações" separadamente.
+const ALLOWED_SUBINDICATOR_LABELS = ['Elogios', 'Sugestões', 'Reclamações', 'Solicitações']
 
 // "Evento adverso" não é escolhido por subindicador aqui: fica no nível do indicador
 // "08 - Nº de eventos adversos". A categoria específica (Quedas, Broncoaspiração etc.)
 // é definida depois pelas coordenações, no momento de vincular o registro ao paciente.
 const EVENTO_ADVERSO_VALUE = '__evento_adverso__'
+
+// "Denúncias" (indicador social) usa o subindicador real "Denúncias não categorizadas":
+// a categoria específica (Abuso sexual, Violência doméstica etc.) é escolhida depois,
+// também no momento de vincular o registro ao paciente.
+const DENUNCIAS_NAO_CATEGORIZADAS_LABEL = 'Denúncias não categorizadas'
 
 const snackbar = useSnackbarStore()
 
@@ -115,6 +123,13 @@ const occurrenceOptions = computed(() => {
   for (const ind of categoryOptions.value) {
     if (ind.name?.startsWith('08 -')) {
       opts.push({ title: 'Evento adverso', value: EVENTO_ADVERSO_VALUE, indicatorName: ind.name })
+      continue
+    }
+    if (ind.name?.startsWith('10 -')) {
+      const placeholder = (ind.subindicators ?? []).find((s: any) => stripNumbering(s.name) === DENUNCIAS_NAO_CATEGORIZADAS_LABEL)
+      if (placeholder) {
+        opts.push({ title: 'Denúncias', value: placeholder.name, indicatorName: ind.name })
+      }
       continue
     }
     for (const sub of ind.subindicators ?? []) {
