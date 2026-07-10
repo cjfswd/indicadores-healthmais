@@ -128,7 +128,7 @@ const occurrenceOptions = computed(() => {
     if (ind.name?.startsWith('10 -')) {
       const placeholder = (ind.subindicators ?? []).find((s: any) => stripNumbering(s.name) === DENUNCIAS_NAO_CATEGORIZADAS_LABEL)
       if (placeholder) {
-        opts.push({ title: 'Denúncias', value: placeholder.name, indicatorName: ind.name })
+        opts.push({ title: 'Denúncia', value: placeholder.name, indicatorName: ind.name })
       }
       continue
     }
