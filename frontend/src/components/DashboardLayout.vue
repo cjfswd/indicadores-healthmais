@@ -15,6 +15,7 @@ v-navigation-drawer(v-model="drawer" color="blue-darken-4" theme="dark" :width="
     v-list-item(prepend-icon="mdi-account-injury" title="Pacientes" to="/patients")
     v-list-item(prepend-icon="mdi-calendar-check" title="Eventos" to="/events")
     v-list-item(prepend-icon="mdi-chart-box" title="Relat\u00F3rios" to="/reports")
+    v-list-item(prepend-icon="mdi-certificate" title="Certificados" to="/certificates")
   
   v-spacer
   v-divider
