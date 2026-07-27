@@ -176,7 +176,7 @@ const snackbar = useSnackbarStore()
 
 const cert = reactive<CertificateData>({
   participant: 'Fulano de Tal',
-  title: 'Capacitação em Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais',
+  title: 'Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais',
   hours: '03 horas',
   date: new Date().toISOString().slice(0, 10),
   content: 'Prevenção de Lesão por Pressão, aspiração, cuidados com a TQT e GTT, intercorrências clínicas, manuseio de equipamentos, RCP, conduta e ética profissional.',
