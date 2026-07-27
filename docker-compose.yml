@@ -29,6 +29,7 @@ services:
       - backend
     networks:
       - app-network
+      - coolify
 
 networks:
   app-network:

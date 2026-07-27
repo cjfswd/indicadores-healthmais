@@ -106,7 +106,9 @@ default_indicators = [
     "subindicators": [
       { "name": "9.1 - Elogios", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 },
       { "name": "9.2 - Sugestões", "targetType": "NÚMERICO", "targetDirection": "MAIOR", "targetValue": 0 },
-      { "name": "9.3 - Reclamações e Solicitações", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
+      { "name": "9.3 - Reclamações e Solicitações", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "9.4 - Reclamações", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "9.5 - Solicitações", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
     ]
   },
   {
@@ -121,7 +123,8 @@ default_indicators = [
       { "name": "10.3 - Agressão suspeita", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
       { "name": "10.4 - Abandono/negligência", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
       { "name": "10.5 - Afastamento familiar", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
-      { "name": "10.6 - Intervenção com familiares", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
+      { "name": "10.6 - Intervenção com familiares", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 },
+      { "name": "10.7 - Denúncias não categorizadas", "targetType": "NÚMERICO", "targetDirection": "MENOR", "targetValue": 0 }
     ]
   }
 ]
