@@ -116,6 +116,17 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           .text-caption.text-medium-emphasis Deixe os três campos vazios para ocultar a 2ª assinatura.
 
+          v-divider.my-3
+          .text-subtitle-2.font-weight-bold.mb-2 Aluno(a)
+          v-text-field(
+            v-model="cert.studentLabel"
+            label="Rótulo da 3ª assinatura"
+            density="compact"
+            variant="outlined"
+            placeholder="Aluno(a)"
+          )
+          .text-caption.text-medium-emphasis A 3ª assinatura usa o nome do participante. Deixe o rótulo vazio para ocultá-la.
+
       v-card.mt-4(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold Geração em Lote
         v-card-text
@@ -185,6 +196,7 @@ const cert = reactive<CertificateData>({
   repName: '',
   repRole: '',
   repRole2: 'Diretor Médico',
+  studentLabel: 'Aluno(a)',
 })
 
 // Permite pré-preencher campos via query string, ex.: /certificates?participant=Fulano
