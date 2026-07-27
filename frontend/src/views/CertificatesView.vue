@@ -81,17 +81,18 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           v-text-field(
             v-model="cert.instructorRole"
-            label="Formação / Registro"
+            label="Formação / Registro (opcional)"
             density="compact"
             variant="outlined"
             placeholder="Enfermeira – COREN-RJ nº XXXXXXX"
           )
           v-text-field(
             v-model="cert.instructorRole2"
-            label="Função no treinamento"
+            label="Função no treinamento (opcional)"
             density="compact"
             variant="outlined"
           )
+          .text-caption.text-medium-emphasis Deixe formação e função vazias para exibir apenas o nome (ex.: quando a assinatura for feita com carimbo).
 
           v-divider.my-3
           .text-subtitle-2.font-weight-bold.mb-2 Representante da empresa (opcional)
@@ -180,8 +181,8 @@ const cert = reactive<CertificateData>({
   date: new Date().toISOString().slice(0, 10),
   content: 'Prevenção de Lesão por Pressão, aspiração, cuidados com a TQT e GTT, intercorrências clínicas, manuseio de equipamentos, RCP, conduta e ética profissional.',
   instructorName: 'Larissa Lopes de Souza dos Santos',
-  instructorRole: 'Enfermeira – COREN-RJ nº XXXXXXX',
-  instructorRole2: 'Coordenadora de Enfermagem',
+  instructorRole: '',
+  instructorRole2: '',
   repName: 'Dr. Raphael Figueiredo Pereira',
   repRole: 'Médico – CRM-RJ nº XXXXXXX',
   repRole2: 'Diretor Médico',

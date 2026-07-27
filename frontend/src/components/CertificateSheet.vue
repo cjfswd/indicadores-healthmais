@@ -23,12 +23,12 @@
       .cert-sign
         .cert-sign-line
         .cert-sign-name {{ data.instructorName }}
-        .cert-sign-role {{ data.instructorRole }}
-        .cert-sign-role {{ data.instructorRole2 }}
+        .cert-sign-role(v-if="data.instructorRole") {{ data.instructorRole }}
+        .cert-sign-role(v-if="data.instructorRole2") {{ data.instructorRole2 }}
       .cert-sign(v-if="data.repName")
         .cert-sign-line
         .cert-sign-name {{ data.repName }}
-        .cert-sign-role {{ data.repRole }}
+        .cert-sign-role(v-if="data.repRole") {{ data.repRole }}
         .cert-sign-role(v-if="data.repRole2") {{ data.repRole2 }}
 </template>
 
@@ -84,7 +84,7 @@ const formattedDate = computed(() => {
 }
 
 .cert-logo {
-  height: 32mm;
+  height: 37mm;
   object-fit: contain;
 }
 
@@ -176,7 +176,7 @@ const formattedDate = computed(() => {
   width: 100%;
   display: flex;
   justify-content: space-evenly;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 18mm;
 }
 
@@ -202,6 +202,6 @@ const formattedDate = computed(() => {
 .cert-sign-role {
   font-size: 10pt;
   color: #33507d;
-  line-height: 1.45;
+  line-height: 1.2;
 }
 </style>
