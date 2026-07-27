@@ -19,7 +19,7 @@
       .cert-content-label Conteúdo Programático
       .cert-content-text {{ data.content }}
 
-    .cert-signatures(:class="{ 'cert-signatures--single': !hasRepresentative }")
+    .cert-signatures(:class="{ 'cert-signatures--single': signatureCount === 1 }")
       .cert-sign
         .cert-sign-line
         .cert-sign-name(v-if="data.instructorName") {{ data.instructorName }}
@@ -30,6 +30,10 @@
         .cert-sign-name(v-if="data.repName") {{ data.repName }}
         .cert-sign-role(v-if="data.repRole") {{ data.repRole }}
         .cert-sign-role(v-if="data.repRole2") {{ data.repRole2 }}
+      .cert-sign(v-if="data.studentLabel")
+        .cert-sign-line
+        .cert-sign-name(v-if="data.participant") {{ data.participant }}
+        .cert-sign-role {{ data.studentLabel }}
 </template>
 
 <script setup lang="ts">
@@ -47,6 +51,7 @@ export interface CertificateData {
   repName: string
   repRole: string
   repRole2: string
+  studentLabel: string
 }
 
 const props = defineProps<{ data: CertificateData }>()
@@ -55,6 +60,12 @@ const props = defineProps<{ data: CertificateData }>()
  *  estiver preenchido — o nome pode ser omitido quando ele assina com carimbo. */
 const hasRepresentative = computed(
   () => !!(props.data.repName || props.data.repRole || props.data.repRole2)
+)
+
+/** A 3ª assinatura é a do aluno: assina à mão, então leva o nome do
+ *  participante impresso abaixo da linha. O rótulo vazio a oculta. */
+const signatureCount = computed(
+  () => 1 + (hasRepresentative.value ? 1 : 0) + (props.data.studentLabel ? 1 : 0)
 )
 
 const formattedDate = computed(() => {
@@ -116,7 +127,6 @@ const formattedDate = computed(() => {
   line-height: 1.2;
   letter-spacing: 2.4mm;
   margin-right: -2.4mm;
-  margin-top: 2.5mm;
   color: #5a6f8f;
 }
 
@@ -134,12 +144,15 @@ const formattedDate = computed(() => {
   font-size: 31pt;
   font-style: normal;
   font-weight: normal;
-  line-height: 1;
+  line-height: 0.85;
   color: #1f3a63;
   border-bottom: 0.4mm solid rgba(31, 58, 99, 0.45);
   display: inline-block;
-  padding: 0 12mm;
-  margin: 2mm 0 4mm;
+  /* O padding inferior mantém a linha abaixo das descendentes (g, j, ç, y):
+     com line-height reduzido a caixa termina acima delas e a borda cortaria
+     as letras em nomes como "Jorge Gonçalves". */
+  padding: 0 12mm 2.5mm;
+  margin: 2mm 0 1mm;
 }
 
 .cert-text {
@@ -186,15 +199,17 @@ const formattedDate = computed(() => {
   display: flex;
   justify-content: space-evenly;
   align-items: flex-start;
-  gap: 18mm;
+  gap: 12mm;
 }
 
 .cert-signatures--single {
   justify-content: center;
 }
 
+/* Largura ideal de 88mm, que encolhe quando as três assinaturas
+   não cabem lado a lado na área útil da folha (237mm). */
 .cert-sign {
-  width: 88mm;
+  flex: 0 1 88mm;
 }
 
 .cert-sign-line {
