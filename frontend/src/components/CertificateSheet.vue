@@ -21,11 +21,15 @@
 
     .cert-signatures(:class="{ 'cert-signatures--single': !data.repName }")
       .cert-sign
+        .cert-sign-slot
+          img.cert-sign-img(v-if="data.instructorSignature" :src="data.instructorSignature" alt="")
         .cert-sign-line
         .cert-sign-name {{ data.instructorName }}
         .cert-sign-role {{ data.instructorRole }}
         .cert-sign-role {{ data.instructorRole2 }}
       .cert-sign(v-if="data.repName")
+        .cert-sign-slot
+          img.cert-sign-img(v-if="data.repSignature" :src="data.repSignature" alt="")
         .cert-sign-line
         .cert-sign-name {{ data.repName }}
         .cert-sign-role {{ data.repRole }}
@@ -44,9 +48,11 @@ export interface CertificateData {
   instructorName: string
   instructorRole: string
   instructorRole2: string
+  instructorSignature: string
   repName: string
   repRole: string
   repRole2: string
+  repSignature: string
 }
 
 const props = defineProps<{ data: CertificateData }>()
@@ -186,6 +192,22 @@ const formattedDate = computed(() => {
 
 .cert-sign {
   width: 88mm;
+}
+
+/* Slot de altura fixa: a rubrica repousa sobre a linha sem deslocar o layout */
+.cert-sign-slot {
+  height: 15mm;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: -2mm;
+  overflow: visible;
+}
+
+.cert-sign-img {
+  max-height: 22mm;
+  max-width: 72mm;
+  object-fit: contain;
 }
 
 .cert-sign-line {
