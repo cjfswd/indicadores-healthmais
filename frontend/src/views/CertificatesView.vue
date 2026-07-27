@@ -92,6 +92,19 @@ div(class="space-y-6 animate-in fade-in duration-700")
             density="compact"
             variant="outlined"
           )
+          v-select(
+            v-model="cert.instructorSignature"
+            :items="signatureItems"
+            item-title="name"
+            item-value="src"
+            label="Assinatura digitalizada"
+            density="compact"
+            variant="outlined"
+            clearable
+            prepend-inner-icon="mdi-draw-pen"
+          )
+          .cert-sig-thumb.mb-2(v-if="cert.instructorSignature")
+            img(:src="cert.instructorSignature" alt="Assinatura da instrutora")
 
           v-divider.my-3
           .text-subtitle-2.font-weight-bold.mb-2 Representante da empresa (opcional)
@@ -115,6 +128,33 @@ div(class="space-y-6 animate-in fade-in duration-700")
             density="compact"
             variant="outlined"
           )
+          v-select(
+            v-if="cert.repName"
+            v-model="cert.repSignature"
+            :items="signatureItems"
+            item-title="name"
+            item-value="src"
+            label="Assinatura digitalizada"
+            density="compact"
+            variant="outlined"
+            clearable
+            prepend-inner-icon="mdi-draw-pen"
+          )
+          .cert-sig-thumb.mb-2(v-if="cert.repName && cert.repSignature")
+            img(:src="cert.repSignature" alt="Assinatura do representante")
+
+          v-divider.my-3
+          .d-flex.align-center.justify-space-between.mb-2
+            .text-subtitle-2.font-weight-bold Assinaturas salvas
+            v-btn(size="small" variant="tonal" color="primary" prepend-icon="mdi-upload" @click="openSignatureDialog") Adicionar
+          v-list.py-0(v-if="signatures.length" density="compact")
+            v-list-item.px-2(v-for="sig in signatures" :key="sig.name")
+              template(v-slot:prepend)
+                img.cert-sig-mini(:src="sig.src" alt="")
+              v-list-item-title.text-body-2 {{ sig.name }}
+              template(v-slot:append)
+                v-btn(icon="mdi-delete" size="x-small" variant="text" color="error" :disabled="sig.builtin" :title="sig.builtin ? 'Assinatura padrão do sistema' : 'Excluir'" @click="deleteSignature(sig.name)")
+          .text-caption.text-medium-emphasis(v-else) Nenhuma assinatura salva.
 
       v-card.mt-4(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold Geração em Lote
@@ -141,6 +181,41 @@ div(class="space-y-6 animate-in fade-in duration-700")
           .cert-preview(ref="previewEl")
             .cert-preview-scaler(:style="scalerStyle")
               CertificateSheet(:data="previewData")
+
+v-dialog(v-model="signatureDialog" max-width="520")
+  v-card
+    v-card-title.text-subtitle-1.font-weight-bold Adicionar assinatura
+    v-card-text
+      v-text-field(
+        v-model="newSignatureName"
+        label="Nome (ex.: Dr. Raphael Figueiredo Pereira)"
+        density="compact"
+        variant="outlined"
+      )
+      v-file-input(
+        v-model="newSignatureFile"
+        label="Imagem da assinatura (PNG/JPG)"
+        accept="image/*"
+        density="compact"
+        variant="outlined"
+        prepend-icon=""
+        prepend-inner-icon="mdi-image"
+        @update:model-value="handleSignatureFile"
+      )
+      v-checkbox(
+        v-model="removeWhiteBg"
+        label="Remover fundo branco (recomendado para foto/scan em papel)"
+        density="compact"
+        hide-details
+        @update:model-value="handleSignatureFile"
+      )
+      .text-caption.text-medium-emphasis.mb-2 A imagem é recortada e reduzida automaticamente.
+      .cert-sig-preview(v-if="newSignaturePreview")
+        img(:src="newSignaturePreview" alt="Pré-visualização da assinatura")
+    v-card-actions
+      v-spacer
+      v-btn(variant="text" @click="signatureDialog = false") Cancelar
+      v-btn(color="primary" variant="elevated" :disabled="!newSignatureName.trim() || !newSignaturePreview" @click="saveSignature") Salvar
 
 v-dialog(v-model="saveDialog" max-width="420")
   v-card
@@ -173,6 +248,13 @@ import { useSnackbarStore } from '@/stores/snackbarStore'
 
 const snackbar = useSnackbarStore()
 
+// Assinatura que acompanha o sistema (arquivo em public/), sempre disponível
+const BUILTIN_SIGNATURE = {
+  name: 'Dr. Raphael Figueiredo Pereira',
+  src: '/certificates/assinatura-raphael.png',
+  builtin: true,
+}
+
 const cert = reactive<CertificateData>({
   participant: 'Fulano de Tal',
   title: 'Capacitação em Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais',
@@ -182,9 +264,11 @@ const cert = reactive<CertificateData>({
   instructorName: 'Larissa Lopes de Souza dos Santos',
   instructorRole: 'Enfermeira – COREN-RJ nº XXXXXXX',
   instructorRole2: 'Coordenadora de Enfermagem',
+  instructorSignature: '',
   repName: 'Dr. Raphael Figueiredo Pereira',
-  repRole: 'Médico – CRM-RJ nº XXXXXXX',
+  repRole: 'Médico – CRM-RJ nº 52.855049',
   repRole2: 'Diretor Médico',
+  repSignature: BUILTIN_SIGNATURE.src,
 })
 
 // Permite pré-preencher campos via query string, ex.: /certificates?participant=Fulano
@@ -215,6 +299,146 @@ const previewData = computed<CertificateData>(() =>
 const printLabel = computed(() =>
   bulkList.value.length > 1 ? `Imprimir ${bulkList.value.length} certificados` : 'Imprimir / Salvar PDF'
 )
+
+// ── Assinaturas (localStorage) ──
+interface SavedSignature {
+  name: string
+  src: string
+  builtin?: boolean
+}
+
+const SIGNATURE_KEY = 'healthmais_cert_signatures'
+
+function loadSignatures(): SavedSignature[] {
+  try {
+    return JSON.parse(localStorage.getItem(SIGNATURE_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+const userSignatures = ref<SavedSignature[]>(loadSignatures())
+const signatures = computed<SavedSignature[]>(() => [BUILTIN_SIGNATURE, ...userSignatures.value])
+const signatureItems = computed(() => signatures.value.map(({ name, src }) => ({ name, src })))
+
+const signatureDialog = ref(false)
+const newSignatureName = ref('')
+const newSignatureFile = ref<File | File[] | null>(null)
+const newSignaturePreview = ref('')
+const removeWhiteBg = ref(true)
+
+function openSignatureDialog() {
+  newSignatureName.value = ''
+  newSignatureFile.value = null
+  newSignaturePreview.value = ''
+  removeWhiteBg.value = true
+  signatureDialog.value = true
+}
+
+/**
+ * Reduz a imagem, opcionalmente transforma o branco em transparência
+ * e recorta as bordas vazias — para a rubrica assentar bem sobre a linha.
+ */
+async function processSignature(file: File, stripBackground: boolean): Promise<string> {
+  const bitmap = await createImageBitmap(file)
+  const MAX_W = 700
+  const ratio = Math.min(1, MAX_W / bitmap.width)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * ratio)
+  canvas.height = Math.round(bitmap.height * ratio)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas indisponível')
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+
+  if (!stripBackground) return canvas.toDataURL('image/png')
+
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const d = image.data
+  let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1
+
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = (d[i] + d[i + 1] + d[i + 2]) / 3
+    // rampa: >=238 vira transparente, <=88 fica opaco
+    const alpha = Math.max(0, Math.min(255, Math.round((238 - lum) * (255 / 150))))
+    d[i + 3] = alpha
+    if (alpha > 12) {
+      const p = i / 4
+      const x = p % canvas.width
+      const y = (p - x) / canvas.width
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+  }
+  ctx.putImageData(image, 0, 0)
+
+  if (maxX < 0) return canvas.toDataURL('image/png') // imagem vazia: devolve como está
+
+  const pad = 4
+  minX = Math.max(0, minX - pad)
+  minY = Math.max(0, minY - pad)
+  maxX = Math.min(canvas.width - 1, maxX + pad)
+  maxY = Math.min(canvas.height - 1, maxY + pad)
+
+  const trimmed = document.createElement('canvas')
+  trimmed.width = maxX - minX + 1
+  trimmed.height = maxY - minY + 1
+  trimmed.getContext('2d')?.drawImage(canvas, minX, minY, trimmed.width, trimmed.height, 0, 0, trimmed.width, trimmed.height)
+  return trimmed.toDataURL('image/png')
+}
+
+async function handleSignatureFile() {
+  const raw = newSignatureFile.value
+  const file = Array.isArray(raw) ? raw[0] : raw
+  if (!file) {
+    newSignaturePreview.value = ''
+    return
+  }
+  try {
+    newSignaturePreview.value = await processSignature(file, removeWhiteBg.value)
+    if (!newSignatureName.value.trim()) {
+      newSignatureName.value = file.name.replace(/\.[^.]+$/, '')
+    }
+  } catch (err) {
+    console.error(err)
+    snackbar.show('Não foi possível ler a imagem', 'error')
+  }
+}
+
+function saveSignature() {
+  const name = newSignatureName.value.trim()
+  if (!name || !newSignaturePreview.value) return
+  if (name === BUILTIN_SIGNATURE.name) {
+    snackbar.show('Já existe uma assinatura do sistema com esse nome', 'error')
+    return
+  }
+  const entry: SavedSignature = { name, src: newSignaturePreview.value }
+  const idx = userSignatures.value.findIndex((s) => s.name === name)
+  if (idx >= 0) userSignatures.value[idx] = entry
+  else userSignatures.value.push(entry)
+
+  try {
+    localStorage.setItem(SIGNATURE_KEY, JSON.stringify(userSignatures.value))
+  } catch {
+    userSignatures.value = loadSignatures()
+    snackbar.show('Armazenamento cheio — exclua alguma assinatura antiga', 'error')
+    return
+  }
+  signatureDialog.value = false
+  snackbar.show(`Assinatura "${name}" salva!`, 'success')
+}
+
+function deleteSignature(name: string) {
+  userSignatures.value = userSignatures.value.filter((s) => s.name !== name)
+  localStorage.setItem(SIGNATURE_KEY, JSON.stringify(userSignatures.value))
+  const removed = signatures.value.every((s) => s.name !== name)
+  if (removed) {
+    if (!signatures.value.some((s) => s.src === cert.instructorSignature)) cert.instructorSignature = ''
+    if (!signatures.value.some((s) => s.src === cert.repSignature)) cert.repSignature = ''
+  }
+  snackbar.show(`Assinatura "${name}" excluída`, 'success')
+}
 
 // ── Templates (localStorage) ──
 interface CertTemplate {
@@ -331,6 +555,44 @@ function printCertificate() {
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
+}
+
+/* Fundo xadrez claro: deixa visível a transparência da rubrica */
+.cert-sig-thumb,
+.cert-sig-preview {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%),
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.cert-sig-thumb img {
+  max-height: 56px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cert-sig-preview img {
+  max-height: 130px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cert-sig-mini {
+  height: 26px;
+  width: 52px;
+  object-fit: contain;
+  margin-right: 10px;
+  background: #fff;
+  border-radius: 2px;
 }
 </style>
 
