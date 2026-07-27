@@ -15,10 +15,6 @@
       .cert-text
         | com carga horária de #[strong {{ data.hours }}], realizada em #[strong {{ formattedDate }}].
 
-    .cert-content(v-if="data.content")
-      .cert-content-label Conteúdo Programático
-      .cert-content-text {{ data.content }}
-
     .cert-signatures(:class="{ 'cert-signatures--single': signatureCount === 1 }")
       .cert-sign
         .cert-sign-line
@@ -130,8 +126,12 @@ const formattedDate = computed(() => {
   color: #5a6f8f;
 }
 
+/* Com o conteúdo programático no verso, as margens automáticas centram o
+   corpo do texto entre o cabeçalho e as assinaturas. */
 .cert-body {
-  margin-top: 8mm;
+  margin-top: auto;
+  margin-bottom: auto;
+  padding-top: 6mm;
 }
 
 .cert-lead {
@@ -170,28 +170,8 @@ const formattedDate = computed(() => {
   color: #1f3a63;
 }
 
-/* O conteúdo programático acompanha o corpo do texto; todo o espaço livre
-   restante fica acima das assinaturas, que permanecem fixas no rodapé. */
-.cert-content {
-  margin-top: 4mm;
-  max-width: 218mm;
-}
-
-.cert-content-label {
-  font-size: 10.5pt;
-  font-weight: bold;
-  letter-spacing: 1.2mm;
-  text-transform: uppercase;
-  color: #5a6f8f;
-  margin-bottom: 2mm;
-}
-
-.cert-content-text {
-  font-size: 11pt;
-  line-height: 1.55;
-  color: #33507d;
-}
-
+/* O conteúdo programático vive no verso (CertificateBackSheet); na frente
+   o espaço livre fica todo acima das assinaturas, fixas no rodapé. */
 .cert-signatures {
   margin-top: auto;
   padding-top: 6mm;
