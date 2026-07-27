@@ -92,30 +92,29 @@ div(class="space-y-6 animate-in fade-in duration-700")
             density="compact"
             variant="outlined"
           )
-          .text-caption.text-medium-emphasis Deixe formação e função vazias para exibir apenas o nome (ex.: quando a assinatura for feita com carimbo).
+          .text-caption.text-medium-emphasis Deixe vazio o que não deve aparecer no certificado — por exemplo, apenas o cargo, quando a assinatura for feita com carimbo.
 
           v-divider.my-3
           .text-subtitle-2.font-weight-bold.mb-2 Representante da empresa (opcional)
           v-text-field(
             v-model="cert.repName"
-            label="Nome (deixe vazio para ocultar a 2ª assinatura)"
+            label="Nome (opcional)"
             density="compact"
             variant="outlined"
           )
           v-text-field(
-            v-if="cert.repName"
             v-model="cert.repRole"
-            label="Profissão / Registro"
+            label="Profissão / Registro (opcional)"
             density="compact"
             variant="outlined"
           )
           v-text-field(
-            v-if="cert.repName"
             v-model="cert.repRole2"
-            label="Cargo na empresa"
+            label="Cargo na empresa (opcional)"
             density="compact"
             variant="outlined"
           )
+          .text-caption.text-medium-emphasis Deixe os três campos vazios para ocultar a 2ª assinatura.
 
       v-card.mt-4(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold Geração em Lote
@@ -180,11 +179,11 @@ const cert = reactive<CertificateData>({
   hours: '03 horas',
   date: new Date().toISOString().slice(0, 10),
   content: 'Prevenção de Lesão por Pressão, aspiração, cuidados com a TQT e GTT, intercorrências clínicas, manuseio de equipamentos, RCP, conduta e ética profissional.',
-  instructorName: 'Larissa Lopes de Souza dos Santos',
+  instructorName: '',
   instructorRole: '',
-  instructorRole2: '',
-  repName: 'Dr. Raphael Figueiredo Pereira',
-  repRole: 'Médico – CRM-RJ nº XXXXXXX',
+  instructorRole2: 'Coordenadora de Enfermagem',
+  repName: '',
+  repRole: '',
   repRole2: 'Diretor Médico',
 })
 
