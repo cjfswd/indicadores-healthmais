@@ -83,9 +83,13 @@ const formattedDate = computed(() => {
   text-align: center;
 }
 
+/* O PNG da logo tem ~35% de área transparente abaixo do logotipo (≈13mm
+   nesta altura). A margem negativa absorve parte dessa faixa vazia para
+   aproximar o título, mantendo uma folga visual de ~7mm. */
 .cert-logo {
-  height: 37mm;
+  height: 37mm; /* ≈ 13mm de logotipo visível */
   object-fit: contain;
+  margin-bottom: -7mm;
 }
 
 .cert-heading {
@@ -147,11 +151,10 @@ const formattedDate = computed(() => {
   color: #1f3a63;
 }
 
-/* margin-top auto no conteúdo e nas assinaturas divide o espaço restante
-   igualmente entre corpo → conteúdo → assinaturas */
+/* O conteúdo programático acompanha o corpo do texto; todo o espaço livre
+   restante fica acima das assinaturas, que permanecem fixas no rodapé. */
 .cert-content {
-  margin-top: auto;
-  padding-top: 5mm;
+  margin-top: 4mm;
   max-width: 218mm;
 }
 
