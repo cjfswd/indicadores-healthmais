@@ -19,15 +19,15 @@
       .cert-content-label Conteúdo Programático
       .cert-content-text {{ data.content }}
 
-    .cert-signatures(:class="{ 'cert-signatures--single': !data.repName }")
+    .cert-signatures(:class="{ 'cert-signatures--single': !hasRepresentative }")
       .cert-sign
         .cert-sign-line
-        .cert-sign-name {{ data.instructorName }}
+        .cert-sign-name(v-if="data.instructorName") {{ data.instructorName }}
         .cert-sign-role(v-if="data.instructorRole") {{ data.instructorRole }}
         .cert-sign-role(v-if="data.instructorRole2") {{ data.instructorRole2 }}
-      .cert-sign(v-if="data.repName")
+      .cert-sign(v-if="hasRepresentative")
         .cert-sign-line
-        .cert-sign-name {{ data.repName }}
+        .cert-sign-name(v-if="data.repName") {{ data.repName }}
         .cert-sign-role(v-if="data.repRole") {{ data.repRole }}
         .cert-sign-role(v-if="data.repRole2") {{ data.repRole2 }}
 </template>
@@ -50,6 +50,12 @@ export interface CertificateData {
 }
 
 const props = defineProps<{ data: CertificateData }>()
+
+/** A 2ª assinatura aparece se qualquer um dos campos do representante
+ *  estiver preenchido — o nome pode ser omitido quando ele assina com carimbo. */
+const hasRepresentative = computed(
+  () => !!(props.data.repName || props.data.repRole || props.data.repRole2)
+)
 
 const formattedDate = computed(() => {
   if (!props.data.date) return '____/____/________'
