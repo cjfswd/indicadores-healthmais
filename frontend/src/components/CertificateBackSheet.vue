@@ -6,9 +6,16 @@
       .cert-back-course(v-if="data.title") {{ data.title }}
 
     .cert-back-content
-      ul.cert-back-list(v-if="contentItems.length > 1")
-        li(v-for="(item, i) in contentItems" :key="i") {{ item }}
-      .cert-back-text(v-else-if="contentItems.length === 1") {{ contentItems[0] }}
+      .cert-back-tables(v-if="itemGroups.length")
+        table.cert-table(v-for="(group, gi) in itemGroups" :key="gi")
+          thead
+            tr
+              th.cert-table-num Nº
+              th Tópico
+          tbody
+            tr(v-for="item in group" :key="item.n")
+              td.cert-table-num {{ item.n }}
+              td {{ item.text }}
       .cert-back-empty(v-else) —
 
     .cert-back-meta
@@ -41,9 +48,9 @@ const COMPANY = {
 
 const props = defineProps<{ data: CertificateData }>()
 
-/** Vira lista quando o conteúdo é digitado em várias linhas, separado por
- *  ponto e vírgula, ou é uma enumeração por vírgulas (3+ itens). Um texto
- *  corrido curto permanece como parágrafo. */
+/** Cada tópico vira uma linha da tabela. Aceita o conteúdo digitado em
+ *  várias linhas, separado por ponto e vírgula, ou como enumeração por
+ *  vírgulas (3+ itens); um texto corrido único ocupa uma linha só. */
 const contentItems = computed(() => {
   const raw = (props.data.content || '').trim().replace(/\.$/, '')
   if (!raw) return []
@@ -59,6 +66,16 @@ const contentItems = computed(() => {
   if (byComma.length > 2) return byComma
 
   return [raw]
+})
+
+/** A folha tem altura fixa: acima de 8 tópicos a tabela é dividida em duas,
+ *  lado a lado, para aproveitar a largura do A4 paisagem sem cortar linhas. */
+const itemGroups = computed(() => {
+  const rows = contentItems.value.map((text, i) => ({ n: i + 1, text }))
+  if (!rows.length) return []
+  if (rows.length <= 8) return [rows]
+  const half = Math.ceil(rows.length / 2)
+  return [rows.slice(0, half), rows.slice(half)]
 })
 </script>
 
@@ -91,7 +108,7 @@ const contentItems = computed(() => {
 }
 
 .cert-back-title {
-  font-size: 17pt;
+  font-size: 19pt;
   font-weight: bold;
   letter-spacing: 1.6mm;
   margin-right: -1.6mm;
@@ -100,7 +117,7 @@ const contentItems = computed(() => {
 }
 
 .cert-back-course {
-  font-size: 11.5pt;
+  font-size: 12.5pt;
   line-height: 1.4;
   color: #5a6f8f;
   margin-top: 3mm;
@@ -116,26 +133,54 @@ const contentItems = computed(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 9mm 0;
-  font-size: 12pt;
-  line-height: 1.65;
+  /* min-height/overflow impedem que uma tabela longa empurre o rodapé
+     para cima da moldura decorativa. */
+  min-height: 0;
+  overflow: hidden;
+  padding: 5mm 0;
+  font-size: 13pt;
+  line-height: 1.35;
   color: #33507d;
 }
 
-.cert-back-list {
-  margin: 0;
-  padding-left: 7mm;
-  columns: 2;
-  column-gap: 14mm;
+.cert-back-tables {
+  display: flex;
+  justify-content: center;
+  gap: 12mm;
+  width: 100%;
 }
 
-.cert-back-list li {
-  margin-bottom: 2.5mm;
-  break-inside: avoid;
+.cert-table {
+  flex: 1 1 0;
+  max-width: 200mm;
+  border-collapse: collapse;
+  text-align: left;
 }
 
-.cert-back-text {
-  text-align: justify;
+.cert-table th,
+.cert-table td {
+  border: 0.3mm solid rgba(31, 58, 99, 0.35);
+  padding: 1.6mm 4mm;
+  vertical-align: top;
+}
+
+.cert-table thead th {
+  background: rgba(31, 58, 99, 0.08);
+  font-size: 12.5pt;
+  font-weight: bold;
+  letter-spacing: 0.4mm;
+  text-transform: uppercase;
+  color: #1f3a63;
+}
+
+.cert-table tbody tr:nth-child(even) td {
+  background: rgba(31, 58, 99, 0.035);
+}
+
+.cert-table-num {
+  width: 12mm;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .cert-back-empty {
@@ -143,16 +188,16 @@ const contentItems = computed(() => {
 }
 
 .cert-back-meta {
-  padding-top: 8mm;
+  padding-top: 5mm;
   display: flex;
   gap: 16mm;
-  font-size: 10.5pt;
+  font-size: 11.5pt;
   color: #33507d;
 }
 
 .cert-back-footer {
-  margin-top: 8mm;
-  padding-top: 5mm;
+  margin-top: 5mm;
+  padding-top: 4mm;
   border-top: 0.35mm solid rgba(31, 58, 99, 0.35);
   display: flex;
   align-items: center;
@@ -168,14 +213,14 @@ const contentItems = computed(() => {
 }
 
 .cert-back-company {
-  font-size: 9.5pt;
+  font-size: 10.5pt;
   line-height: 1.5;
   color: #33507d;
 }
 
 .cert-back-company-name {
   font-weight: bold;
-  font-size: 10.5pt;
+  font-size: 11.5pt;
   color: #1f3a63;
 }
 </style>
