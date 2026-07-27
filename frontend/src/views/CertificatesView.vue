@@ -141,17 +141,18 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           .d-flex.align-center.ga-2(v-if="bulkList.length")
             v-chip(size="small" color="primary" variant="tonal") {{ bulkList.length }} certificado(s)
-            .text-caption.text-medium-emphasis Ao imprimir, será gerada uma página por participante.
+            .text-caption.text-medium-emphasis Ao imprimir, serão geradas duas páginas por participante (frente e verso).
 
     v-col(cols="12" lg="8")
       v-card(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold.d-flex.align-center
-          | Pré-visualização (A4 paisagem)
-          v-chip.ml-2(v-if="bulkList.length" size="x-small" color="primary" variant="tonal") 1ª de {{ bulkList.length }} páginas
+          | Pré-visualização (A4 paisagem, frente e verso)
+          v-chip.ml-2(v-if="bulkList.length" size="x-small" color="primary" variant="tonal") 1º de {{ bulkList.length }} certificados
         v-card-text
           .cert-preview(ref="previewEl")
             .cert-preview-scaler(:style="scalerStyle")
               CertificateSheet(:data="previewData")
+              CertificateBackSheet.mt-4(:data="previewData")
 
 v-dialog(v-model="saveDialog" max-width="420")
   v-card
@@ -173,13 +174,16 @@ v-dialog(v-model="saveDialog" max-width="420")
 
 Teleport(to="body")
   .certificate-print-root
-    CertificateSheet(v-for="(sheet, i) in printSheets" :key="i" :data="sheet")
+    template(v-for="(sheet, i) in printSheets" :key="i")
+      CertificateSheet(:data="sheet")
+      CertificateBackSheet(:data="sheet")
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import CertificateSheet, { type CertificateData } from '@/components/CertificateSheet.vue'
+import CertificateBackSheet from '@/components/CertificateBackSheet.vue'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
 const snackbar = useSnackbarStore()
@@ -308,12 +312,16 @@ onMounted(() => {
 
 onUnmounted(() => observer?.disconnect())
 
+/** A pré-visualização empilha frente e verso (16px de respiro entre elas). */
+const PREVIEW_GAP = 16
+const PREVIEW_H = SHEET_H * 2 + PREVIEW_GAP
+
 const scalerStyle = computed(() => ({
   transform: `scale(${scale.value})`,
   transformOrigin: 'top left',
   width: `${SHEET_W}px`,
-  height: `${SHEET_H}px`,
-  marginBottom: `${(scale.value - 1) * SHEET_H}px`,
+  height: `${PREVIEW_H}px`,
+  marginBottom: `${(scale.value - 1) * PREVIEW_H}px`,
 }))
 
 // ── Impressão ──
