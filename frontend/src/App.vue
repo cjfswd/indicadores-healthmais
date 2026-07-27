@@ -1,6 +1,6 @@
 <template lang="pug">
 v-app
-  template(v-if="route.name === 'login'")
+  template(v-if="route.name === 'login' || route.name === 'social-assistance-form'")
     router-view
   template(v-else)
     DashboardLayout

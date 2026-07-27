@@ -81,14 +81,14 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           v-text-field(
             v-model="cert.instructorRole"
-            label="Formação / Registro"
+            label="Formação / Registro (opcional)"
             density="compact"
             variant="outlined"
             placeholder="Enfermeira – COREN-RJ nº XXXXXXX"
           )
           v-text-field(
             v-model="cert.instructorRole2"
-            label="Função no treinamento"
+            label="Função no treinamento (opcional)"
             density="compact"
             variant="outlined"
           )
@@ -97,7 +97,7 @@ div(class="space-y-6 animate-in fade-in duration-700")
             :items="signatureItems"
             item-title="name"
             item-value="src"
-            label="Assinatura digitalizada"
+            label="Assinatura digitalizada (opcional)"
             density="compact"
             variant="outlined"
             clearable
@@ -105,43 +105,53 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           .cert-sig-thumb.mb-2(v-if="cert.instructorSignature")
             img(:src="cert.instructorSignature" alt="Assinatura da instrutora")
+          .text-caption.text-medium-emphasis Deixe vazio o que não deve aparecer no certificado — por exemplo, apenas o cargo, quando a assinatura for feita com carimbo.
 
           v-divider.my-3
           .text-subtitle-2.font-weight-bold.mb-2 Representante da empresa (opcional)
           v-text-field(
             v-model="cert.repName"
-            label="Nome (deixe vazio para ocultar a 2ª assinatura)"
+            label="Nome (opcional)"
             density="compact"
             variant="outlined"
           )
           v-text-field(
-            v-if="cert.repName"
             v-model="cert.repRole"
-            label="Profissão / Registro"
+            label="Profissão / Registro (opcional)"
             density="compact"
             variant="outlined"
           )
           v-text-field(
-            v-if="cert.repName"
             v-model="cert.repRole2"
-            label="Cargo na empresa"
+            label="Cargo na empresa (opcional)"
             density="compact"
             variant="outlined"
           )
           v-select(
-            v-if="cert.repName"
             v-model="cert.repSignature"
             :items="signatureItems"
             item-title="name"
             item-value="src"
-            label="Assinatura digitalizada"
+            label="Assinatura digitalizada (opcional)"
             density="compact"
             variant="outlined"
             clearable
             prepend-inner-icon="mdi-draw-pen"
           )
-          .cert-sig-thumb.mb-2(v-if="cert.repName && cert.repSignature")
+          .cert-sig-thumb.mb-2(v-if="cert.repSignature")
             img(:src="cert.repSignature" alt="Assinatura do representante")
+          .text-caption.text-medium-emphasis Deixe os campos vazios para ocultar a 2ª assinatura.
+
+          v-divider.my-3
+          .text-subtitle-2.font-weight-bold.mb-2 Aluno(a)
+          v-text-field(
+            v-model="cert.studentLabel"
+            label="Rótulo da 3ª assinatura"
+            density="compact"
+            variant="outlined"
+            placeholder="Aluno(a)"
+          )
+          .text-caption.text-medium-emphasis A 3ª assinatura usa o nome do participante e é assinada à mão. Deixe o rótulo vazio para ocultá-la.
 
           v-divider.my-3
           .d-flex.align-center.justify-space-between.mb-2
@@ -170,17 +180,18 @@ div(class="space-y-6 animate-in fade-in duration-700")
           )
           .d-flex.align-center.ga-2(v-if="bulkList.length")
             v-chip(size="small" color="primary" variant="tonal") {{ bulkList.length }} certificado(s)
-            .text-caption.text-medium-emphasis Ao imprimir, será gerada uma página por participante.
+            .text-caption.text-medium-emphasis Ao imprimir, serão geradas duas páginas por participante (frente e verso).
 
     v-col(cols="12" lg="8")
       v-card(elevation="1")
         v-card-title.text-subtitle-1.font-weight-bold.d-flex.align-center
-          | Pré-visualização (A4 paisagem)
-          v-chip.ml-2(v-if="bulkList.length" size="x-small" color="primary" variant="tonal") 1ª de {{ bulkList.length }} páginas
+          | Pré-visualização (A4 paisagem, frente e verso)
+          v-chip.ml-2(v-if="bulkList.length" size="x-small" color="primary" variant="tonal") 1º de {{ bulkList.length }} certificados
         v-card-text
           .cert-preview(ref="previewEl")
             .cert-preview-scaler(:style="scalerStyle")
               CertificateSheet(:data="previewData")
+              CertificateBackSheet.mt-4(:data="previewData")
 
 v-dialog(v-model="signatureDialog" max-width="520")
   v-card
@@ -237,13 +248,16 @@ v-dialog(v-model="saveDialog" max-width="420")
 
 Teleport(to="body")
   .certificate-print-root
-    CertificateSheet(v-for="(sheet, i) in printSheets" :key="i" :data="sheet")
+    template(v-for="(sheet, i) in printSheets" :key="i")
+      CertificateSheet(:data="sheet")
+      CertificateBackSheet(:data="sheet")
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import CertificateSheet, { type CertificateData } from '@/components/CertificateSheet.vue'
+import CertificateBackSheet from '@/components/CertificateBackSheet.vue'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 
 const snackbar = useSnackbarStore()
@@ -257,18 +271,19 @@ const BUILTIN_SIGNATURE = {
 
 const cert = reactive<CertificateData>({
   participant: 'Fulano de Tal',
-  title: 'Capacitação em Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais',
+  title: 'Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais',
   hours: '03 horas',
   date: new Date().toISOString().slice(0, 10),
   content: 'Prevenção de Lesão por Pressão, aspiração, cuidados com a TQT e GTT, intercorrências clínicas, manuseio de equipamentos, RCP, conduta e ética profissional.',
-  instructorName: 'Larissa Lopes de Souza dos Santos',
-  instructorRole: 'Enfermeira – COREN-RJ nº XXXXXXX',
+  instructorName: '',
+  instructorRole: '',
   instructorRole2: 'Coordenadora de Enfermagem',
   instructorSignature: '',
-  repName: 'Dr. Raphael Figueiredo Pereira',
-  repRole: 'Médico – CRM-RJ nº 52.855049',
+  repName: '',
+  repRole: '',
   repRole2: 'Diretor Médico',
   repSignature: BUILTIN_SIGNATURE.src,
+  studentLabel: 'Aluno(a)',
 })
 
 // Permite pré-preencher campos via query string, ex.: /certificates?participant=Fulano
@@ -520,12 +535,16 @@ onMounted(() => {
 
 onUnmounted(() => observer?.disconnect())
 
+/** A pré-visualização empilha frente e verso (16px de respiro entre elas). */
+const PREVIEW_GAP = 16
+const PREVIEW_H = SHEET_H * 2 + PREVIEW_GAP
+
 const scalerStyle = computed(() => ({
   transform: `scale(${scale.value})`,
   transformOrigin: 'top left',
   width: `${SHEET_W}px`,
-  height: `${SHEET_H}px`,
-  marginBottom: `${(scale.value - 1) * SHEET_H}px`,
+  height: `${PREVIEW_H}px`,
+  marginBottom: `${(scale.value - 1) * PREVIEW_H}px`,
 }))
 
 // ── Impressão ──
