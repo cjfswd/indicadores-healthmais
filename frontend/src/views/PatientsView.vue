@@ -33,8 +33,21 @@ div(class="space-y-8 animate-in fade-in duration-700")
             @update:model-value="applySearch"
           )
         v-col(cols="12" sm="4" md="4")
+          v-select(
+            v-model="filtersForm.status"
+            :items="statusOptions"
+            item-title="label"
+            item-value="value"
+            label="Situação"
+            density="compact"
+            variant="outlined"
+            hide-details
+            @update:model-value="applySearch"
+          )
+      v-row.mt-1(dense align="center")
+        v-col(cols="12")
           v-btn(
-            v-if="filtersForm.name || filtersForm.operatorId"
+            v-if="filtersForm.name || filtersForm.operatorId || filtersForm.status !== 'ativos'"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
@@ -47,6 +60,12 @@ div(class="space-y-8 animate-in fade-in duration-700")
       v-card(elevation="1" class="h-100 d-flex flex-column")
         v-card-title.d-flex.justify-space-between.align-start
           .text-wrap.text-subtitle-1.font-weight-bold.pr-2(style="line-height: 1.2;") {{ item.name }}
+          v-chip(
+            v-if="item.inactive"
+            size="x-small"
+            :color="item.inactivationReason === 'obito' ? 'error' : 'warning'"
+            variant="flat"
+          ) {{ item.inactivationReason === 'obito' ? 'Óbito' : 'Alta' }}
         v-card-text.flex-grow-1
           .text-body-2.mb-2
             span.font-weight-bold Operadora: 
@@ -129,12 +148,20 @@ const { data: operators } = useCrud<any>('operators', { defaultPageSize: 100 })
 
 const filtersForm = reactive({
   name: '',
-  operatorId: null
+  operatorId: null,
+  status: 'ativos',
 })
+
+const statusOptions = [
+  { value: 'ativos', label: 'Somente ativos' },
+  { value: 'inativos', label: 'Somente inativos' },
+  { value: 'todos', label: 'Ativos e inativos' },
+]
 
 const clearFilters = () => {
   filtersForm.name = ''
   filtersForm.operatorId = null
+  filtersForm.status = 'ativos'
   applySearch()
 }
 
@@ -144,10 +171,18 @@ const applySearch = () => {
   const newFilters: any = {}
   if (filtersForm.name) newFilters.name = { $regex: filtersForm.name, $options: 'i' }
   if (filtersForm.operatorId) newFilters['operator._id'] = filtersForm.operatorId
-  
+  // A lista continua mostrando ativos por padrão, como antes; a diferença é que
+  // agora dá para trazer os inativos de volta sem sair da tela.
+  if (filtersForm.status === 'ativos') newFilters.inactive = { $ne: true }
+  if (filtersForm.status === 'inativos') newFilters.inactive = true
+
   filters.value = newFilters
   page.value = 1
 }
+
+// Aplica o filtro inicial ("somente ativos") já na abertura da tela, senão o
+// select mostraria uma situação diferente da lista renderizada.
+applySearch()
 
 const jumpToPage = ref<number | null>(null)
 const goToPage = () => {

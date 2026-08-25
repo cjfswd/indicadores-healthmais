@@ -150,7 +150,8 @@ const formatAction = (eventType: string) => {
   const labels: Record<string, string> = {
     CREATE: 'Criação',
     UPDATE: 'Atualização',
-    SOFT_DELETE: 'Exclusão'
+    SOFT_DELETE: 'Exclusão',
+    REACTIVATE: 'Reativação'
   }
   return labels[eventType] || eventType
 }
@@ -159,7 +160,8 @@ const dotColor = (eventType: string) => {
   const colors: Record<string, string> = {
     CREATE: 'success',
     UPDATE: 'info',
-    SOFT_DELETE: 'error'
+    SOFT_DELETE: 'error',
+    REACTIVATE: 'success'
   }
   return colors[eventType] || 'grey'
 }
@@ -168,7 +170,8 @@ const actionIcon = (eventType: string) => {
   const icons: Record<string, string> = {
     CREATE: 'mdi-plus',
     UPDATE: 'mdi-pencil',
-    SOFT_DELETE: 'mdi-delete'
+    SOFT_DELETE: 'mdi-delete',
+    REACTIVATE: 'mdi-account-reactivate'
   }
   return icons[eventType] || 'mdi-information'
 }

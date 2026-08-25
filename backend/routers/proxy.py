@@ -33,6 +33,82 @@ def _inactivation_reason(event: dict) -> str | None:
     return None
 
 
+def _preservar_arquivo(novo_evento: dict, evento_antigo: dict | None) -> dict:
+    """Mantém o base64 do anexo quando o cliente manda só a metadata do arquivo."""
+    arquivo = novo_evento.get("file")
+    if isinstance(arquivo, dict) and "data" not in arquivo and evento_antigo:
+        antigo = evento_antigo.get("file")
+        if isinstance(antigo, dict):
+            novo_evento["file"] = {**arquivo, "data": antigo.get("data", "")}
+    return novo_evento
+
+
+def _build_event_operation(op_name: str, payload: dict, existing_doc: dict | None):
+    """Traduz uma operação pontual de evento em um operador mongo.
+
+    Devolve (operador, evento_novo). O evento_novo só vem preenchido quando a
+    operação acrescenta um evento — é o que dispara a checagem de alta/óbito.
+    """
+    eventos_atuais = (existing_doc or {}).get("events") or []
+
+    if op_name == "eventAppend":
+        evento = payload.get("event") or {}
+        if not evento.get("_id"):
+            raise HTTPException(status_code=400, detail="Evento sem _id")
+        if any(str(e.get("_id")) == str(evento["_id"]) for e in eventos_atuais):
+            raise HTTPException(status_code=409, detail="Evento já registrado")
+        return {"$push": {"events": evento}}, evento
+
+    if op_name == "eventUpdate":
+        event_id = str(payload.get("eventId") or (payload.get("event") or {}).get("_id") or "")
+        indice = next(
+            (i for i, e in enumerate(eventos_atuais) if str(e.get("_id")) == event_id),
+            None,
+        )
+        if indice is None:
+            raise HTTPException(status_code=404, detail="Evento não encontrado no paciente")
+        mesclado = {**eventos_atuais[indice], **(payload.get("event") or {})}
+        mesclado = _preservar_arquivo(mesclado, eventos_atuais[indice])
+        return {"$set": {f"events.{indice}": mesclado}}, None
+
+    if op_name == "eventRemove":
+        event_id = str(payload.get("eventId") or "")
+        if not any(str(e.get("_id")) == event_id for e in eventos_atuais):
+            raise HTTPException(status_code=404, detail="Evento não encontrado no paciente")
+        return {"$pull": {"events": {"_id": event_id}}}, None
+
+    raise HTTPException(status_code=400, detail=f"Operação desconhecida: {op_name}")
+
+
+async def _maybe_inactivate(col, doc_id: str, evento: dict, actor: str) -> bool:
+    """Marca o paciente como inativo em alta ou óbito.
+
+    Antes isso era um SOFT_DELETE, e o `find` esconde tudo que tem deletedAt —
+    o paciente sumia das telas junto com todos os eventos dele. Agora o registro
+    continua visível e ganha só um marcador de inativo.
+    """
+    reason = _inactivation_reason(evento)
+    if not reason:
+        return False
+
+    atual = await col.find_one({"_id": ObjectId(doc_id)})
+    if not atual or atual.get("inactive") or atual.get("deletedAt"):
+        return False
+
+    await append_event(
+        stream_type="patients",
+        stream_id=doc_id,
+        event_type="UPDATE",
+        data={"$set": {
+            "inactive": True,
+            "inactivationReason": reason,
+            "inactivatedAt": datetime.now(timezone.utc).isoformat(),
+        }},
+        actor=actor,
+    )
+    return True
+
+
 def _extract_actor(request: Request, data: dict, metadata: dict) -> str:
     """Extrai o email do actor com fallback em cadeia:
     1. JWT do header Authorization (fonte confiável)
@@ -133,7 +209,9 @@ async def db_execute(request: Request):
             if collection_name in ("patients", "operators"):
                 name = data.get("name", "").strip()
                 if name:
-                    dup_query = {"name": name, "deletedAt": None}
+                    # Paciente inativado por alta/óbito não bloqueia readmissão:
+                    # antes ele ficava soft-deleted e saía da checagem sozinho.
+                    dup_query = {"name": name, "deletedAt": None, "inactive": {"$ne": True}}
                     if collection_name == "patients":
                         op_id = ""
                         if isinstance(data.get("operator"), dict):
@@ -175,8 +253,36 @@ async def db_execute(request: Request):
             doc_id = metadata.get("id")
             update_data = body_data if body_data else metadata.get("data", {})
 
-            # Preserva dados binários de arquivos existentes no snapshot
             existing_doc = await col.find_one({"_id": ObjectId(doc_id)})
+
+            # ─── Operações pontuais sobre o array de eventos ───
+            # Sem isso, cada gravação mandava o array inteiro montado no cliente
+            # e sobrescrevia eventos salvos por outra aba/pessoa no meio do caminho.
+            op_name = update_data.get("__op") if isinstance(update_data, dict) else None
+            if op_name:
+                actor = _extract_actor(request, update_data, metadata)
+                update_op, novo_evento = _build_event_operation(op_name, update_data, existing_doc)
+
+                snapshot = await append_event(
+                    stream_type=collection_name,
+                    stream_id=doc_id,
+                    event_type="UPDATE",
+                    data=update_op,
+                    actor=actor,
+                )
+
+                if collection_name == "patients" and novo_evento:
+                    await _maybe_inactivate(col, doc_id, novo_evento, actor)
+                    snapshot = await col.find_one({"_id": ObjectId(doc_id)}) or snapshot
+
+                result = snapshot
+                duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+                return JSONResponse(content=json.loads(json.dumps(
+                    {"success": True, "result": result, "duration": f"{duration_ms}ms"},
+                    cls=JSONEncoder,
+                )))
+
+            # Preserva dados binários de arquivos existentes no snapshot
             if existing_doc:
                 # Arquivo raiz do documento
                 if "file" in update_data and isinstance(update_data["file"], dict):
@@ -213,20 +319,8 @@ async def db_execute(request: Request):
                 for evt in update_data.get("events", []):
                     if str(evt.get("_id", "")) in existing_ids:
                         continue  # evento já existia, ignora
-                    reason = _inactivation_reason(evt)
-                    if reason:
-                        still_active = await col.find_one({"_id": ObjectId(doc_id), "deletedAt": None})
-                        if still_active:
-                            await append_event(
-                                stream_type=collection_name,
-                                stream_id=doc_id,
-                                event_type="SOFT_DELETE",
-                                data={
-                                    "deletedAt": datetime.now(timezone.utc).isoformat(),
-                                    "inactivationReason": reason,
-                                },
-                                actor=actor,
-                            )
+                    if await _maybe_inactivate(col, doc_id, evt, actor):
+                        result = await col.find_one({"_id": ObjectId(doc_id)}) or result
                         break
 
         elif action == "delete":
@@ -330,6 +424,71 @@ async def get_entity_events(stream_type: str, stream_id: str):
             "total": len(events)
         }, cls=JSONEncoder))
     )
+
+
+@router.get("/patients/inactive")
+async def get_inactive_patients():
+    """Pacientes inativados por alta ou óbito, mais os soft-deleted antigos.
+
+    Os inativos continuam existindo nas listas normais; esta rota é a visão
+    dedicada, com motivo, data e responsável.
+    """
+    db = get_db()
+    col = db["patients"]
+
+    cursor = col.find({
+        "$or": [{"inactive": True}, {"deletedAt": {"$ne": None}}]
+    }).sort("updatedAt", -1)
+    docs = await cursor.to_list(length=1000)
+
+    result = []
+    for doc in docs:
+        events = await get_stream_events("patients", str(doc["_id"]))
+        delete_event = next(
+            (e for e in reversed(events) if e.get("eventType") == "SOFT_DELETE"),
+            None,
+        )
+        reason = doc.get("inactivationReason") or (delete_event or {}).get("data", {}).get("inactivationReason")
+        result.append({
+            **doc,
+            "inactivationReason": reason,
+            "inactivatedAt": doc.get("inactivatedAt") or doc.get("deletedAt"),
+            "softDeleted": doc.get("deletedAt") is not None,
+            "deletedBy": (delete_event or {}).get("actor"),
+        })
+
+    return JSONResponse(
+        content=json.loads(json.dumps({
+            "success": True,
+            "result": result,
+            "total": len(result),
+        }, cls=JSONEncoder))
+    )
+
+
+@router.post("/patients/{doc_id}/reactivate")
+async def reactivate_patient(doc_id: str, request: Request):
+    """Reativa um paciente inativado, sem apagar nada do histórico."""
+    db = get_db()
+    col = db["patients"]
+
+    atual = await col.find_one({"_id": ObjectId(doc_id)})
+    if not atual:
+        raise HTTPException(status_code=404, detail="Paciente não encontrado")
+
+    actor = _extract_actor(request, {}, {})
+    from core.database import append_event as _append
+    snapshot = await _append(
+        stream_type="patients",
+        stream_id=doc_id,
+        event_type="REACTIVATE",
+        data={"reactivatedAt": datetime.now(timezone.utc).isoformat()},
+        actor=actor,
+    )
+
+    return JSONResponse(content=json.loads(json.dumps(
+        {"success": True, "result": snapshot}, cls=JSONEncoder
+    )))
 
 
 @router.get("/patients/deleted")

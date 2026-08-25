@@ -43,8 +43,44 @@ div(class="space-y-8 animate-in fade-in duration-700")
             clearable
           )
         v-col(cols="12" sm="6" md="3")
+          v-select(
+            v-model="filtersForm.range"
+            :items="rangeOptions"
+            item-title="label"
+            item-value="value"
+            placeholder="Período"
+            density="compact"
+            variant="outlined"
+            hide-details
+          )
+      v-row.mt-1(dense align="center")
+        v-col(cols="12" sm="6" md="3")
+          v-text-field(
+            v-model="filtersForm.startDate"
+            type="date"
+            label="Ocorrência de"
+            density="compact"
+            variant="outlined"
+            hide-details
+            clearable
+          )
+        v-col(cols="12" sm="6" md="3")
+          v-text-field(
+            v-model="filtersForm.endDate"
+            type="date"
+            label="até"
+            density="compact"
+            variant="outlined"
+            hide-details
+            clearable
+            :error="invalidRange"
+          )
+        v-col(cols="12" sm="6" md="3")
+          .text-caption.text-medium-emphasis(v-if="invalidRange") A data final é anterior à inicial
+          .text-caption.text-medium-emphasis(v-else-if="hasDateFilter") {{ allEvents.length }} evento(s) no período
+        v-col(cols="12" sm="6" md="3")
           v-btn(
-            v-if="filtersForm.patientId || filtersForm.indicatorName || filtersForm.subindicatorName"
+            v-if="hasAnyFilter"
             variant="text"
             color="primary"
             prepend-icon="mdi-filter-off"
@@ -119,7 +155,10 @@ import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCrud } from '@/composables/useCrud'
 import { useConfirm } from '@/composables/useConfirm'
-import { dbExecute, downloadFileFromDb } from '@/lib/proxy-client'
+import { downloadFileFromDb, removePatientEvent } from '@/lib/proxy-client'
+import { useQueryClient } from '@tanstack/vue-query'
+import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useAuthStore } from '@/stores/authStore'
 import { formatDate } from '@/lib/date-utils'
 import EventFormModal from '@/components/EventFormModal.vue'
 
@@ -129,21 +168,89 @@ const router = useRouter()
 const {
   data: patients,
   isLoading,
-  update: updatePatient,
 } = useCrud<any>('patients', { defaultPageSize: 1000 })
+
+const queryClient = useQueryClient()
+const snackbar = useSnackbarStore()
+const auth = useAuthStore()
 
 const { data: indicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 
 const filtersForm = reactive({
-  patientId: null,
-  indicatorName: null,
-  subindicatorName: ''
+  patientId: null as string | null,
+  indicatorName: null as string | null,
+  subindicatorName: '',
+  startDate: '',
+  endDate: '',
+  range: 'all',
 })
+
+const YEAR = new Date().getFullYear()
+const rangeOptions = [
+  { value: 'all', label: 'Todo o período' },
+  { value: 'last30', label: 'Últimos 30 dias' },
+  { value: 'last90', label: 'Últimos 90 dias' },
+  { value: 'year', label: `Ano de ${YEAR}` },
+  { value: 'custom', label: 'Personalizado' },
+]
+
+const toISO = (d: Date) => d.toISOString().slice(0, 10)
+
+// Escolher um atalho preenche as datas; mexer nas datas passa para personalizado.
+watch(() => filtersForm.range, value => {
+  const hoje = new Date()
+  if (value === 'all') {
+    filtersForm.startDate = ''
+    filtersForm.endDate = ''
+  } else if (value === 'last30' || value === 'last90') {
+    const dias = value === 'last30' ? 30 : 90
+    const inicio = new Date(hoje)
+    inicio.setDate(inicio.getDate() - dias)
+    filtersForm.startDate = toISO(inicio)
+    filtersForm.endDate = toISO(hoje)
+  } else if (value === 'year') {
+    filtersForm.startDate = `${YEAR}-01-01`
+    filtersForm.endDate = `${YEAR}-12-31`
+  }
+})
+
+watch([() => filtersForm.startDate, () => filtersForm.endDate], () => {
+  const atalho = rangeOptions.find(o => o.value === filtersForm.range)
+  if (!atalho || filtersForm.range === 'custom') return
+  const esperado = filtersForm.range === 'all'
+    ? !filtersForm.startDate && !filtersForm.endDate
+    : true
+  if (!esperado) filtersForm.range = 'custom'
+})
+
+const invalidRange = computed(() =>
+  !!filtersForm.startDate && !!filtersForm.endDate && filtersForm.endDate < filtersForm.startDate,
+)
+
+const hasDateFilter = computed(() => !!filtersForm.startDate || !!filtersForm.endDate)
+
+const hasAnyFilter = computed(() =>
+  !!filtersForm.patientId || !!filtersForm.indicatorName ||
+  !!filtersForm.subindicatorName || hasDateFilter.value,
+)
 
 const clearFilters = () => {
   filtersForm.patientId = null
   filtersForm.indicatorName = null
   filtersForm.subindicatorName = ''
+  filtersForm.startDate = ''
+  filtersForm.endDate = ''
+  filtersForm.range = 'all'
+}
+
+/** Compara só a parte da data (YYYY-MM-DD), ignorando fuso e hora. */
+const dentroDoIntervalo = (occurrenceDate?: string) => {
+  if (!filtersForm.startDate && !filtersForm.endDate) return true
+  if (!occurrenceDate) return false
+  const dia = String(occurrenceDate).slice(0, 10)
+  if (filtersForm.startDate && dia < filtersForm.startDate) return false
+  if (filtersForm.endDate && dia > filtersForm.endDate) return false
+  return true
 }
 
 const page = ref(1)
@@ -171,6 +278,7 @@ const allEvents = computed(() => {
       for (const e of p.events) {
         if (filtersForm.indicatorName && e.indicator?.name !== filtersForm.indicatorName) continue
         if (filtersForm.subindicatorName && !e.subindicator?.name?.toLowerCase().includes(filtersForm.subindicatorName.toLowerCase())) continue
+        if (!dentroDoIntervalo(e.occurrenceDate)) continue
         
         list.push({ ...e, patientId: p._id, patientName: p.name })
       }
@@ -208,13 +316,13 @@ const { confirm } = useConfirm()
 const deleteEvent = async (item: any) => {
   if (!await confirm('Tem certeza que deseja excluir este evento?')) return
   try {
-    const res = await dbExecute({ action: 'findOne', collection: 'patients', id: item.patientId })
-    if (res.success && res.result) {
-      const newEvents = (res.result.events || []).filter((e: any) => e._id !== item._id)
-      await updatePatient({ id: item.patientId, data: { events: newEvents } })
-    }
-  } catch (error) {
+    // Remove só este evento no servidor ($pull), sem reenviar o array inteiro.
+    await removePatientEvent(item.patientId, item._id, auth.user?.email ?? '')
+    await queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
+    snackbar.show('Evento excluído com sucesso!')
+  } catch (error: any) {
     console.error(error)
+    snackbar.show(error?.message || 'Erro ao excluir evento', 'error')
   }
 }
 </script>

@@ -105,7 +105,10 @@ import { ref, reactive, computed, watch } from 'vue'
 import { z } from 'zod'
 import { useCrud } from '@/composables/useCrud'
 import { useQueryClient } from '@tanstack/vue-query'
-import { fileToBase64, downloadFileFromDb, dbExecute } from '@/lib/proxy-client'
+import {
+  fileToBase64, downloadFileFromDb, dbExecute,
+  appendPatientEvent, updatePatientEvent,
+} from '@/lib/proxy-client'
 import { NotificationService } from '@/services/NotificationService'
 
 
@@ -119,13 +122,15 @@ const EventFormSchema = z.object({
   file: z.any().nullable().optional().default(null)
 })
 
-const { update: updatePatient, isUpdating } = useCrud<any>('patients')
+const { isUpdating } = useCrud<any>('patients')
 const { data: patients, isLoading: isLoadingPatients } = useCrud<any>('patients', { defaultPageSize: 1000 })
 const { data: indicators, isLoading: isLoadingIndicators } = useCrud<any>('indicators', { defaultPageSize: 100 })
 const queryClient = useQueryClient()
 
 import { useSnackbarStore } from '@/stores/snackbarStore'
+import { useAuthStore } from '@/stores/authStore'
 const snackbar = useSnackbarStore()
+const auth = useAuthStore()
 
 const assistanceOptions = ['enfermagem', 'fisioterapia', 'fonoaudiologia', 'medicina', 'nutrição', 'psicologia']
 
@@ -229,13 +234,38 @@ const generateObjectId = () => [...Array(24)].map(() => Math.floor(Math.random()
 
 const saveEvent = async () => {
   if (!validateForm()) return
+
+  // Antes isto era um `return` mudo: o botão não fazia nada, sem erro e sem
+  // snackbar, e a pessoa jurava que tinha salvo. Agora cada caso fala.
+  const ind = indicators.value?.find((i: any) => i._id === form.indicatorId)
+  if (!ind) {
+    snackbar.show('Indicador não encontrado. Recarregue a página e tente de novo.', 'error')
+    return
+  }
+
+  const sub = ind.subindicators?.find((s: any) => s.name === form.subindicatorId)
+  if (!sub) {
+    snackbar.show('Sub-indicador não encontrado para este indicador.', 'error')
+    return
+  }
+
+  // O paciente pode estar fora da página carregada em memória: busca no servidor
+  // em vez de desistir em silêncio.
+  let patient = patients.value?.find((p: any) => p._id === form.patientId)
+  if (!patient) {
+    try {
+      const res = await dbExecute({ action: 'findOne', collection: 'patients', id: form.patientId })
+      patient = res?.result
+    } catch (e) {
+      console.error('Falha ao buscar paciente', e)
+    }
+  }
+  if (!patient) {
+    snackbar.show('Paciente não encontrado. Recarregue a página e tente de novo.', 'error')
+    return
+  }
+
   try {
-    const patient = patients.value?.find((p: any) => p._id === form.patientId)
-    const ind = indicators.value?.find((i: any) => i._id === form.indicatorId)
-    const sub = ind?.subindicators?.find((s: any) => s.name === form.subindicatorId)
-
-    if (!patient || !ind || !sub) return
-
     const payloadEvent: any = {
       _id: editingId.value || generateObjectId(),
       occurrenceDate: form.occurrenceDate,
@@ -269,34 +299,26 @@ const saveEvent = async () => {
       payloadEvent.file = form.file  // Mantém arquivo existente (metadata only)
     }
 
-    let newEvents: any[]
-    if (editingId.value) {
-      newEvents = (patient.events || []).map((e: any) => e._id === editingId.value ? { ...e, ...payloadEvent } : e)
-    } else {
-      newEvents = [...(patient.events || []), payloadEvent]
-    }
+    const autor = auth.user?.email ?? ''
 
+    // Só o evento sobe, nunca o array inteiro montado a partir do cache: dois
+    // saves seguidos (ou de duas pessoas) não se sobrescrevem mais.
     if (editingId.value) {
-      // Edição: usa useCrud (snackbar automático "Registro atualizado")
-      await updatePatient({ id: patient._id, data: { events: newEvents } })
+      await updatePatientEvent(patient._id, editingId.value, payloadEvent, autor)
+      snackbar.show('Evento atualizado com sucesso!')
     } else {
-      // Criação: usa dbExecute direto para evitar snackbar duplicado
-      // O NotificationService.notify já cuida do feedback visual
-      await dbExecute({
-        action: 'update',
-        collection: 'patients',
-        id: patient._id,
-        data: { events: newEvents }
-      })
-      queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
+      await appendPatientEvent(patient._id, payloadEvent, autor)
       await NotificationService.notifyNewEvent(patient.name, ind.name)
     }
 
+    // O await importa: sem ele, o próximo save partia do cache velho.
+    await queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
+
     close()
 
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
-    snackbar.show('Erro ao salvar evento', 'error')
+    snackbar.show(e?.message || 'Erro ao salvar evento', 'error')
   }
 }
 
