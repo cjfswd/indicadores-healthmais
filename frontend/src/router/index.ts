@@ -44,6 +44,11 @@ const router = createRouter({
       component: PatientsView
     },
     {
+      path: '/pacientes-inativos',
+      name: 'inactive-patients',
+      component: () => import('@/views/InactivePatientsView.vue')
+    },
+    {
       path: '/reports',
       name: 'reports',
       component: () => import('@/views/ReportsView.vue')
