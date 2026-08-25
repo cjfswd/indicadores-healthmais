@@ -209,7 +209,9 @@ async def db_execute(request: Request):
             if collection_name in ("patients", "operators"):
                 name = data.get("name", "").strip()
                 if name:
-                    dup_query = {"name": name, "deletedAt": None}
+                    # Paciente inativado por alta/óbito não bloqueia readmissão:
+                    # antes ele ficava soft-deleted e saía da checagem sozinho.
+                    dup_query = {"name": name, "deletedAt": None, "inactive": {"$ne": True}}
                     if collection_name == "patients":
                         op_id = ""
                         if isinstance(data.get("operator"), dict):

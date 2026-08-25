@@ -86,7 +86,7 @@ import { ref, computed } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useCrud } from '@/composables/useCrud'
 import { useConfirm } from '@/composables/useConfirm'
-import { dbExecute, downloadFileFromDb } from '@/lib/proxy-client'
+import { appendPatientEvent, dbExecute, downloadFileFromDb } from '@/lib/proxy-client'
 import { formatDate } from '@/lib/date-utils'
 import { useSnackbarStore } from '@/stores/snackbarStore'
 import { NotificationService } from '@/services/NotificationService'
@@ -236,13 +236,9 @@ const confirmLink = async () => {
       file: report.file ?? null,
     }
 
-    await dbExecute({
-      action: 'update',
-      collection: 'patients',
-      id: patient._id,
-      data: { events: [...(patient.events || []), newEvent] },
-    })
-    queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
+    // Operação pontual ($push): não reenvia o array de eventos montado no cliente.
+    await appendPatientEvent(patient._id, newEvent)
+    await queryClient.invalidateQueries({ queryKey: ['patients', 'list'] })
 
     await dbExecute({
       action: 'update',
