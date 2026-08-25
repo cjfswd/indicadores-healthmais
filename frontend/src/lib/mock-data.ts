@@ -354,6 +354,18 @@ export function getDeletedPatients() {
   return store.patients.filter(p => !!p.deletedAt)
 }
 
+export function getInactivePatients() {
+  return store.patients.filter((p: any) => p.inactive || !!p.deletedAt)
+}
+
+export function reactivateMockPatient(patientId: string) {
+  store.patients = store.patients.map((p: any) =>
+    p._id === patientId
+      ? { ...p, inactive: false, deletedAt: null, inactivationReason: null }
+      : p,
+  )
+}
+
 // ── Mock dbExecute handler ────────────────────────────────────────────────────
 
 export async function mockDbExecute<T = any>(
@@ -393,6 +405,47 @@ export async function mockDbExecute<T = any>(
     const existing = col.find(d => d._id === docId)
     const existingEventIds = new Set((existing?.events ?? []).map((e: any) => e._id))
 
+    // Operações pontuais de evento (mesmo contrato do backend)
+    if (data?.__op) {
+      const eventos: any[] = existing?.events ?? []
+      let novos = eventos
+      let eventoNovo: any = null
+
+      if (data.__op === 'eventAppend') {
+        eventoNovo = data.event
+        novos = [...eventos, data.event]
+      } else if (data.__op === 'eventUpdate') {
+        novos = eventos.map(e => (e._id === data.eventId ? { ...e, ...data.event } : e))
+      } else if (data.__op === 'eventRemove') {
+        novos = eventos.filter(e => e._id !== data.eventId)
+      }
+
+      store[collection] = col.map(doc =>
+        doc._id === docId ? { ...doc, events: novos, updatedAt: new Date().toISOString() } : doc,
+      )
+
+      if (collection === 'patients' && eventoNovo) {
+        const indName: string = eventoNovo.indicator?.name ?? ''
+        const subName: string = eventoNovo.subindicator?.name ?? ''
+        const isObito = indName.startsWith('04')
+        const isAlta = indName.startsWith('01') && subName.startsWith('1.1')
+        if (isObito || isAlta) {
+          store[collection] = store[collection].map((doc: any) =>
+            doc._id === docId && !doc.inactive
+              ? {
+                  ...doc,
+                  inactive: true,
+                  inactivationReason: isObito ? 'obito' : 'alta',
+                  inactivatedAt: new Date().toISOString(),
+                }
+              : doc,
+          )
+        }
+      }
+
+      return { result: store[collection].find(d => d._id === docId) as unknown as T, success: true }
+    }
+
     store[collection] = col.map(doc =>
       doc._id === docId ? { ...doc, ...data, updatedAt: new Date().toISOString() } : doc,
     )
@@ -408,8 +461,13 @@ export async function mockDbExecute<T = any>(
         if (isObito || isAlta) {
           const reason = isObito ? 'obito' : 'alta'
           store[collection] = store[collection].map(doc =>
-            doc._id === docId && !doc.deletedAt
-              ? { ...doc, deletedAt: new Date().toISOString(), inactivationReason: reason }
+            doc._id === docId && !(doc as any).inactive
+              ? {
+                  ...doc,
+                  inactive: true,
+                  inactivationReason: reason,
+                  inactivatedAt: new Date().toISOString(),
+                }
               : doc,
           )
           break

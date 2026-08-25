@@ -333,7 +333,11 @@ const filteredPatients = computed(() => {
 
 const analytics = useDashboardAnalytics(filteredPatients as any, indicators, startDate, endDate)
 
-const totalPatients = computed(() => filteredPatients.value.length)
+// Pacientes inativados por alta/óbito continuam visíveis no sistema, mas não
+// entram no denominador dos indicadores — que sempre contou só quem está ativo.
+const activePatients = computed(() => filteredPatients.value.filter((p: any) => !p.inactive))
+
+const totalPatients = computed(() => activePatients.value.length)
 
 // ── Drill-down ──
 interface DrilldownRow {
