@@ -227,3 +227,70 @@ class TestParidadeReplaySnapshot:
         replay = await replay_stream("patients", patient_id)
         assert replay["inactive"] is True
         assert replay["deletedAt"] is None
+
+
+class TestCompatibilidade:
+    """Garante que a mudança de inativação não quebra fluxos que já existiam."""
+
+    async def test_readmissao_de_paciente_inativo_nao_da_409(self, client, setup_db):
+        """Antes o paciente ficava soft-deleted e o nome liberava sozinho."""
+        patient_id = await _criar_paciente(client, "Maria Silva")
+        await _append(client, patient_id, _evento(
+            "a" * 24, indicador="01 - Saídas", sub="1.1 - Alta domiciliar"))
+
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("insert", "patients")},
+            json={"data": {"name": "Maria Silva", "events": []}},
+        )
+        assert resposta.status_code == 200
+
+    async def test_duplicata_entre_ativos_continua_bloqueada(self, client, setup_db):
+        await _criar_paciente(client, "João Souza")
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("insert", "patients")},
+            json={"data": {"name": "João Souza", "events": []}},
+        )
+        assert resposta.status_code == 409
+
+    async def test_envio_do_array_completo_continua_funcionando(self, client, setup_db):
+        """Caminho antigo (data: {events: [...]}) segue aceito."""
+        patient_id = await _criar_paciente(client)
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("update", "patients", id=patient_id)},
+            json={"data": {"events": [_evento("a" * 24)]}},
+        )
+        assert resposta.status_code == 200
+        assert len(resposta.json()["result"]["events"]) == 1
+
+    async def test_delete_manual_continua_escondendo(self, client, setup_db):
+        """Exclusão explícita não virou inativação: segue fora do find."""
+        patient_id = await _criar_paciente(client, "Paciente Excluído")
+        await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("delete", "patients", id=patient_id)},
+            json={"data": {}},
+        )
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("find", "patients")},
+            json={"data": {}},
+        )
+        assert "Paciente Excluído" not in [p["name"] for p in resposta.json()["result"]]
+
+    async def test_find_com_filtro_de_inativo(self, client, setup_db):
+        """Filtro usado pela tela de pacientes (inactive: {$ne: true})."""
+        patient_id = await _criar_paciente(client, "Paciente Alta")
+        await _criar_paciente(client, "Paciente Ativo")
+        await _append(client, patient_id, _evento(
+            "a" * 24, indicador="04 - Óbito", sub="4.1 - Óbito"))
+
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta(
+                "find", "patients", query={"inactive": {"$ne": True}})},
+            json={"data": {}},
+        )
+        assert [p["name"] for p in resposta.json()["result"]] == ["Paciente Ativo"]
