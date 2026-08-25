@@ -294,3 +294,46 @@ class TestCompatibilidade:
             json={"data": {}},
         )
         assert [p["name"] for p in resposta.json()["result"]] == ["Paciente Ativo"]
+
+
+class TestConcorrenciaEdicao:
+    """Cenários de corrida entre edição e remoção do mesmo paciente."""
+
+    async def test_edicoes_simultaneas_em_eventos_diferentes(self, client, setup_db):
+        patient_id = await _criar_paciente(client)
+        for letra in "abc":
+            await _append(client, patient_id, _evento(letra * 24))
+
+        async def editar(evt_id, texto):
+            return await client.post(
+                "/db/execute",
+                headers={"x-db-meta": make_meta("update", "patients", id=patient_id)},
+                json={"data": {
+                    "__op": "eventUpdate",
+                    "eventId": evt_id,
+                    "event": {"_id": evt_id, "observations": texto},
+                }},
+            )
+
+        await asyncio.gather(
+            editar("a" * 24, "um"),
+            editar("b" * 24, "dois"),
+            editar("c" * 24, "tres"),
+        )
+
+        doc = await get_db()["patients"].find_one({"name": "Paciente Teste"})
+        obs = {e["_id"]: e["observations"] for e in doc["events"]}
+        assert obs == {"a" * 24: "um", "b" * 24: "dois", "c" * 24: "tres"}
+
+    async def test_op_desconhecida_falha_alto(self, client, setup_db):
+        """Um __op errado precisa dar erro, nunca virar campo solto no documento."""
+        patient_id = await _criar_paciente(client)
+        resposta = await client.post(
+            "/db/execute",
+            headers={"x-db-meta": make_meta("update", "patients", id=patient_id)},
+            json={"data": {"__op": "eventoQualquer", "event": {}}},
+        )
+        assert resposta.status_code == 400
+
+        doc = await get_db()["patients"].find_one({"_id": __import__("bson").ObjectId(patient_id)})
+        assert "__op" not in doc

@@ -160,7 +160,10 @@ const lineChartRef = ref<any>(null)
 const subBarChartRef = ref<any>(null)
 const selectedIndicatorForPie = ref('')
 
-const totalPatients = computed(() => patients.value?.length || 0)
+// Mesmo critério do dashboard: inativos não entram no denominador.
+const totalPatients = computed(() =>
+  (patients.value || []).filter((p: any) => !p.inactive).length,
+)
 
 // ── Bar Chart ──
 const barChartData = computed(() => ({
