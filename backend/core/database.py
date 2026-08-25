@@ -30,19 +30,25 @@ def get_db() -> AsyncIOMotorDatabase:
 
 async def init_db():
     global db_client, db
-    
-    import sys
+
     mongo_uri = os.getenv("MONGO_URI", "memory")
     db_name = os.getenv("DB_NAME", "coringa_db")
 
-    # Windows = dev local → sempre in-memory
-    # Linux   = produção (Docker/Coolify) → MongoDB real
-    is_dev = sys.platform == "win32"
+    # O banco in-memory é OPT-IN explícito, nunca inferido do sistema operacional.
+    # Antes, qualquer execução em Windows caía no mock e nada era persistido —
+    # quem testava localmente via o app "salvar" e perdia tudo no restart.
+    use_memory = (
+        os.getenv("USE_IN_MEMORY_DB", "").strip().lower() in ("1", "true", "yes")
+        or mongo_uri.strip().lower() in ("", "memory")
+    )
 
-    if is_dev:
+    if use_memory:
         from mongomock_motor import AsyncMongoMockClient
         db_client = AsyncMongoMockClient()
-        print("[OK] MongoDB IN-MEMORY (dev local / Windows)")
+        print(
+            "[AVISO] MongoDB IN-MEMORY: os dados somem no restart. "
+            "Defina MONGO_URI para persistir de verdade."
+        )
     else:
         db_client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
         print(f"[OK] MongoDB remoto: {mongo_uri[:50]}...")
@@ -157,10 +163,12 @@ async def materialize_from_data(
         update_fields = {**data}
         for key in ("_id", "createdAt", "deletedAt"):
             update_fields.pop(key, None)
-        update_fields["updatedAt"] = now
 
         # Verifica se já tem operadores mongo ($set, $push, etc)
         has_operator = any(k.startswith("$") for k in update_fields.keys())
+
+        if not has_operator:
+            update_fields["updatedAt"] = now
 
         if has_operator:
             if "$set" not in update_fields:
@@ -188,7 +196,124 @@ async def materialize_from_data(
         )
         return updated or {}
 
+    elif event_type == "REACTIVATE":
+        updated = await col.find_one_and_update(
+            {"_id": ObjectId(stream_id)},
+            {"$set": {
+                "deletedAt": None,
+                "inactive": False,
+                "inactivationReason": None,
+                "updatedAt": now,
+            }},
+            return_document=True
+        )
+        return updated or {}
+
     return {}
+
+
+def _resolve_path(state: dict, path: str, create: bool = False):
+    """Navega um caminho com pontos ('events.2.file') e devolve (container, chave).
+
+    Suporta índices numéricos em listas. Retorna (None, None) se o caminho não
+    existir e create=False.
+    """
+    parts = path.split(".")
+    current: Any = state
+    for part in parts[:-1]:
+        if isinstance(current, list):
+            try:
+                idx = int(part)
+            except ValueError:
+                return None, None
+            if idx >= len(current):
+                return None, None
+            current = current[idx]
+        elif isinstance(current, dict):
+            if part not in current:
+                if not create:
+                    return None, None
+                current[part] = {}
+            current = current[part]
+        else:
+            return None, None
+
+    last = parts[-1]
+    if isinstance(current, list):
+        try:
+            return current, int(last)
+        except ValueError:
+            return None, None
+    if isinstance(current, dict):
+        return current, last
+    return None, None
+
+
+def _matches(doc: Any, criteria: Any) -> bool:
+    """Comparação simples usada pelo $pull: igualdade direta ou subset de campos."""
+    if isinstance(criteria, dict) and isinstance(doc, dict):
+        return all(str(doc.get(k)) == str(v) for k, v in criteria.items())
+    return doc == criteria
+
+
+def apply_operators(state: dict, data: dict) -> dict:
+    """Aplica um patch do event store no estado, com ou sem operadores mongo.
+
+    O snapshot é materializado pelo próprio MongoDB; o replay precisa chegar no
+    mesmo resultado, então os operadores usados pelo sistema ($set, $push, $pull,
+    $unset) são interpretados aqui em vez de descartados.
+    """
+    has_operator = any(k.startswith("$") for k in data.keys())
+
+    if not has_operator:
+        patch = {k: v for k, v in data.items()}
+        state.update(patch)
+        return state
+
+    for op, payload in data.items():
+        if not op.startswith("$") or not isinstance(payload, dict):
+            continue
+
+        if op == "$set":
+            for path, value in payload.items():
+                container, key = _resolve_path(state, path, create=True)
+                if container is None:
+                    continue
+                if isinstance(container, list):
+                    while len(container) <= key:
+                        container.append({})
+                container[key] = copy.deepcopy(value)
+
+        elif op == "$unset":
+            for path in payload.keys():
+                container, key = _resolve_path(state, path)
+                if isinstance(container, dict):
+                    container.pop(key, None)
+
+        elif op == "$push":
+            for path, value in payload.items():
+                container, key = _resolve_path(state, path, create=True)
+                if container is None:
+                    continue
+                alvo = container.get(key) if isinstance(container, dict) else None
+                if not isinstance(alvo, list):
+                    alvo = []
+                    container[key] = alvo
+                if isinstance(value, dict) and "$each" in value:
+                    alvo.extend(copy.deepcopy(value["$each"]))
+                else:
+                    alvo.append(copy.deepcopy(value))
+
+        elif op == "$pull":
+            for path, criteria in payload.items():
+                container, key = _resolve_path(state, path)
+                if container is None:
+                    continue
+                alvo = container.get(key) if isinstance(container, dict) else None
+                if isinstance(alvo, list):
+                    container[key] = [d for d in alvo if not _matches(d, criteria)]
+
+    return state
 
 
 async def replay_stream(stream_type: str, stream_id: str) -> dict:
@@ -201,14 +326,16 @@ async def replay_stream(stream_type: str, stream_id: str) -> dict:
     state: dict = {}
     for event in events:
         if event["eventType"] == "CREATE":
-            state = {**event["data"]}
+            state = copy.deepcopy(event["data"])
+            state["deletedAt"] = None
         elif event["eventType"] == "UPDATE":
-            event_data = event["data"]
-            # Ignora operadores mongo no replay (aplica como merge simples)
-            patch = {k: v for k, v in event_data.items() if not k.startswith("$")}
-            state.update(patch)
+            state = apply_operators(state, event["data"] or {})
         elif event["eventType"] == "SOFT_DELETE":
             state["deletedAt"] = event["timestamp"]
+        elif event["eventType"] == "REACTIVATE":
+            state["deletedAt"] = None
+            state["inactive"] = False
+            state["inactivationReason"] = None
 
     state["_id"] = stream_id
     return state
