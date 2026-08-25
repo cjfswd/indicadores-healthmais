@@ -1,9 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+// O login falso só entra junto com os dados falsos (VITE_USE_MOCK=true).
+// Rodando `npm run dev` contra o backend real, a sessão é a de verdade — senão
+// as gravações saem com um actor inexistente e o histórico fica inútil.
+const DEV_AUTOLOGIN = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
+
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('auth_token') ?? (import.meta.env.DEV ? 'dev-token' : null))
-  const user = ref<any>(JSON.parse(localStorage.getItem('auth_user') || 'null') ?? (import.meta.env.DEV ? { name: 'Desenvolvedor', email: 'dev@localhost', avatar: '' } : null))
+  const token = ref(localStorage.getItem('auth_token') ?? (DEV_AUTOLOGIN ? 'dev-token' : null))
+  const user = ref<any>(JSON.parse(localStorage.getItem('auth_user') || 'null') ?? (DEV_AUTOLOGIN ? { name: 'Desenvolvedor', email: 'dev@localhost', avatar: '' } : null))
 
   const isAuthenticated = computed(() => !!token.value)
 
