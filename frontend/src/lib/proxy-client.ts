@@ -1,5 +1,12 @@
+/**
+ * Os dados falsos são OPT-IN via VITE_USE_MOCK=true.
+ * Antes qualquer `npm run dev` desviava para o mock: a tela salvava, o banco
+ * nunca recebia nada e quem testava local achava que o backend estava quebrado.
+ */
+export const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK === 'true'
+
 export async function dbExecute<T = any>(payload: any): Promise<{ result: T, total?: number, success: boolean, message?: string }> {
-  if (import.meta.env.DEV) {
+  if (USE_MOCK_DATA) {
     const { mockDbExecute } = await import('./mock-data')
     return mockDbExecute<T>(payload)
   }
@@ -136,7 +143,7 @@ export async function fetchDeletedPatients(): Promise<{
   total: number
   success: boolean
 }> {
-  if (import.meta.env.DEV) {
+  if (USE_MOCK_DATA) {
     const { getDeletedPatients } = await import('./mock-data')
     const deleted = getDeletedPatients()
     return { result: deleted, total: deleted.length, success: true }
@@ -151,13 +158,86 @@ export async function fetchDeletedPatients(): Promise<{
 }
 
 /**
+ * Pacientes inativados por alta ou óbito (mais os soft-deleted antigos).
+ * Eles continuam existindo nas listas normais; esta é a visão dedicada.
+ */
+export async function fetchInactivePatients(): Promise<{
+  result: any[]
+  total: number
+  success: boolean
+}> {
+  if (USE_MOCK_DATA) {
+    const { getInactivePatients } = await import('./mock-data')
+    const inativos = getInactivePatients()
+    return { result: inativos, total: inativos.length, success: true }
+  }
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  const response = await fetch(`${baseURL}/db/patients/inactive`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  return response.json()
+}
+
+/** Reativa um paciente inativado. Nada do histórico é apagado. */
+export async function reactivatePatient(patientId: string): Promise<{ success: boolean }> {
+  if (USE_MOCK_DATA) {
+    const { reactivateMockPatient } = await import('./mock-data')
+    reactivateMockPatient(patientId)
+    return { success: true }
+  }
+  const token = localStorage.getItem('auth_token')
+  const baseURL = import.meta.env.VITE_API_URL || ''
+  const response = await fetch(`${baseURL}/db/patients/${patientId}/reactivate`, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  return response.json()
+}
+
+/**
+ * Operações pontuais sobre os eventos de um paciente.
+ *
+ * O array inteiro nunca mais sobe do cliente: o backend aplica $push / $set no
+ * índice / $pull, então dois saves simultâneos não se sobrescrevem.
+ */
+export async function appendPatientEvent(patientId: string, event: any, updatedBy = '') {
+  return dbExecute({
+    action: 'update',
+    collection: 'patients',
+    id: patientId,
+    data: { __op: 'eventAppend', event, updatedBy },
+  })
+}
+
+export async function updatePatientEvent(patientId: string, eventId: string, event: any, updatedBy = '') {
+  return dbExecute({
+    action: 'update',
+    collection: 'patients',
+    id: patientId,
+    data: { __op: 'eventUpdate', eventId, event, updatedBy },
+  })
+}
+
+export async function removePatientEvent(patientId: string, eventId: string, updatedBy = '') {
+  return dbExecute({
+    action: 'update',
+    collection: 'patients',
+    id: patientId,
+    data: { __op: 'eventRemove', eventId, updatedBy },
+  })
+}
+
+/**
  * Calcula a taxa de internação hospitalar no backend.
  */
 export async function fetchHospitalizationRate(start?: string, end?: string): Promise<{
   result: { hospitalizationEvents: number; adIdPatients: number; rate: number | null; period: any }
   success: boolean
 }> {
-  if (import.meta.env.DEV) {
+  if (USE_MOCK_DATA) {
     // Calcula localmente com os mesmos dados do mock
     const { PATIENTS: mockPatients } = await import('./mock-data')
     const startD = start ? new Date(start + 'T00:00:00') : null
