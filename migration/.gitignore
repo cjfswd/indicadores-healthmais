@@ -1,0 +1,7 @@
+# Saidas dos scripts: carregam nome de paciente e observacao clinica.
+# O caminho normal e --out para fora do repositorio; isto e rede de protecao
+# para quem rodar com --out . por engano.
+*.csv
+*.xlsx
+dados.json
+__pycache__/

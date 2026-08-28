@@ -1,0 +1,768 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // Tema antes da primeira pintura. Claro e o padrao, como o painel.
+  try {
+    var t = localStorage.getItem("tema") || "claro";
+    if (t !== "auto") document.documentElement.setAttribute("data-theme", t === "claro" ? "light" : "dark");
+  } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+</script>
+<title>Migração — decisão dos ambíguos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
+
+<style>
+  /* Tokens do Painel HealthMais, verbatim — esta tela é parte do mesmo produto. */
+  :root {
+    --ground:#F3F5F8; --surface:#FFFFFF; --surface-2:#FAFBFC; --surface-hi:#EAEFF5;
+    --line:#DDE3EA; --line-soft:#E9EDF2;
+    --ink:#15202E; --ink-2:#475467; --ink-3:#78859A;
+    --accent:#1F3A63; --accent-soft:#E7EEF7; --accent-line:#C2D3E7;
+    --flag:#B00020; --flag-soft:#FAE6E9;
+    --sev-1:#8D6E00; --sev-1-soft:#FBF0D6;
+    --sev-2:#B45309; --sev-2-soft:#FBEBDD;
+    --sev-3:#B00020; --sev-3-soft:#FAE3E6;
+    --done:#2E7D32; --done-soft:#E6F1E7;
+    --shadow-peek:-18px 0 44px rgba(15,23,42,.10);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.16);
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E141C; --surface:#151D27; --surface-2:#121922; --surface-hi:#1E2937;
+      --line:#26313F; --line-soft:#1E2833;
+      --ink:#E7EDF4; --ink-2:#A7B3C2; --ink-3:#7B8797;
+      --accent:#7FAEE3; --accent-soft:#16283C; --accent-line:#2C4257;
+      --flag:#E88A8A; --flag-soft:#33191C;
+      --sev-1:#D6B45C; --sev-1-soft:#2E2716;
+      --sev-2:#DE9059; --sev-2-soft:#32241A;
+      --sev-3:#E88A8A; --sev-3-soft:#33191C;
+      --done:#6FBF73; --done-soft:#1A2A1C;
+      --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
+      --shadow-pop:0 12px 32px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E141C; --surface:#151D27; --surface-2:#121922; --surface-hi:#1E2937;
+    --line:#26313F; --line-soft:#1E2833;
+    --ink:#E7EDF4; --ink-2:#A7B3C2; --ink-3:#7B8797;
+    --accent:#7FAEE3; --accent-soft:#16283C; --accent-line:#2C4257;
+    --flag:#E88A8A; --flag-soft:#33191C;
+    --sev-1:#D6B45C; --sev-1-soft:#2E2716;
+    --sev-2:#DE9059; --sev-2-soft:#32241A;
+    --sev-3:#E88A8A; --sev-3-soft:#33191C;
+    --done:#6FBF73; --done-soft:#1A2A1C;
+    --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
+    --shadow-pop:0 12px 32px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric:tabular-nums; }
+  button { font:inherit; color:inherit; background:none; border:none; cursor:pointer; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+
+  .app { display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh; }
+  .side {
+    background:var(--surface-2); border-right:1px solid var(--line);
+    padding:14px 10px 24px; display:flex; flex-direction:column; gap:18px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .ws { display:flex; align-items:center; gap:9px; width:100%; padding:5px 6px; text-align:left;
+    border:1px solid transparent; border-radius:var(--radius); }
+  .ws-mark { width:22px; height:22px; border-radius:5px; flex:none; background:var(--accent);
+    color:#fff; display:grid; place-items:center; font-size:11px; font-weight:600; letter-spacing:-.02em; }
+  :root[data-theme="dark"] .ws-mark, :root:not([data-theme="light"]) .ws-mark { color:#0E141C; }
+  .ws-name { font-weight:600; font-size:13px; letter-spacing:-.01em; }
+  .ws-sub { font-size:11px; color:var(--ink-3); }
+
+  .kbd-btn { display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
+    border-radius:var(--radius); color:var(--ink-3); font-size:13px; transition:background .12s; }
+  .kbd-btn:hover { background:var(--surface-hi); }
+  .kbd { margin-left:auto; font-size:10.5px; padding:1px 5px; border:1px solid var(--line);
+    border-radius:4px; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+
+  .nav-label { font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-3);
+    padding:0 8px 6px; font-weight:500; font-family:"IBM Plex Mono", monospace; }
+  .nav { display:flex; flex-direction:column; gap:1px; }
+  .nav button.navitem { display:flex; align-items:baseline; gap:9px; padding:5px 8px;
+    border-radius:var(--radius); color:var(--ink-2); font-size:13px; width:100%; text-align:left;
+    transition:background .12s, color .12s; }
+  .nav button.navitem:hover { background:var(--surface-hi); color:var(--ink); }
+  .nav button.navitem.on { background:var(--accent-soft); color:var(--accent); font-weight:500; }
+  .nav .code { font-size:11px; color:var(--ink-3); flex:none; width:26px; }
+  .nav button.navitem.on .code { color:var(--accent); }
+  .nav .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nav .ct { margin-left:auto; font-size:11px; color:var(--ink-3); }
+  .nav .ct.zero { color:var(--done); }
+
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:11px 26px;
+    border-bottom:1px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:5; }
+  .crumb { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-3); min-width:0; }
+  .crumb b { color:var(--ink-2); font-weight:500; }
+  .crumb .sep { color:var(--line); }
+  .topbar .spacer { flex:1; }
+
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--surface); font-size:12.5px; color:var(--ink-2);
+    transition:background .12s, border-color .12s; }
+  .btn:hover { background:var(--surface-hi); border-color:var(--accent-line); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
+  :root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary { color:#0E141C; }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-ico { padding:5px 8px; color:var(--ink-3); }
+  .btn-ico svg { display:block; width:15px; height:15px; }
+
+  .page { padding:26px 26px 64px; max-width:1180px; }
+  h1 { margin:0; font-size:25px; line-height:1.15; letter-spacing:-.025em; font-weight:600; text-wrap:balance; }
+  .h-code { font-size:12px; color:var(--ink-3); letter-spacing:.04em; display:block; margin-bottom:5px; }
+  .h-note { margin:9px 0 0; color:var(--ink-2); font-size:13px; max-width:64ch; }
+  .mirror { display:inline-flex; align-items:center; gap:7px; margin-top:12px; padding:4px 10px;
+    border:1px solid var(--sev-1); color:var(--sev-1); border-radius:5px;
+    font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-family:"IBM Plex Mono", monospace; }
+
+  .split { margin:22px 0 0; display:grid; gap:1px; grid-template-columns:repeat(auto-fit, minmax(168px,1fr));
+    background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .split .cell { background:var(--surface); padding:13px 15px; display:flex; flex-direction:column; gap:3px; }
+  .split .cell.lead { background:var(--accent-soft); }
+  .split .cell.warn { background:var(--flag-soft); }
+  .split .k { font-size:10px; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .split .cell.lead .k { color:var(--accent); }
+  .split .cell.warn .k { color:var(--flag); }
+  .split .v { font-size:25px; font-weight:600; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .split .cell.lead .v { color:var(--accent); }
+  .split .cell.warn .v { color:var(--flag); }
+  .split .d { font-size:11.5px; color:var(--ink-3); }
+  .split .meter { height:3px; border-radius:2px; background:var(--line-soft); margin-top:5px; overflow:hidden; }
+  .split .meter i { display:block; height:100%; background:var(--accent); }
+
+  .filters { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-top:18px;
+    padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:9px; }
+  .fld { display:flex; flex-direction:column; gap:4px; }
+  .fld label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .fld select { font:inherit; font-size:12.5px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:6px; padding:5px 8px; min-width:130px; }
+  .filters .grow { flex:1; }
+  .filters .period { font-size:12px; color:var(--ink-3); padding-bottom:6px; }
+  .filters .period b { color:var(--ink-2); font-weight:500; }
+  .btn-ghost { font-size:12.5px; color:var(--ink-3); padding:6px 8px; border-radius:6px; }
+  .btn-ghost:hover { background:var(--surface-hi); color:var(--ink); }
+
+  .tablewrap { overflow-x:auto; margin-top:18px; }
+  table { border-collapse:collapse; width:100%; min-width:900px; }
+  thead th { text-align:left; font-weight:500; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-3); padding:10px 12px; border-bottom:1px solid var(--line);
+    white-space:nowrap; font-family:"IBM Plex Mono", monospace; }
+  tbody tr { border-bottom:1px solid var(--line-soft); cursor:pointer; transition:background .1s; }
+  tbody tr:hover { background:var(--surface); }
+  tbody tr.sel { background:var(--accent-soft); }
+  tbody td { padding:9px 12px; vertical-align:middle; }
+  td.pat { font-weight:500; white-space:nowrap; }
+  td.pat .op { display:block; font-size:11px; color:var(--ink-3); font-weight:400; }
+  .dim { color:var(--ink-3); }
+  .nowrap { white-space:nowrap; }
+  .trunc { display:block; max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-2); font-size:12.5px; }
+
+  .badge { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:20px;
+    font-size:11.5px; white-space:nowrap; font-weight:450; }
+  .badge .dot { width:5px; height:5px; border-radius:50%; background:currentColor; flex:none; }
+  .b-1 { background:var(--sev-1-soft); color:var(--sev-1); }
+  .b-2 { background:var(--sev-2-soft); color:var(--sev-2); }
+  .b-3 { background:var(--sev-3-soft); color:var(--sev-3); }
+  .b-n { background:var(--surface-hi); color:var(--ink-2); }
+  .b-ok { background:var(--done-soft); color:var(--done); }
+  .b-flag { background:var(--flag-soft); color:var(--flag); }
+  .b-acc { background:var(--accent-soft); color:var(--accent); }
+  .code-tag { font-size:11px; color:var(--ink-3); margin-right:6px; }
+  .hidden { display:none !important; }
+  .vazio { padding:44px 12px; text-align:center; color:var(--ink-3); font-size:13px; }
+
+  .scrim { position:fixed; inset:0; background:rgba(9,16,28,.34); opacity:0; pointer-events:none; transition:opacity .18s; z-index:20; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .peek { position:fixed; top:0; right:0; height:100vh; width:min(496px,94vw);
+    background:var(--surface); border-left:1px solid var(--line); box-shadow:var(--shadow-peek); z-index:21;
+    transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column; }
+  .peek.on { transform:translateX(0); }
+  .peek-top { display:flex; align-items:center; gap:8px; padding:11px 16px; border-bottom:1px solid var(--line); flex:none; }
+  .peek-top .id { font-size:11.5px; color:var(--ink-3); }
+  .icon-btn { width:26px; height:26px; border-radius:6px; display:grid; place-items:center; color:var(--ink-3); font-size:15px; line-height:1; }
+  .icon-btn:hover { background:var(--surface-hi); color:var(--ink); }
+  .peek-body { overflow-y:auto; padding:20px 20px 44px; display:flex; flex-direction:column; gap:22px; }
+  .peek h2 { margin:0; font-size:20px; letter-spacing:-.02em; font-weight:600; }
+  .peek .sub { color:var(--ink-3); font-size:12.5px; margin-top:3px; }
+  .peek-foot { flex:none; border-top:1px solid var(--line); padding:11px 16px; display:flex; gap:8px; align-items:center; background:var(--surface-2); }
+
+  .sec-h { font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-3);
+    font-family:"IBM Plex Mono", monospace; display:flex; align-items:center; gap:8px; }
+  .sec-h::after { content:""; flex:1; height:1px; background:var(--line); }
+
+  .props { display:flex; flex-direction:column; gap:1px; }
+  .prop { display:grid; grid-template-columns:120px minmax(0,1fr); align-items:center; gap:8px; }
+  .prop .pk { font-size:12px; color:var(--ink-3); }
+  .prop .pv { padding:4px 7px; margin-left:-7px; border-radius:5px; font-size:13px;
+    display:flex; align-items:center; gap:6px; min-height:28px; }
+
+  .notebox { padding:10px 12px; border-radius:8px; background:var(--surface-2); border:1px solid var(--line);
+    color:var(--ink-2); font-size:12.5px; white-space:pre-wrap; max-height:230px; overflow:auto; }
+  .notebox.empty { color:var(--ink-3); font-style:italic; }
+  .alertbox { display:flex; gap:9px; padding:10px 12px; border-radius:8px; background:var(--accent-soft);
+    color:var(--accent); font-size:12.5px; align-items:flex-start; }
+  .alertbox.none { background:var(--flag-soft); color:var(--flag); }
+
+  .opts { display:flex; flex-direction:column; gap:6px; }
+  .opt-row { display:flex; align-items:flex-start; gap:10px; width:100%; padding:9px 11px;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
+    text-align:left; transition:border-color .12s, background .12s; }
+  .opt-row:hover { border-color:var(--accent-line); background:var(--surface-hi); }
+  .opt-row.on { border-color:var(--accent); background:var(--accent-soft); }
+  .opt-row .cod { font-family:"IBM Plex Mono", monospace; font-size:12px; font-weight:600;
+    color:var(--accent); flex:none; width:34px; padding-top:1px; }
+  .opt-row .nm { font-size:13px; }
+  .opt-row .mk { margin-left:auto; color:var(--accent); flex:none; }
+
+  .req { border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--surface-2); }
+  .req .bar { height:3px; background:var(--line-soft); }
+  .req .bar i { display:block; height:100%; background:var(--accent); }
+  .req .inner { padding:11px 13px; display:flex; flex-direction:column; gap:7px; }
+  .req .line { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .req .line .mk { width:14px; color:var(--done); flex:none; text-align:center; }
+  .req .line.miss .mk, .req .line.miss span { color:var(--ink-3); }
+  .req .hd { display:flex; align-items:baseline; gap:8px; }
+  .req .hd .n { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
+
+  .cmdk { position:fixed; inset:0; z-index:40; display:none; align-items:flex-start; justify-content:center; padding-top:12vh; background:rgba(9,16,28,.42); }
+  .cmdk.on { display:flex; }
+  .cmdk-box { width:min(560px,92vw); background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-pop); overflow:hidden; }
+  .cmdk input { width:100%; border:none; background:none; color:var(--ink); padding:14px 16px; font-size:15px; font-family:inherit; border-bottom:1px solid var(--line); outline:none; }
+  .cmdk input::placeholder { color:var(--ink-3); }
+  .cmdk-list { max-height:336px; overflow-y:auto; padding:6px; }
+  .cmdk-item { display:flex; align-items:center; gap:10px; width:100%; padding:7px 8px; border-radius:7px; font-size:13.5px; text-align:left; }
+  .cmdk-item .code { font-size:11px; color:var(--ink-3); width:52px; flex:none; font-family:"IBM Plex Mono", monospace; }
+  .cmdk-item .hint { margin-left:auto; font-size:11px; color:var(--ink-3); }
+  .cmdk-item.cur { background:var(--accent-soft); color:var(--accent); }
+  .cmdk-item.cur .code, .cmdk-item.cur .hint { color:var(--accent); }
+  .cmdk-empty { padding:24px 12px; text-align:center; color:var(--ink-3); font-size:13px; }
+
+  .toast { position:fixed; right:18px; bottom:18px; z-index:50; max-width:340px;
+    background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    box-shadow:var(--shadow-pop); padding:12px 14px; font-size:12.5px; color:var(--ink-2);
+    display:flex; flex-direction:column; gap:5px; }
+  .toast b { color:var(--ink); }
+
+  @media (max-width:900px) {
+    .app { grid-template-columns:1fr; }
+    .side { display:none; }
+    .page { padding:20px 16px 56px; }
+    .topbar { padding:11px 16px; }
+  }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="ws">
+      <div class="ws-mark">H+</div>
+      <div class="ws-txt">
+        <div class="ws-name">Migração</div>
+        <div class="ws-sub">Fase 2 · dump 28/08/2026</div>
+      </div>
+    </div>
+
+    <button class="kbd-btn" id="openCmd" type="button"><span>Buscar caso</span><span class="kbd">⌘K</span></button>
+
+    <div>
+      <div class="nav-label">Categorias ambíguas</div>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="crumb"><span>Migração</span><span class="sep">/</span><b id="crumbNow">Todos os casos</b></div>
+      <div class="spacer"></div>
+      <button class="btn btn-ico" id="btnTema" type="button" aria-label="Tema"></button>
+      <button class="btn" id="btnAceitar">Aceitar sugestões altas</button>
+      <button class="btn btn-primary" id="btnExport">Exportar decisões</button>
+    </div>
+
+    <div class="page">
+      <div>
+        <span class="h-code mono">FASE 2 · REVISÃO HUMANA</span>
+        <h1 id="hTitle">Decisão dos eventos ambíguos</h1>
+        <p class="h-note">O modelo novo pede distinções que o registro antigo não guardou. Cada caso abaixo
+          precisa de um destino. A sugestão é apoio — quem decide é você.</p>
+        <div class="mirror">Não grava em banco · exporta CSV para o loader</div>
+      </div>
+
+      <div class="split" id="stats"></div>
+
+      <div class="filters">
+        <div class="fld">
+          <label for="fSit">Situação</label>
+          <select id="fSit">
+            <option value="pendentes">Só pendentes</option>
+            <option value="todos">Todos</option>
+            <option value="decididos">Só decididos</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="fConf">Confiança da sugestão</label>
+          <select id="fConf">
+            <option value="">Todas</option>
+            <option value="alta">alta</option>
+            <option value="media">média</option>
+            <option value="baixa">baixa</option>
+            <option value="nenhuma">sem sugestão</option>
+          </select>
+        </div>
+        <span class="grow"></span>
+        <span class="period">Exibindo <b id="fCount">0</b> de <b id="fTotal">0</b> casos</span>
+        <button class="btn-ghost" id="fClear">Limpar filtros</button>
+        <button class="btn-ghost" id="fReset">Zerar decisões</button>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>Paciente</th><th>Data</th><th>Categoria antiga</th>
+            <th>Observação</th><th>Sugestão</th><th>Decisão</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="vazio hidden" id="vazio">Nada aqui com esse filtro.</div>
+    </div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="peek" id="peek" aria-hidden="true">
+  <div class="peek-top">
+    <span class="id mono" id="peekId">—</span>
+    <div style="flex:1"></div>
+    <button class="icon-btn" id="peekPrev" title="Anterior (↑)">↑</button>
+    <button class="icon-btn" id="peekNext" title="Próximo (↓)">↓</button>
+    <button class="icon-btn" id="peekClose" title="Fechar (Esc)">✕</button>
+  </div>
+  <div class="peek-body" id="peekBody"></div>
+  <div class="peek-foot">
+    <button class="btn" id="peekLimpar">Limpar decisão</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-primary" id="peekAceitar">Aceitar sugestão</button>
+  </div>
+</aside>
+
+<div class="cmdk" id="cmdk">
+  <div class="cmdk-box">
+    <input id="cmdInput" placeholder="Buscar por paciente, categoria ou observação…" autocomplete="off">
+    <div class="cmdk-list" id="cmdList"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (t, c, txt) => { const n = document.createElement(t); if (c) n.className = c; if (txt != null) n.textContent = txt; return n; };
+const dbr = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR"); } catch (e) { return iso || "—"; } };
+
+// `confianca` e identificador (classe CSS, comparacao); o rotulo e acentuado.
+const ROTULO_CONF = { alta: "alta", media: "média", baixa: "baixa", nenhuma: "sem sugestão" };
+const BADGE_CONF = { alta: "b-ok", media: "b-1", baixa: "b-n", nenhuma: "b-flag" };
+
+const CHAVE = "migracao-decisoes-v1";
+let dados = [], decisoes = {}, atual = null;
+try { decisoes = JSON.parse(localStorage.getItem(CHAVE) || "{}"); } catch (e) { decisoes = {}; }
+const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(decisoes)); } catch (e) {} };
+
+function badge(txt, kind, dot) {
+  const b = el("span", "badge " + (kind || "b-n"));
+  if (dot) b.append(el("span", "dot"));
+  b.append(document.createTextNode(txt));
+  return b;
+}
+
+const opcoesDe = (c) => {
+  const o = (c.opcoes || "").split(" | ").filter(Boolean).map(s => {
+    const i = s.indexOf(" ");
+    return i < 0 ? { cod: s, nome: "" } : { cod: s.slice(0, i), nome: s.slice(i + 1) };
+  });
+  if (!o.length && c.destino) o.push({ cod: c.destino, nome: c.destino_nome || "" });
+  return o;
+};
+
+// ═══ Tema ═════════════════════════════════════════════════
+const ICO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const ICO_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
+function aplicarTema(t) {
+  document.documentElement.setAttribute("data-theme", t === "claro" ? "light" : "dark");
+  $("#btnTema").innerHTML = t === "claro" ? ICO_LUA : ICO_SOL;
+  try { localStorage.setItem("tema", t); } catch (e) {}
+}
+let tema = "claro";
+try { tema = localStorage.getItem("tema") || "claro"; } catch (e) {}
+$("#btnTema").addEventListener("click", () => { tema = tema === "claro" ? "escuro" : "claro"; aplicarTema(tema); });
+
+// ═══ Navegacao por categoria ══════════════════════════════
+let bucket = "";
+function montarNav() {
+  const nav = $("#nav");
+  nav.textContent = "";
+  const buckets = [...new Set(dados.map(c => c.subindicador_antigo))].sort();
+  const linha = (cod, nome, lista) => {
+    const b = el("button", "navitem");
+    b.type = "button";
+    b.append(el("span", "code mono", cod));
+    b.append(el("span", "nm", nome));
+    const pend = lista.filter(c => !decisoes[c.evento_id]).length;
+    const ct = el("span", "ct mono", pend ? String(pend) : "✓");
+    if (!pend) ct.classList.add("zero");
+    b.append(ct);
+    b.addEventListener("click", () => { bucket = cod === "—" ? "" : nome; render(); });
+    return b;
+  };
+  nav.append(linha("—", "Todos os casos", dados));
+  buckets.forEach(nome => {
+    const lista = dados.filter(c => c.subindicador_antigo === nome);
+    const cod = (nome.match(/^\s*([\d.]+)/) || [, "?"])[1];
+    nav.append(linha(cod, nome.replace(/^\s*[\d.]+\s*-\s*/, ""), lista));
+  });
+  [...nav.children].forEach((b, i) => {
+    const nome = i === 0 ? "" : buckets[i - 1];
+    b.classList.toggle("on", nome === bucket);
+  });
+}
+
+// ═══ KPIs ═════════════════════════════════════════════════
+function montarStats() {
+  const s = $("#stats");
+  s.textContent = "";
+  const n = Object.keys(decisoes).length, t = dados.length;
+  const semSug = dados.filter(c => c.confianca === "nenhuma").length;
+  const cel = (k, v, d, cls, meter) => {
+    const c = el("div", "cell" + (cls ? " " + cls : ""));
+    c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", d));
+    if (meter != null) {
+      const m = el("div", "meter"), i = el("i");
+      i.style.width = meter + "%"; m.append(i); c.append(m);
+    }
+    return c;
+  };
+  s.append(cel("Decididos", n, t ? Math.round(100 * n / t) + "% do total" : "—", "lead", t ? 100 * n / t : 0));
+  s.append(cel("Pendentes", t - n, "aguardando decisão", t - n ? "warn" : ""));
+  s.append(cel("Sem sugestão", semSug, "o dado antigo não sustenta palpite"));
+  s.append(cel("Total", t, "eventos ambíguos no dump"));
+}
+
+// ═══ Tabela ═══════════════════════════════════════════════
+function visiveis() {
+  const sit = $("#fSit").value, conf = $("#fConf").value;
+  return dados.filter(c => {
+    if (bucket && c.subindicador_antigo !== bucket) return false;
+    if (conf && c.confianca !== conf) return false;
+    const tem = !!decisoes[c.evento_id];
+    return sit === "todos" || (sit === "pendentes" ? !tem : tem);
+  });
+}
+
+function render() {
+  montarNav();
+  montarStats();
+  const vis = visiveis();
+  const tb = $("#rows");
+  tb.textContent = "";
+  $("#fCount").textContent = vis.length;
+  $("#fTotal").textContent = dados.length;
+  $("#crumbNow").textContent = bucket || "Todos os casos";
+  $("#vazio").classList.toggle("hidden", vis.length > 0);
+
+  vis.forEach(c => {
+    const tr = el("tr");
+    tr.dataset.id = c.evento_id;
+    if (atual === c.evento_id) tr.classList.add("sel");
+
+    const td1 = el("td", "pat");
+    td1.append(document.createTextNode(c.paciente));
+    td1.append(el("span", "op", c.indicador_antigo));
+    tr.append(td1);
+
+    tr.append(el("td", "dim nowrap", dbr(c.data)));
+
+    const td3 = el("td");
+    const cod = (c.subindicador_antigo.match(/^\s*([\d.]+)/) || [, ""])[1];
+    td3.append(el("span", "code-tag mono", cod));
+    td3.append(document.createTextNode(c.subindicador_antigo.replace(/^\s*[\d.]+\s*-\s*/, "")));
+    tr.append(td3);
+
+    const td4 = el("td");
+    td4.append(el("span", "trunc", c.observacoes_raw || "—"));
+    tr.append(td4);
+
+    const td5 = el("td");
+    if (c.sugestao) {
+      td5.append(badge(c.sugestao + " · " + ROTULO_CONF[c.confianca], BADGE_CONF[c.confianca], true));
+    } else {
+      td5.append(badge("sem sugestão", "b-flag", true));
+    }
+    tr.append(td5);
+
+    const td6 = el("td");
+    const d = decisoes[c.evento_id];
+    td6.append(d ? badge(d + " " + (nomeDe(c, d) || ""), "b-acc") : el("span", "dim", "—"));
+    tr.append(td6);
+
+    tr.addEventListener("click", () => abrir(c.evento_id));
+    tb.append(tr);
+  });
+}
+
+const nomeDe = (c, cod) => (opcoesDe(c).find(o => o.cod === cod) || {}).nome || "";
+const acharCaso = id => dados.find(c => c.evento_id === id);
+
+// ═══ Peek ═════════════════════════════════════════════════
+function abrir(id) {
+  atual = id;
+  const c = acharCaso(id);
+  if (!c) return;
+  $("#peekId").textContent = c.evento_id.slice(0, 12);
+  const body = $("#peekBody");
+  body.textContent = "";
+
+  const cab = el("div");
+  cab.append(el("h2", null, c.paciente));
+  cab.append(el("div", "sub", dbr(c.data) + " · " + c.subindicador_antigo));
+  body.append(cab);
+
+  // Observacao do registro
+  const s1 = el("div");
+  s1.append(el("div", "sec-h", "Observação do registro"));
+  const nb = el("div", "notebox" + (c.observacoes_raw ? "" : " empty"),
+                c.observacoes_raw || "sem observação registrada");
+  nb.style.marginTop = "10px";
+  s1.append(nb);
+  body.append(s1);
+
+  // Evidencia
+  const s2 = el("div");
+  s2.append(el("div", "sec-h", "Evidência"));
+  const box = el("div", "alertbox" + (c.sugestao ? "" : " none"));
+  box.style.marginTop = "10px";
+  const txt = el("div");
+  if (c.sugestao) {
+    txt.append(el("b", null, "Sugerido " + c.sugestao + " — " + ROTULO_CONF[c.confianca] + ". "));
+    txt.append(document.createTextNode(c.motivo_sugestao || ""));
+  } else {
+    txt.append(el("b", null, "Sem sugestão. "));
+    txt.append(document.createTextNode(c.motivo_sugestao || "o dado antigo não sustenta um palpite"));
+  }
+  box.append(txt);
+  s2.append(box);
+  if (c.pista) {
+    const p = el("div", "notebox", c.pista);
+    p.style.marginTop = "8px";
+    s2.append(p);
+  }
+  const nota = el("div", "notebox", c.nota || "");
+  if (c.nota) { nota.style.marginTop = "8px"; s2.append(nota); }
+  body.append(s2);
+
+  // Opcoes
+  const s3 = el("div");
+  s3.append(el("div", "sec-h", "Para onde vai"));
+  const opts = el("div", "opts");
+  opts.style.marginTop = "10px";
+  const sel = decisoes[id] || "";
+  opcoesDe(c).forEach(o => {
+    const b = el("button", "opt-row" + (sel === o.cod ? " on" : ""));
+    b.type = "button";
+    b.append(el("span", "cod", o.cod));
+    const w = el("span");
+    w.append(el("span", "nm", o.nome));
+    if (o.cod === c.sugestao) {
+      const t = badge("sugerido", BADGE_CONF[c.confianca]);
+      t.style.marginLeft = "8px";
+      w.append(t);
+    }
+    b.append(w);
+    if (sel === o.cod) b.append(el("span", "mk", "✓"));
+    b.addEventListener("click", () => {
+      decisoes[id] = o.cod; salvar(); render(); abrir(id);
+    });
+    opts.append(b);
+  });
+  s3.append(opts);
+  body.append(s3);
+
+  // Progresso do bucket
+  const irmaos = dados.filter(x => x.subindicador_antigo === c.subindicador_antigo);
+  const feitos = irmaos.filter(x => decisoes[x.evento_id]).length;
+  const s4 = el("div");
+  s4.append(el("div", "sec-h", "Progresso desta categoria"));
+  const req = el("div", "req");
+  req.style.marginTop = "10px";
+  const bar = el("div", "bar"), bi = el("i");
+  bi.style.width = (100 * feitos / irmaos.length) + "%";
+  bar.append(bi);
+  const inner = el("div", "inner");
+  const hd = el("div", "hd");
+  hd.append(el("b", null, c.subindicador_antigo));
+  hd.append(el("span", "n mono", feitos + "/" + irmaos.length));
+  inner.append(hd);
+  req.append(bar, inner);
+  s4.append(req);
+  body.append(s4);
+
+  $("#peekAceitar").disabled = !c.sugestao;
+  $("#peek").classList.add("on");
+  $("#peek").setAttribute("aria-hidden", "false");
+  $("#scrim").classList.add("on");
+  render();
+}
+
+function fechar() {
+  atual = null;
+  $("#peek").classList.remove("on");
+  $("#peek").setAttribute("aria-hidden", "true");
+  $("#scrim").classList.remove("on");
+  render();
+}
+
+function irPara(delta) {
+  const vis = visiveis();
+  if (!vis.length) return;
+  const i = vis.findIndex(c => c.evento_id === atual);
+  const prox = vis[Math.max(0, Math.min(vis.length - 1, (i < 0 ? 0 : i) + delta))];
+  if (prox) abrir(prox.evento_id);
+}
+
+$("#peekClose").addEventListener("click", fechar);
+$("#scrim").addEventListener("click", fechar);
+$("#peekPrev").addEventListener("click", () => irPara(-1));
+$("#peekNext").addEventListener("click", () => irPara(1));
+$("#peekLimpar").addEventListener("click", () => { if (atual) { delete decisoes[atual]; salvar(); abrir(atual); } });
+$("#peekAceitar").addEventListener("click", () => {
+  const c = acharCaso(atual);
+  if (c && c.sugestao) { decisoes[atual] = c.sugestao; salvar(); irPara(1); }
+});
+
+// ═══ Toast ════════════════════════════════════════════════
+let toastT = null;
+function toast(titulo, corpo) {
+  const antigo = $(".toast"); if (antigo) antigo.remove();
+  const t = el("div", "toast");
+  t.append(el("b", null, titulo));
+  if (corpo) t.append(el("span", null, corpo));
+  document.body.append(t);
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.remove(), 4200);
+}
+
+// ═══ Acoes ════════════════════════════════════════════════
+$("#fSit").addEventListener("change", render);
+$("#fConf").addEventListener("change", render);
+$("#fClear").addEventListener("click", () => {
+  $("#fSit").value = "pendentes"; $("#fConf").value = ""; bucket = ""; render();
+});
+$("#fReset").addEventListener("click", () => {
+  if (confirm("Apagar todas as decisões registradas nesta máquina?")) {
+    decisoes = {}; salvar(); fechar(); render();
+    toast("Decisões apagadas", "O progresso ficava só neste navegador.");
+  }
+});
+$("#btnAceitar").addEventListener("click", () => {
+  let n = 0;
+  dados.forEach(c => {
+    if (c.confianca === "alta" && c.sugestao && !decisoes[c.evento_id]) { decisoes[c.evento_id] = c.sugestao; n++; }
+  });
+  salvar(); render();
+  toast(n ? n + " decisões aceitas" : "Nada novo para aceitar",
+        n ? "Só as de confiança alta — onde o próprio registro rotula o teor." : "");
+});
+$("#btnExport").addEventListener("click", () => {
+  const cols = ["evento_id", "paciente_id", "paciente", "data", "indicador_antigo",
+                "subindicador_antigo", "sugestao", "confianca", "DECISAO", "observacoes_raw"];
+  const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const linhas = [cols.join(",")];
+  dados.forEach(c => linhas.push(cols.map(k => q(k === "DECISAO" ? (decisoes[c.evento_id] || "") : c[k])).join(",")));
+  const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "decisoes-fase2.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const pend = dados.length - Object.keys(decisoes).length;
+  toast("CSV exportado", pend ? pend + " caso(s) ainda sem decisão saíram com a coluna vazia." : "Todos os casos decididos.");
+});
+
+// ═══ Paleta de comandos ═══════════════════════════════════
+let cmdCur = 0, cmdHits = [];
+const cmdk = $("#cmdk"), cmdInput = $("#cmdInput"), cmdList = $("#cmdList");
+function abrirCmd() { cmdk.classList.add("on"); cmdInput.value = ""; buscarCmd(); cmdInput.focus(); }
+function fecharCmd() { cmdk.classList.remove("on"); }
+function buscarCmd() {
+  const q = cmdInput.value.trim().toLowerCase();
+  cmdHits = (q ? dados.filter(c =>
+    (c.paciente + " " + c.subindicador_antigo + " " + (c.observacoes_raw || "")).toLowerCase().includes(q)
+  ) : dados).slice(0, 40);
+  cmdCur = 0;
+  cmdList.textContent = "";
+  if (!cmdHits.length) { cmdList.append(el("div", "cmdk-empty", "Nada encontrado.")); return; }
+  cmdHits.forEach((c, i) => {
+    const b = el("button", "cmdk-item" + (i === cmdCur ? " cur" : ""));
+    b.type = "button";
+    b.append(el("span", "code", (c.subindicador_antigo.match(/^\s*([\d.]+)/) || [, "?"])[1]));
+    b.append(el("span", null, c.paciente));
+    b.append(el("span", "hint", decisoes[c.evento_id] ? "decidido" : "pendente"));
+    b.addEventListener("click", () => { fecharCmd(); abrir(c.evento_id); });
+    cmdList.append(b);
+  });
+}
+$("#openCmd").addEventListener("click", abrirCmd);
+cmdInput.addEventListener("input", buscarCmd);
+cmdk.addEventListener("click", e => { if (e.target === cmdk) fecharCmd(); });
+
+document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirCmd(); return; }
+  if (cmdk.classList.contains("on")) {
+    if (e.key === "Escape") { fecharCmd(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cmdCur = Math.max(0, Math.min(cmdHits.length - 1, cmdCur + (e.key === "ArrowDown" ? 1 : -1)));
+      [...cmdList.children].forEach((b, i) => b.classList.toggle("cur", i === cmdCur));
+      cmdList.children[cmdCur]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cmdHits[cmdCur]) { fecharCmd(); abrir(cmdHits[cmdCur].evento_id); }
+    return;
+  }
+  if (e.key === "Escape" && atual) fechar();
+  if (!atual) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); irPara(1); }
+  if (e.key === "ArrowUp") { e.preventDefault(); irPara(-1); }
+  // 1..9 escolhe a opcao pela posicao
+  const c = acharCaso(atual);
+  if (c && /^[1-9]$/.test(e.key)) {
+    const o = opcoesDe(c)[Number(e.key) - 1];
+    if (o) { decisoes[atual] = o.cod; salvar(); abrir(atual); }
+  }
+});
+
+// ═══ Boot ═════════════════════════════════════════════════
+aplicarTema(tema);
+fetch("dados.json").then(r => r.json()).then(d => {
+  dados = d;
+  render();
+}).catch(() => {
+  $("#rows").textContent = "";
+  $("#vazio").classList.remove("hidden");
+  $("#vazio").textContent = "Não consegui carregar dados.json — rode gerar_interface.py e sirva a pasta por HTTP.";
+});
+</script>
