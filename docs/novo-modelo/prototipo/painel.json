@@ -1,0 +1,2269 @@
+{
+ "competencia": "08/2026",
+ "gerado": "2026-08-28",
+ "cards": [
+  {
+   "code": "01",
+   "nome": "Movimentação da Carteira",
+   "nota": "Cada linha é um episódio de cuidado, não um evento solto. A admissão abre o episódio; o desfecho (1.2 a 1.7) o fecha. Ninguém some da base — o episódio encerra.",
+   "espelho": null,
+   "meta": {
+    "txt": "Saídas não eletivas ≤ 30% das saídas do mês",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Movimentações",
+     "v": "8",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Admissões (1.1)",
+     "v": "2",
+     "d": "entradas",
+     "warn": false
+    },
+    {
+     "k": "Saídas (1.2 – 1.7)",
+     "v": "6",
+     "d": "desfechos registrados",
+     "warn": false
+    },
+    {
+     "k": "Episódios abertos",
+     "v": "4",
+     "d": "carteira ativa",
+     "warn": false
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Complexidade",
+    "Origem",
+    "Admissão",
+    "Permanência",
+    "Dispositivos",
+    "Situação"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed · ID)",
+     "Alta",
+     "Hospital",
+     "18 de mar",
+     "163 d",
+     "SNE · SVD · TQT",
+     "Em acompanhamento"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj · ID)",
+     "Alta",
+     "Hospital",
+     "02 de mai",
+     "118 d",
+     "GTT",
+     "Em acompanhamento"
+    ],
+    [
+     "Alcides R. Bonfim (Unimed · AD)",
+     "Média",
+     "Ambulatório",
+     "11 de jun",
+     "69 d",
+     "—",
+     "1.2Alta por objetivo terapêutico"
+    ],
+    [
+     "Therezinha M. Couto (Particular · AD)",
+     "Baixa",
+     "Domicílio",
+     "24 de jun",
+     "44 d",
+     "—",
+     "1.3Alta por transição de nível"
+    ],
+    [
+     "Iracema D. Bastos (Unimed · ID)",
+     "Alta",
+     "Hospital",
+     "01 de jul",
+     "58 d",
+     "TQT · GTT",
+     "Em acompanhamento"
+    ],
+    [
+     "Custódia F. Aragão (Camperj · AD)",
+     "Média",
+     "Hospital",
+     "09 de jul",
+     "44 d",
+     "SNE",
+     "1.4Saída por óbito"
+    ],
+    [
+     "Adalberto S. Nogueira (Particular · ID)",
+     "Alta",
+     "Hospital",
+     "15 de jul",
+     "41 d",
+     "TQT",
+     "1.5Saída por internação prolongada"
+    ],
+    [
+     "Ubirajara L. Pimentel (Unimed · AD)",
+     "Baixa",
+     "Ambulatório",
+     "28 de jul",
+     "17 d",
+     "—",
+     "1.6Desligamento administrativo"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj · AD)",
+     "Média",
+     "Domicílio",
+     "04 de ago",
+     "24 d",
+     "—",
+     "Em acompanhamento"
+    ],
+    [
+     "Genésio T. Vilar (Particular · ID)",
+     "Alta",
+     "Hospital",
+     "12 de ago",
+     "14 d",
+     "SVD",
+     "1.7Transferência para outra prestadora"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Mar",
+     "Mai",
+     "Jun",
+     "Jul",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "01 — Movimentação da Carteira",
+       "1",
+       "1",
+       "2",
+       "4",
+       "8",
+       "16"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.1 Admissão",
+       "1",
+       "1",
+       "2",
+       "4",
+       "2",
+       "10"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.2 Alta por objetivo terapêutico",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.3 Alta por transição de nível",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.4 Saída por óbito",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.5 Saída por internação prolongada",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.6 Desligamento administrativo",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "1.7 Transferência para outra prestadora",
+       "—",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": []
+  },
+  {
+   "code": "02",
+   "nome": "Intercorrências e Resolutividade",
+   "nota": "A taxa de internação hospitalar sai daqui, do desfecho 2.4 — o antigo card 03 deixou de existir. 2.3 e 2.4 são desfechos diferentes e nunca se somam.",
+   "espelho": null,
+   "meta": {
+    "txt": "Resolutividade no domicílio ≥ 70%",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Intercorrências",
+     "v": "8",
+     "d": "no período",
+     "warn": false
+    },
+    {
+     "k": "Resolvidas no domicílio",
+     "v": "37,5%",
+     "d": "2.1 + 2.2 — resolutividade",
+     "warn": false
+    },
+    {
+     "k": "Taxa de internação",
+     "v": "25%",
+     "d": "derivada de 2.4",
+     "warn": true
+    },
+    {
+     "k": "Remoções com retorno",
+     "v": "2",
+     "d": "2.3 — retorno em 24h",
+     "warn": false
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Quando",
+    "Causa",
+    "Desfecho",
+    "Destino",
+    "Evitabilidade"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed)",
+     "26 de ago · 03h20",
+     "Descompensação da doença de base",
+     "2.1Resolvida pela equipe no domicílio",
+     "Domicílio",
+     "—"
+    ],
+    [
+     "Iracema D. Bastos (Unimed)",
+     "24 de ago · 14h05",
+     "Infecção",
+     "2.4Remoção com internação hospitalar",
+     "Hospital Sul",
+     "Não evitável"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj)",
+     "21 de ago · 22h40",
+     "Falha de insumo ou equipamento",
+     "2.3Remoção APH com retorno em até 24h",
+     "Pronto-socorro Norte",
+     "Evitável"
+    ],
+    [
+     "Custódia F. Aragão (Camperj)",
+     "20 de ago · 06h10",
+     "Descompensação da doença de base",
+     "2.5Óbito durante a intercorrência",
+     "Domicílio",
+     "Não evitável"
+    ],
+    [
+     "Adalberto S. Nogueira (Particular)",
+     "17 de ago · 11h55",
+     "Evento adverso",
+     "2.4Remoção com internação hospitalar",
+     "Hospital Central",
+     "Evitável"
+    ],
+    [
+     "Odete S. Maranhão (Camperj)",
+     "13 de ago · 19h30",
+     "Falha de adesão ou de suporte familiar",
+     "2.2Resolvida com suporte médico",
+     "Domicílio",
+     "—"
+    ],
+    [
+     "Genésio T. Vilar (Particular)",
+     "09 de ago · 08h15",
+     "Causa externa",
+     "2.3Remoção APH com retorno em até 24h",
+     "Pronto-socorro Leste",
+     "Inconclusivo"
+    ],
+    [
+     "Neusa A. Prado (Unimed)",
+     "05 de ago · 16h45",
+     "Infecção",
+     "2.1Resolvida pela equipe no domicílio",
+     "Domicílio",
+     "—"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "02 — Intercorrências e Resolutividade",
+       "8",
+       "8"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "2.1 Resolvida pela equipe no domicílio",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "2.2 Resolvida com suporte médico",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "2.3 Remoção APH com retorno em até 24h",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "2.4 Remoção com internação hospitalar",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "2.5 Óbito durante a intercorrência",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "INT-0915",
+     "quem": "Iracema D. Bastos",
+     "texto": "Campo obrigatório em falta: Data e hora; Data de retorno ao domicílio"
+    },
+    {
+     "registro": "INT-0924",
+     "quem": "Adalberto S. Nogueira",
+     "texto": "Internação classificada como evitável. Entra no numerador do indicador de evitabilidade e dispara revisão do plano de cuidado."
+    },
+    {
+     "registro": "INT-0924",
+     "quem": "Adalberto S. Nogueira",
+     "texto": "Campo obrigatório em falta: Data e hora; Data de retorno ao domicílio"
+    }
+   ]
+  },
+  {
+   "code": "03",
+   "nome": "Óbitos",
+   "nota": "Detalhamento clínico das saídas por óbito registradas no card 01 (1.4). Serve à revisão de caso, não à contagem — por isso não soma ao painel.",
+   "espelho": "Espelho de 1.4 — não soma ao painel",
+   "meta": null,
+   "stats": [
+    {
+     "k": "Óbitos",
+     "v": "3",
+     "d": "espelho de 1.4",
+     "warn": false
+    },
+    {
+     "k": "Com plano paliativo",
+     "v": "1",
+     "d": "3.1 — formalizado",
+     "warn": false
+    },
+    {
+     "k": "Não esperados",
+     "v": "1",
+     "d": "3.3 — revisão obrigatória",
+     "warn": true
+    },
+    {
+     "k": "Em até 48h da admissão",
+     "v": "1",
+     "d": "alerta para a diretoria",
+     "warn": true
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Data",
+    "Local",
+    "Desde a admissão",
+    "Classificação",
+    "Diretivas antecipadas",
+    "Revisão de caso"
+   ],
+   "linhas": [
+    [
+     "Custódia F. Aragão (Camperj)",
+     "22 de ago",
+     "Domicílio",
+     "acima de 30 dias",
+     "3.1Esperado, com plano paliativo formalizado",
+     "Registradas",
+     "Concluída"
+    ],
+    [
+     "Firmino J. Aguiar (Unimed)",
+     "18 de ago",
+     "Hospital",
+     "até 48h",
+     "3.3Não esperado",
+     "Ausentes",
+     "Pendente"
+    ],
+    [
+     "Dulcinéia B. Rezende (Particular)",
+     "06 de ago",
+     "Pronto-socorro",
+     "acima de 30 dias",
+     "3.2Esperado, sem plano formalizado",
+     "Ausentes",
+     "Em análise"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "03 — Óbitos",
+       "3",
+       "3"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "3.1 Esperado, com plano paliativo formalizado",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "3.2 Esperado, sem plano formalizado",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "3.3 Não esperado",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "OBT-0072",
+     "quem": "Firmino J. Aguiar",
+     "texto": "Alerta de revisão de caso enviado à diretoria médica. Disparado por óbito em até 48h da admissão ou classificado como não esperado (3.3)."
+    },
+    {
+     "registro": "OBT-0072",
+     "quem": "Firmino J. Aguiar",
+     "texto": "Campo obrigatório em falta: Diretivas antecipadas registradas"
+    },
+    {
+     "registro": "OBT-0073",
+     "quem": "Dulcinéia B. Rezende",
+     "texto": "Campo obrigatório em falta: Diretivas antecipadas registradas"
+    }
+   ]
+  },
+  {
+   "code": "04",
+   "nome": "Adequação e Execução do PAD",
+   "nota": "Duas coisas no mesmo card: as alterações do plano (4.1 a 4.4) e a execução do mês — previstos contra realizados.",
+   "espelho": null,
+   "meta": {
+    "txt": "Aderência ao PAD ≥ 90%",
+    "ok": true
+   },
+   "stats": [
+    {
+     "k": "Alterações",
+     "v": "7",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Atendimentos previstos",
+     "v": "1.284",
+     "d": "conforme PAD vigente",
+     "warn": false
+    },
+    {
+     "k": "Atendimentos realizados",
+     "v": "1.173",
+     "d": "111 não realizados",
+     "warn": false
+    },
+    {
+     "k": "Aderência",
+     "v": "91,4%",
+     "d": "realizados / previstos",
+     "warn": false
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Data",
+    "Alteração",
+    "De → para",
+    "Motivo",
+    "Origem da demanda"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed)",
+     "27 de ago",
+     "4.1Ampliação do plano",
+     "12h/dia → 24h/dia",
+     "Mudança do quadro clínico",
+     "Necessidade clínica"
+    ],
+    [
+     "Odete S. Maranhão (Camperj)",
+     "23 de ago",
+     "4.2Redução do plano",
+     "5x/semana → 3x/semana",
+     "Reavaliação de pertinência ou auditoria",
+     "Operadora"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj)",
+     "20 de ago",
+     "4.3Mudança de modalidade AD ↔ ID",
+     "AD → ID",
+     "Pós-intercorrência ou internação",
+     "Necessidade clínica"
+    ],
+    [
+     "Ubirajara L. Pimentel (Unimed)",
+     "14 de ago",
+     "4.4Suspensão ou encerramento do plano",
+     "Ativo → Encerrado",
+     "Solicitação sem sustentação clínica",
+     "Família"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj)",
+     "11 de ago",
+     "4.1Ampliação do plano",
+     "3x/semana → Diária",
+     "Mudança do quadro clínico",
+     "Necessidade clínica"
+    ],
+    [
+     "Genésio T. Vilar (Particular)",
+     "06 de ago",
+     "4.2Redução do plano",
+     "2x/semana → 1x/semana",
+     "Indisponibilidade de recurso",
+     "Operação"
+    ],
+    [
+     "Therezinha M. Couto (Particular)",
+     "02 de ago",
+     "4.3Mudança de modalidade AD ↔ ID",
+     "ID → AD",
+     "Reavaliação de pertinência ou auditoria",
+     "Operadora"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "04 — Adequação e Execução do PAD",
+       "7",
+       "7"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "4.1 Ampliação do plano",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "4.2 Redução do plano",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "4.3 Mudança de modalidade AD ↔ ID",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "4.4 Suspensão ou encerramento do plano",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": []
+  },
+  {
+   "code": "05",
+   "nome": "Eventos Adversos",
+   "nota": "Lesão por pressão saiu deste card e passou para o 06, como episódio próprio. O que fica aqui são eventos pontuais, com grau de dano e prazo de análise causal de 7 dias.",
+   "espelho": null,
+   "meta": {
+    "txt": "Eventos com dano grave ou óbito = 0",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Eventos",
+     "v": "8",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Com dano grave ou óbito",
+     "v": "2",
+     "d": "revisão obrigatória",
+     "warn": true
+    },
+    {
+     "k": "Near miss (5.9)",
+     "v": "1",
+     "d": "não atingiu o paciente",
+     "warn": false
+    },
+    {
+     "k": "Análise causal vencida",
+     "v": "1",
+     "d": "prazo de 7 dias",
+     "warn": true
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Evento",
+    "Data",
+    "Grau do dano",
+    "Evitabilidade",
+    "Turno",
+    "Análise causal"
+   ],
+   "linhas": [
+    [
+     "Firmino J. Aguiar (Unimed)",
+     "5.3Broncoaspiração",
+     "17 de ago",
+     "Óbito",
+     "Inconclusivo",
+     "Noite",
+     "Vencido há 4d"
+    ],
+    [
+     "Marta L. Andrade (Unimed)",
+     "5.5Saída acidental de GTT ou SNE",
+     "23 de ago",
+     "Leve",
+     "Evitável",
+     "Manhã",
+     "2 dias"
+    ],
+    [
+     "Adalberto S. Nogueira (Particular)",
+     "5.4Decanulação acidental",
+     "16 de ago",
+     "Grave",
+     "Evitável",
+     "Madrugada",
+     "Concluída 21 de ago"
+    ],
+    [
+     "Odete S. Maranhão (Camperj)",
+     "5.2Queda com dano",
+     "12 de ago",
+     "Moderado",
+     "Evitável",
+     "Tarde",
+     "Concluída 18 de ago"
+    ],
+    [
+     "Neusa A. Prado (Unimed)",
+     "5.1Queda sem dano",
+     "10 de ago",
+     "Sem dano",
+     "Evitável",
+     "Tarde",
+     "Concluída 15 de ago"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj)",
+     "5.7Erro ou omissão de medicação",
+     "08 de ago",
+     "Leve",
+     "Evitável",
+     "Manhã",
+     "Concluída 14 de ago"
+    ],
+    [
+     "Genésio T. Vilar (Particular)",
+     "5.9Near miss — não atingiu o paciente",
+     "04 de ago",
+     "Sem dano",
+     "Evitável",
+     "Noite",
+     "Concluída 09 de ago"
+    ],
+    [
+     "Iracema D. Bastos (Unimed)",
+     "5.8Falha ou falta de equipamento",
+     "01 de ago",
+     "Sem dano",
+     "Não evitável",
+     "Madrugada",
+     "Concluída 07 de ago"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "05 — Eventos Adversos",
+       "8",
+       "8"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.1 Queda sem dano",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.2 Queda com dano",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.3 Broncoaspiração",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.4 Decanulação acidental",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.5 Saída acidental de GTT ou SNE",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.6 Saída acidental de SVD, cistostomia ou PICC",
+       "—",
+       "0"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.7 Erro ou omissão de medicação",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.8 Falha ou falta de equipamento",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "5.9 Near miss — não atingiu o paciente",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "EA-0233",
+     "quem": "Firmino J. Aguiar",
+     "texto": "Análise causal vencida. O prazo é de 7 dias a partir da notificação — venceu em 24/08/2026."
+    },
+    {
+     "registro": "EA-0233",
+     "quem": "Firmino J. Aguiar",
+     "texto": "Campo obrigatório em falta: Data de conclusão da análise causal"
+    },
+    {
+     "registro": "EA-0236",
+     "quem": "Marta L. Andrade",
+     "texto": "Campo obrigatório em falta: Data de conclusão da análise causal"
+    }
+   ]
+  },
+  {
+   "code": "06",
+   "nome": "Lesões de Pele",
+   "nota": "Cada lesão é um episódio com abertura, série de avaliações e fechamento — não uma contagem de ocorrências. A origem é derivada da primeira avaliação com foto.",
+   "espelho": null,
+   "meta": {
+    "txt": "Lesões adquiridas sob assistência ≤ 2 no mês",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Lesões ativas",
+     "v": "7",
+     "d": "em 118 episódios abertos",
+     "warn": false
+    },
+    {
+     "k": "Presente na admissão",
+     "v": "2",
+     "d": "não conta como adquirida",
+     "warn": false
+    },
+    {
+     "k": "Adquirida sob assistência",
+     "v": "5",
+     "d": "indicador de resultado",
+     "warn": false
+    },
+    {
+     "k": "Cicatrizadas no período",
+     "v": "2",
+     "d": "fechadas em 08/2026",
+     "warn": false
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Tipo",
+    "Local anatômico",
+    "Origem",
+    "Aberta",
+    "Dias",
+    "Braden",
+    "PUSH",
+    "Status"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed · ID)",
+     "6.3LPP estágio 3 ou 4",
+     "Sacro",
+     "Adquirida",
+     "14 de jul",
+     "45",
+     "11",
+     "11",
+     "Ativa"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj · ID)",
+     "6.2LPP estágio 2",
+     "Calcâneo direito",
+     "Na admissão",
+     "02 de ago",
+     "26",
+     "13",
+     "8",
+     "Ativa"
+    ],
+    [
+     "Neusa A. Prado (Unimed · AD)",
+     "6.5Lesão por dispositivo médico",
+     "Asa do nariz (SNE)",
+     "Adquirida",
+     "09 de ago",
+     "19",
+     "15",
+     "6",
+     "Ativa"
+    ],
+    [
+     "Genésio T. Vilar (Particular · ID)",
+     "6.7Úlcera venosa, arterial ou pé diabético",
+     "Maléolo lateral D",
+     "Na admissão",
+     "30 de jun",
+     "59",
+     "16",
+     "9",
+     "Ativa"
+    ],
+    [
+     "Odete S. Maranhão (Camperj · ID)",
+     "6.6Dermatite associada à incontinência",
+     "Região perineal",
+     "Adquirida",
+     "16 de ago",
+     "12",
+     "12",
+     "7",
+     "Ativa"
+    ],
+    [
+     "Rubem C. Falcão (Unimed · AD)",
+     "6.8Ferida operatória ou skin tear",
+     "Antebraço esquerdo",
+     "Adquirida",
+     "20 de ago",
+     "8",
+     "17",
+     "5",
+     "Ativa"
+    ],
+    [
+     "Iracema D. Bastos (Unimed · ID)",
+     "6.2LPP estágio 2",
+     "Trocanter esquerdo",
+     "Adquirida",
+     "28 de mai",
+     "76",
+     "14",
+     "0",
+     "Cicatrizada 12 de ago"
+    ],
+    [
+     "Wilson E. Tavares (Particular · ID)",
+     "6.1LPP estágio 1",
+     "Região occipital",
+     "Na admissão",
+     "11 de jun",
+     "55",
+     "13",
+     "0",
+     "Cicatrizada 05 de ago"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj · AD)",
+     "6.4LPP não classificável ou tissular profunda",
+     "Ísquio direito",
+     "Adquirida",
+     "24 de ago",
+     "4",
+     "10",
+     "15",
+     "Ativa"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Mai",
+     "Jun",
+     "Jul",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "06 — Lesões de Pele",
+       "1",
+       "2",
+       "1",
+       "5",
+       "9"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.1 LPP estágio 1",
+       "—",
+       "1",
+       "—",
+       "—",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.2 LPP estágio 2",
+       "1",
+       "—",
+       "—",
+       "1",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.3 LPP estágio 3 ou 4",
+       "—",
+       "—",
+       "1",
+       "—",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.4 LPP não classificável ou tissular profunda",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.5 Lesão por dispositivo médico",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.6 Dermatite associada à incontinência",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.7 Úlcera venosa, arterial ou pé diabético",
+       "—",
+       "1",
+       "—",
+       "—",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "6.8 Ferida operatória ou skin tear",
+       "—",
+       "—",
+       "—",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "LES-0442",
+     "quem": "Neusa A. Prado",
+     "texto": "Sem foto em 48h da implantação. O sistema gravou esta lesão como adquirida sob assistência. Anexar a foto datada reclassifica o episódio."
+    },
+    {
+     "registro": "LES-0442",
+     "quem": "Neusa A. Prado",
+     "texto": "Campo obrigatório em falta: Foto datada"
+    },
+    {
+     "registro": "LES-0451",
+     "quem": "Odete S. Maranhão",
+     "texto": "Campo obrigatório em falta: Escala de Braden"
+    },
+    {
+     "registro": "LES-0459",
+     "quem": "Zulmira N. Peixoto",
+     "texto": "Campo obrigatório em falta: Data de abertura; Data prevista de reavaliação"
+    }
+   ]
+  },
+  {
+   "code": "07",
+   "nome": "Custo e Evitabilidade das Lesões",
+   "nota": "Campo de valor, não contador. Todo lançamento é vinculado a um episódio de lesão do card 06 — nunca solto no paciente.",
+   "espelho": null,
+   "meta": {
+    "txt": "Custo evitável ≤ 30% do custo do período",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Custo do período",
+     "v": "R$ 17.565,90",
+     "d": "todos os episódios",
+     "warn": false
+    },
+    {
+     "k": "Custo evitável",
+     "v": "70,5%",
+     "d": "lesões adquiridas sob assistência",
+     "warn": true
+    },
+    {
+     "k": "Custo por episódio encerrado",
+     "v": "R$ 1.565,55",
+     "d": "2 episódios fechados",
+     "warn": false
+    },
+    {
+     "k": "Risco de glosa",
+     "v": "29,2%",
+     "d": "internação atribuída à lesão adquirida",
+     "warn": true
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Episódio",
+    "Lesão",
+    "Origem",
+    "Lançamentos",
+    "Custo acumulado",
+    "Glosa"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed · ID)",
+     "LES-0418",
+     "6.3LPP estágio 3 ou 4",
+     "Adquirida",
+     "3",
+     "R$ 2.846,40",
+     "—"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj · ID)",
+     "LES-0431",
+     "6.2LPP estágio 2",
+     "Na admissão",
+     "2",
+     "R$ 730,90",
+     "—"
+    ],
+    [
+     "Neusa A. Prado (Unimed · AD)",
+     "LES-0442",
+     "6.5Lesão por dispositivo médico",
+     "Adquirida",
+     "1",
+     "R$ 168,50",
+     "—"
+    ],
+    [
+     "Genésio T. Vilar (Particular · ID)",
+     "LES-0447",
+     "6.7Úlcera venosa, arterial ou pé diabético",
+     "Na admissão",
+     "3",
+     "R$ 4.234,30",
+     "—"
+    ],
+    [
+     "Odete S. Maranhão (Camperj · ID)",
+     "LES-0451",
+     "6.6Dermatite associada à incontinência",
+     "Adquirida",
+     "2",
+     "R$ 1.186,70",
+     "—"
+    ],
+    [
+     "Rubem C. Falcão (Unimed · AD)",
+     "LES-0455",
+     "6.8Ferida operatória ou skin tear",
+     "Adquirida",
+     "1",
+     "R$ 132,00",
+     "—"
+    ],
+    [
+     "Iracema D. Bastos (Unimed · ID)",
+     "LES-0392",
+     "6.2LPP estágio 2",
+     "Adquirida",
+     "2",
+     "R$ 2.912,20",
+     "—"
+    ],
+    [
+     "Wilson E. Tavares (Particular · ID)",
+     "LES-0404",
+     "6.1LPP estágio 1",
+     "Na admissão",
+     "1",
+     "R$ 218,90",
+     "—"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj · AD)",
+     "LES-0459",
+     "6.4LPP não classificável ou tissular profunda",
+     "Adquirida",
+     "3",
+     "R$ 5.136,00",
+     "Em risco"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Mai",
+     "Jun",
+     "Jul",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "07 — Custo e Evitabilidade das Lesões",
+       "R$ 2.912,20",
+       "R$ 4.453,20",
+       "R$ 2.846,40",
+       "R$ 7.354,10",
+       "R$ 17.565,90"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.1 Coberturas e insumos de curativo",
+       "R$ 1.640,20",
+       "R$ 2.358,90",
+       "R$ 1.284,40",
+       "R$ 1.496,10",
+       "R$ 6.779,60"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.2 Horas de enfermagem em curativo",
+       "R$ 1.272,00",
+       "R$ 1.608,00",
+       "R$ 942,00",
+       "R$ 318,00",
+       "R$ 4.140,00"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.3 Visitas extras de enfermeiro ou estomaterapeuta",
+       "—",
+       "—",
+       "R$ 620,00",
+       "—",
+       "R$ 620,00"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.4 Equipamentos de prevenção e terapia",
+       "—",
+       "—",
+       "—",
+       "R$ 2.340,00",
+       "R$ 2.340,00"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.5 Rateio de antimicrobianos e exames de ferida",
+       "—",
+       "R$ 486,30",
+       "—",
+       "—",
+       "R$ 486,30"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "7.6 Rateio de internação atribuída à lesão",
+       "—",
+       "—",
+       "—",
+       "R$ 3.200,00",
+       "R$ 3.200,00"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "CST-0459",
+     "quem": "Zulmira N. Peixoto",
+     "texto": "Risco de glosa. Há rateio de internação atribuída a uma lesão adquirida sob assistência. A operadora pode recusar o valor."
+    }
+   ]
+  },
+  {
+   "code": "08",
+   "nome": "Infecção e Antimicrobianos",
+   "nota": "O corte antigo por tempo de antibiótico deixou de existir. A classificação agora é por topografia, e o alerta dispara com 10 dias ou mais de uso sem reavaliação.",
+   "espelho": null,
+   "meta": {
+    "txt": "Infecção relacionada à assistência ≤ 40%",
+    "ok": false
+   },
+   "stats": [
+    {
+     "k": "Infecções",
+     "v": "7",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Comunitária ou na admissão",
+     "v": "3",
+     "d": "não atribuída à assistência",
+     "warn": false
+    },
+    {
+     "k": "Relacionada à assistência",
+     "v": "4",
+     "d": "indicador de resultado",
+     "warn": true
+    },
+    {
+     "k": "Antimicrobiano ≥ 10 dias",
+     "v": "2",
+     "d": "sem reavaliação registrada",
+     "warn": true
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Topografia",
+    "Classificação",
+    "Dispositivo",
+    "Cultura",
+    "Antimicrobiano",
+    "Dias de uso",
+    "Desfecho"
+   ],
+   "linhas": [
+    [
+     "Iracema D. Bastos (Unimed)",
+     "8.3Respiratória com traqueostomia ou VM",
+     "Relacionada à assistência",
+     "Traqueostomia",
+     "Coletada antes",
+     "Piperacilina-tazobactam · endovenosa",
+     "13 dias",
+     "Em tratamento"
+    ],
+    [
+     "Marta L. Andrade (Unimed)",
+     "8.1ITU associada a cateter vesical",
+     "Relacionada à assistência",
+     "Cateter vesical",
+     "Coletada antes",
+     "Fosfomicina · oral",
+     "9",
+     "Em tratamento"
+    ],
+    [
+     "Genésio T. Vilar (Particular)",
+     "8.6Ferida ou lesão por pressão infectada",
+     "Relacionada à assistência",
+     "Nenhum",
+     "Coletada antes",
+     "Cefalexina · oral",
+     "7",
+     "Resolvida"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj)",
+     "8.4Pneumonia aspirativa",
+     "Comunitária",
+     "GTT",
+     "Não coletada",
+     "Ceftriaxona · endovenosa",
+     "10 dias",
+     "Em tratamento"
+    ],
+    [
+     "Odete S. Maranhão (Camperj)",
+     "8.2ITU sem cateter",
+     "Comunitária",
+     "Nenhum",
+     "Coletada antes",
+     "Nitrofurantoína · oral",
+     "5",
+     "Resolvida"
+    ],
+    [
+     "Adalberto S. Nogueira (Particular)",
+     "8.5Sítio de inserção de GTT, PICC ou TQT",
+     "Relacionada à assistência",
+     "PICC",
+     "Coletada antes",
+     "Vancomicina · endovenosa",
+     "14",
+     "Internação"
+    ],
+    [
+     "Neusa A. Prado (Unimed)",
+     "8.7Pele e partes moles",
+     "Comunitária",
+     "Nenhum",
+     "Não coletada",
+     "Amoxicilina-clavulanato · oral",
+     "7",
+     "Resolvida"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Jul",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "08 — Infecção e Antimicrobianos",
+       "1",
+       "6",
+       "7"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.1 ITU associada a cateter vesical",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.2 ITU sem cateter",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.3 Respiratória com traqueostomia ou VM",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.4 Pneumonia aspirativa",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.5 Sítio de inserção de GTT, PICC ou TQT",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.6 Ferida ou lesão por pressão infectada",
+       "—",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.7 Pele e partes moles",
+       "1",
+       "—",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "8.8 Outras topografias",
+       "—",
+       "—",
+       "0"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "INF-0341",
+     "quem": "Iracema D. Bastos",
+     "texto": "Antimicrobiano há 13 dias sem reavaliação. Alerta automático para a equipe médica a partir de 10 dias de uso."
+    },
+    {
+     "registro": "INF-0350",
+     "quem": "Sebastião P. Rocha",
+     "texto": "Antimicrobiano há 10 dias sem reavaliação. Alerta automático para a equipe médica a partir de 10 dias de uso."
+    },
+    {
+     "registro": "INF-0350",
+     "quem": "Sebastião P. Rocha",
+     "texto": "Campo obrigatório em falta: Cultura coletada antes do antibiótico"
+    },
+    {
+     "registro": "INF-0359",
+     "quem": "Neusa A. Prado",
+     "texto": "Campo obrigatório em falta: Cultura coletada antes do antibiótico"
+    }
+   ]
+  },
+  {
+   "code": "09",
+   "nome": "Ouvidoria",
+   "nota": "A categoria “Reclamações e Solicitações” foi extinta. Manifestação com mais de um teor é classificada pelo de maior criticidade; os demais entram como motivo adicional.",
+   "espelho": null,
+   "meta": {
+    "txt": "Resposta dentro do SLA ≥ 90%",
+    "ok": true
+   },
+   "stats": [
+    {
+     "k": "Manifestações",
+     "v": "8",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Reclamações (9.1)",
+     "v": "3",
+     "d": "maior criticidade",
+     "warn": false
+    },
+    {
+     "k": "Em aberto",
+     "v": "2",
+     "d": "1 fora do SLA",
+     "warn": true
+    },
+    {
+     "k": "Resposta no prazo",
+     "v": "100%",
+     "d": "SLA de 5 dias úteis",
+     "warn": false
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Teor",
+    "Motivo",
+    "Teores adicionais",
+    "Origem",
+    "Aberta",
+    "SLA",
+    "Procedência"
+   ],
+   "linhas": [
+    [
+     "Marta L. Andrade (Unimed)",
+     "9.1Reclamação",
+     "Atraso ou falta de profissional",
+     "9.2",
+     "Família",
+     "26 de ago",
+     "3 dias",
+     "—"
+    ],
+    [
+     "Genésio T. Vilar (Particular)",
+     "9.1Reclamação",
+     "Conduta técnica",
+     "—",
+     "Família",
+     "24 de ago",
+     "Vencido há 1d",
+     "—"
+    ],
+    [
+     "Odete S. Maranhão (Camperj)",
+     "9.2Solicitação",
+     "Insumo ou equipamento",
+     "—",
+     "Paciente",
+     "21 de ago",
+     "Respondida 25 de ago",
+     "Procedente"
+    ],
+    [
+     "Sebastião P. Rocha (Camperj)",
+     "9.4Elogio",
+     "Postura e relacionamento",
+     "—",
+     "Família",
+     "18 de ago",
+     "Respondida 20 de ago",
+     "Procedente"
+    ],
+    [
+     "Neusa A. Prado (Unimed)",
+     "9.5Dúvida ou pedido de informação",
+     "Faturamento ou autorização",
+     "—",
+     "Operadora",
+     "14 de ago",
+     "Respondida 19 de ago",
+     "Improcedente"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj)",
+     "9.1Reclamação",
+     "Comunicação e informação",
+     "9.5",
+     "Equipe interna",
+     "11 de ago",
+     "Respondida 17 de ago",
+     "Parcialmente"
+    ],
+    [
+     "Rubem C. Falcão (Unimed)",
+     "9.3Sugestão",
+     "Agendamento",
+     "—",
+     "Família",
+     "07 de ago",
+     "Respondida 12 de ago",
+     "Procedente"
+    ],
+    [
+     "Therezinha M. Couto (Particular)",
+     "9.2Solicitação",
+     "Troca de profissional",
+     "—",
+     "Paciente",
+     "04 de ago",
+     "Respondida 08 de ago",
+     "Procedente"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "09 — Ouvidoria",
+       "8",
+       "8"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "9.1 Reclamação",
+       "3",
+       "3"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "9.2 Solicitação",
+       "2",
+       "2"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "9.3 Sugestão",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "9.4 Elogio",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "9.5 Dúvida ou pedido de informação",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "OUV-0612",
+     "quem": "Marta L. Andrade",
+     "texto": "Campo obrigatório em falta: Procedência; Data de resposta"
+    },
+    {
+     "registro": "OUV-0615",
+     "quem": "Genésio T. Vilar",
+     "texto": "SLA de resposta vencido. O prazo de 5 dias úteis expirou em 27/08/2026."
+    },
+    {
+     "registro": "OUV-0615",
+     "quem": "Genésio T. Vilar",
+     "texto": "Campo obrigatório em falta: Procedência; Data de resposta"
+    }
+   ]
+  },
+  {
+   "code": "10",
+   "nome": "Vulnerabilidade e Proteção Social",
+   "nota": "“Em triagem” substitui a antiga “não categorizada” e é status temporário com prazo de 7 dias. Nenhum caso encerra a competência sem categoria.",
+   "espelho": null,
+   "meta": {
+    "txt": "Nenhum caso em triagem com prazo vencido",
+    "ok": true
+   },
+   "stats": [
+    {
+     "k": "Casos",
+     "v": "6",
+     "d": "no mês",
+     "warn": false
+    },
+    {
+     "k": "Em triagem",
+     "v": "1",
+     "d": "prazo de 7 dias",
+     "warn": false
+    },
+    {
+     "k": "Notificação compulsória",
+     "v": "1",
+     "d": "acionada no período",
+     "warn": false
+    },
+    {
+     "k": "Sem avaliação em 72h",
+     "v": "1",
+     "d": "serviço social",
+     "warn": true
+    }
+   ],
+   "colunas": [
+    "Paciente",
+    "Categoria",
+    "Identificado por",
+    "Aberto",
+    "Avaliação social",
+    "Notificação",
+    "Prazo"
+   ],
+   "linhas": [
+    [
+     "Odete S. Maranhão (Camperj)",
+     "Em triagem",
+     "Enfermeira da visita",
+     "25 de ago",
+     "Pendente",
+     "—",
+     "4 dias"
+    ],
+    [
+     "Zulmira N. Peixoto (Camperj)",
+     "10.6Ausência ou insuficiência de cuidador",
+     "Assistente social",
+     "19 de ago",
+     "em 2 dias",
+     "—",
+     "Reavaliar 18 de set"
+    ],
+    [
+     "Neusa A. Prado (Unimed)",
+     "10.1Negligência ou abandono do cuidado",
+     "Médico assistente",
+     "16 de ago",
+     "em 2 dias",
+     "Compulsória",
+     "Reavaliar 15 de set"
+    ],
+    [
+     "Ubirajara L. Pimentel (Unimed)",
+     "10.7Moradia inadequada ou ambiente inseguro",
+     "Fisioterapeuta",
+     "12 de ago",
+     "em 2 dias",
+     "—",
+     "Reavaliar 11 de set"
+    ],
+    [
+     "Marta L. Andrade (Unimed)",
+     "10.8Conflito familiar que interfere no plano",
+     "Assistente social",
+     "06 de ago",
+     "em 2 dias",
+     "—",
+     "Reavaliar 05 de set"
+    ],
+    [
+     "Rubem C. Falcão (Unimed)",
+     "10.9Recusa ou sabotagem do cuidado",
+     "Enfermeira da visita",
+     "01 de ago",
+     "em 2 dias",
+     "—",
+     "Reavaliar 31 de ago"
+    ]
+   ],
+   "pivot": {
+    "cols": [
+     "Indicador",
+     "Ago",
+     "Total"
+    ],
+    "rows": [
+     {
+      "pai": true,
+      "cells": [
+       "10 — Vulnerabilidade e Proteção Social",
+       "6",
+       "6"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.1 Negligência ou abandono do cuidado",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.2 Violência física",
+       "—",
+       "0"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.3 Violência psicológica",
+       "—",
+       "0"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.4 Violência sexual",
+       "—",
+       "0"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.5 Violência financeira ou patrimonial",
+       "—",
+       "0"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.6 Ausência ou insuficiência de cuidador",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.7 Moradia inadequada ou ambiente inseguro",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.8 Conflito familiar que interfere no plano",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "10.9 Recusa ou sabotagem do cuidado",
+       "1",
+       "1"
+      ]
+     },
+     {
+      "pai": false,
+      "cells": [
+       "—Em triagem",
+       "1",
+       "1"
+      ]
+     }
+    ]
+   },
+   "alertas": [
+    {
+     "registro": "VUL-0128",
+     "quem": "Odete S. Maranhão",
+     "texto": "Caso em triagem. Status temporário com prazo de 7 dias, até 01/09/2026. A competência não fecha com caso sem categoria."
+    },
+    {
+     "registro": "VUL-0128",
+     "quem": "Odete S. Maranhão",
+     "texto": "Campo obrigatório em falta: Avaliação do serviço social em até 72h; Conduta adotada"
+    }
+   ]
+  }
+ ],
+ "paginas": [
+  {
+   "nome": "Eventos",
+   "lead": "Lista única de todos os registros das dez categorias, com filtro por intervalo de ocorrência, busca por paciente e edição em linha.",
+   "itens": [
+    [
+     "Mantido",
+     "Filtro por intervalo da data de ocorrência, busca, ordenação e anexo de arquivo até 5 MB por registro."
+    ],
+    [
+     "Muda",
+     "Deixa de existir “indicador + subindicador genérico”: cada linha abre no formulário tipado da sua categoria."
+    ],
+    [
+     "Novo",
+     "Coluna de origem do registro — sistema ou legado importado — para separar o histórico migrado."
+    ]
+   ]
+  },
+  {
+   "nome": "Pacientes",
+   "lead": "Cadastro com operadora, datas de admissão e nascimento, anexo e histórico completo de registros.",
+   "itens": [
+    [
+     "Mantido",
+     "Cadastro, anexo de documento e histórico por paciente."
+    ],
+    [
+     "Muda",
+     "O paciente deixa de carregar a lista de eventos embutida; passa a ter episódios de cuidado, e o histórico é montado por consulta."
+    ],
+    [
+     "Novo",
+     "Um episódio aberto por paciente é garantido pelo banco, não por validação de tela."
+    ]
+   ]
+  },
+  {
+   "nome": "Pacientes inativos",
+   "lead": "Quem saiu por alta, óbito ou desligamento continua visível e auditável, fora do denominador dos indicadores.",
+   "itens": [
+    [
+     "Mantido",
+     "Página própria, com motivo e data da inativação."
+    ],
+    [
+     "Muda",
+     "“Inativo” vira consequência do episódio fechado (saída 1.2 a 1.7), não uma flag solta no paciente."
+    ],
+    [
+     "Novo",
+     "Reabertura de episódio é um registro novo, com data e responsável, em vez de reverter a flag."
+    ]
+   ]
+  },
+  {
+   "nome": "Relatórios",
+   "lead": "Tabela pivô mensal por indicador e subindicador, gráficos de barra e linha, e exportação em PDF.",
+   "itens": [
+    [
+     "Mantido",
+     "Pivô mensal, evolução por período, exportação em PDF e recorte por operadora."
+    ],
+    [
+     "Muda",
+     "Os números saem de views do banco, não de contagem no navegador — o relatório passa a bater com o painel por construção."
+    ],
+    [
+     "Novo",
+     "Recorte por origem do registro e comparação entre competências fechadas."
+    ]
+   ]
+  },
+  {
+   "nome": "Certificados",
+   "lead": "Emissão de certificado com frente e verso, logo, assinatura e carga horária.",
+   "itens": [
+    [
+     "Mantido",
+     "Layout de frente e verso, assinatura e geração para impressão."
+    ],
+    [
+     "Muda",
+     "Sai do bundle do painel e vira geração sob demanda, com o mesmo modelo."
+    ],
+    [
+     "Novo",
+     "Registro de emissão fica na auditoria: quem emitiu, quando e para quem."
+    ]
+   ]
+  },
+  {
+   "nome": "Registros do formulário público",
+   "lead": "Ocorrências enviadas sem login pelo formulário aberto, aguardando vínculo com um paciente.",
+   "itens": [
+    [
+     "Mantido",
+     "Formulário público, fila de pendentes e vínculo manual ao paciente."
+    ],
+    [
+     "Muda",
+     "As categorias liberadas deixam de ser prefixo de texto (“08 -”, “09 -”, “10 -”) e passam a ser marcadas no catálogo."
+    ],
+    [
+     "Novo",
+     "Enquanto pendente, o registro não entra em nenhum indicador — hoje isso depende de o admin lembrar de vincular."
+    ]
+   ]
+  },
+  {
+   "nome": "Auditoria",
+   "lead": "Histórico de quem criou, alterou ou removeu cada registro, com valores anteriores.",
+   "itens": [
+    [
+     "Mantido",
+     "Trilha completa por registro, com autor e data."
+    ],
+    [
+     "Muda",
+     "Sai do event store manual em Mongo e passa a trigger de auditoria no Postgres — mesma informação, sem depender de a aplicação lembrar de gravar."
+    ],
+    [
+     "Novo",
+     "Diferença campo a campo entre versões, e não só o payload inteiro."
+    ]
+   ]
+  },
+  {
+   "nome": "Usuários e acesso",
+   "lead": "Contas, perfis e login com token assinado.",
+   "itens": [
+    [
+     "Mantido",
+     "Login, perfis e controle de acesso por página."
+    ],
+    [
+     "Muda",
+     "Autorização passa a ser verificada também na API, por recurso — hoje a checagem é predominantemente de tela."
+    ],
+    [
+     "Novo",
+     "Perfil somente-leitura para auditoria da operadora."
+    ]
+   ]
+  },
+  {
+   "nome": "Notificações",
+   "lead": "Avisos de registro novo e pendências, com marcação de lido.",
+   "itens": [
+    [
+     "Mantido",
+     "Sino com contador, marcação de lido e link para o registro."
+    ],
+    [
+     "Muda",
+     "Deixa de ser só “novo evento”: as regras do documento viram alertas — óbito em 48h, antimicrobiano com 10 dias, SLA da ouvidoria, triagem de 7 dias."
+    ],
+    [
+     "Novo",
+     "Alerta com destinatário definido por regra, como a revisão de caso que vai à diretoria médica."
+    ]
+   ]
+  },
+  {
+   "nome": "Fechar competência",
+   "lead": "Encerramento do mês: valida pendências, congela os números e libera a comparação entre períodos.",
+   "itens": [
+    [
+     "Novo",
+     "Não existe hoje. O fechamento recusa competência com caso em triagem, análise causal vencida ou campo obrigatório faltando."
+    ],
+    [
+     "Muda",
+     "Depois de fechada, a competência vira leitura: correção exige registro de retificação com autor e motivo."
+    ]
+   ]
+  }
+ ]
+}
