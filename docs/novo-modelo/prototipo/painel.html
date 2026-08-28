@@ -1,0 +1,1696 @@
+<title>Painel de Indicadores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
+
+<style>
+  :root {
+    --ground:#F4F6F4; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-hi:#EDF1EE;
+    --line:#E0E5E1; --line-soft:#EBEFEB;
+    --ink:#15211D; --ink-2:#47554F; --ink-3:#77857E;
+    --accent:#1F5F52; --accent-soft:#E4EFEA; --accent-line:#BFD8CF;
+    --flag:#A3462F; --flag-soft:#F6E9E4;
+    --sev-1:#9A7B1F; --sev-1-soft:#F5EEDA;
+    --sev-2:#B0632A; --sev-2-soft:#F7E9DC;
+    --sev-3:#A3462F; --sev-3-soft:#F6E4DE;
+    --done:#3F6B5C; --done-soft:#E5EEE9;
+    --shadow-peek:-18px 0 44px rgba(12,30,24,.10);
+    --shadow-pop:0 12px 32px rgba(12,30,24,.16);
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1412; --surface:#151D1A; --surface-2:#121A17; --surface-hi:#1E2A25;
+      --line:#26332D; --line-soft:#1E2A25;
+      --ink:#E7EDE9; --ink-2:#A7B5AE; --ink-3:#7B8A83;
+      --accent:#5CB09B; --accent-soft:#1A2E28; --accent-line:#2C4A41;
+      --flag:#E08A6C; --flag-soft:#33201A;
+      --sev-1:#D6B45C; --sev-1-soft:#2E2716;
+      --sev-2:#DE9059; --sev-2-soft:#32241A;
+      --sev-3:#E08A6C; --sev-3-soft:#33201A;
+      --done:#6FAE99; --done-soft:#1B2A25;
+      --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
+      --shadow-pop:0 12px 32px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1412; --surface:#151D1A; --surface-2:#121A17; --surface-hi:#1E2A25;
+    --line:#26332D; --line-soft:#1E2A25;
+    --ink:#E7EDE9; --ink-2:#A7B5AE; --ink-3:#7B8A83;
+    --accent:#5CB09B; --accent-soft:#1A2E28; --accent-line:#2C4A41;
+    --flag:#E08A6C; --flag-soft:#33201A;
+    --sev-1:#D6B45C; --sev-1-soft:#2E2716;
+    --sev-2:#DE9059; --sev-2-soft:#32241A;
+    --sev-3:#E08A6C; --sev-3-soft:#33201A;
+    --done:#6FAE99; --done-soft:#1B2A25;
+    --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
+    --shadow-pop:0 12px 32px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric:tabular-nums; }
+  button { font:inherit; color:inherit; background:none; border:none; cursor:pointer; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+
+  .app { display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh; }
+
+  .side {
+    background:var(--surface-2); border-right:1px solid var(--line);
+    padding:14px 10px 24px; display:flex; flex-direction:column; gap:18px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .ws { display:flex; align-items:center; gap:9px; padding:4px 6px; }
+  .ws-mark {
+    width:22px; height:22px; border-radius:5px; flex:none; background:var(--accent);
+    color:#fff; display:grid; place-items:center; font-size:11px; font-weight:600; letter-spacing:-.02em;
+  }
+  :root[data-theme="dark"] .ws-mark, :root:not([data-theme="light"]) .ws-mark { color:#0E1412; }
+  .ws-name { font-weight:600; font-size:13px; letter-spacing:-.01em; }
+  .ws-sub { font-size:11px; color:var(--ink-3); }
+
+  .kbd-btn {
+    display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
+    border-radius:var(--radius); color:var(--ink-3); font-size:13px; transition:background .12s;
+  }
+  .kbd-btn:hover { background:var(--surface-hi); }
+  .kbd { margin-left:auto; font-size:10.5px; padding:1px 5px; border:1px solid var(--line); border-radius:4px; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+
+  .nav-label { font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-3); padding:0 8px 6px; font-weight:500; font-family:"IBM Plex Mono", monospace; }
+  .nav { display:flex; flex-direction:column; gap:1px; }
+  .nav button.navitem, .nav a {
+    display:flex; align-items:baseline; gap:9px; padding:5px 8px; border-radius:var(--radius);
+    color:var(--ink-2); text-decoration:none; font-size:13px; width:100%; text-align:left;
+    transition:background .12s, color .12s;
+  }
+  .nav button.navitem:hover, .nav a:hover { background:var(--surface-hi); color:var(--ink); }
+  .nav button.navitem.on { background:var(--accent-soft); color:var(--accent); font-weight:500; }
+  .nav .code { font-size:11px; color:var(--ink-3); flex:none; width:15px; }
+  .nav button.navitem.on .code { color:var(--accent); }
+  .nav .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nav .ct { margin-left:auto; font-size:11px; color:var(--ink-3); }
+
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar {
+    display:flex; align-items:center; gap:10px; padding:11px 26px;
+    border-bottom:1px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:5;
+  }
+  .crumb { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-3); min-width:0; }
+  .crumb b { color:var(--ink-2); font-weight:500; }
+  .crumb .sep { color:var(--line); }
+  .topbar .spacer { flex:1; }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--surface); font-size:12.5px; color:var(--ink-2);
+    transition:background .12s, border-color .12s;
+  }
+  .btn:hover { background:var(--surface-hi); border-color:var(--accent-line); }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
+  :root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary { color:#0E1412; }
+  .btn-primary:hover { filter:brightness(1.08); }
+
+  .page { padding:26px 26px 64px; max-width:1180px; }
+  h1 { margin:0; font-size:25px; line-height:1.15; letter-spacing:-.025em; font-weight:600; text-wrap:balance; }
+  .h-code { font-size:12px; color:var(--ink-3); letter-spacing:.04em; display:block; margin-bottom:5px; }
+  .h-note { margin:9px 0 0; color:var(--ink-2); font-size:13px; max-width:64ch; }
+
+  .mirror {
+    display:inline-flex; align-items:center; gap:7px; margin-top:12px; padding:4px 10px;
+    border:1px solid var(--sev-1); color:var(--sev-1); border-radius:5px;
+    font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    font-family:"IBM Plex Mono", monospace;
+  }
+
+  .split {
+    margin:22px 0 0; display:grid; gap:1px; grid-template-columns:repeat(auto-fit, minmax(168px,1fr));
+    background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden;
+  }
+  .split .cell { background:var(--surface); padding:13px 15px; display:flex; flex-direction:column; gap:3px; }
+  .split .cell.lead { background:var(--accent-soft); }
+  .split .cell.warn { background:var(--flag-soft); }
+  .split .k { font-size:10px; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .split .cell.lead .k { color:var(--accent); }
+  .split .cell.warn .k { color:var(--flag); }
+  .split .v { font-size:25px; font-weight:600; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .split .cell.lead .v { color:var(--accent); }
+  .split .cell.warn .v { color:var(--flag); }
+  .split .d { font-size:11.5px; color:var(--ink-3); }
+  .split .meter { height:3px; border-radius:2px; background:var(--line-soft); margin-top:5px; overflow:hidden; }
+  .split .meter i { display:block; height:100%; background:var(--accent); }
+
+  .views { display:flex; align-items:center; gap:2px; margin:24px 0 0; border-bottom:1px solid var(--line); }
+  .tab {
+    padding:7px 10px; font-size:13px; color:var(--ink-3); border-bottom:2px solid transparent;
+    margin-bottom:-1px; display:flex; align-items:center; gap:6px; transition:color .12s;
+  }
+  .tab:hover { color:var(--ink); }
+  .tab.on { color:var(--ink); border-bottom-color:var(--accent); font-weight:500; }
+  .views .spacer { flex:1; }
+  .chip-filter {
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-2);
+    padding:3px 9px; border:1px dashed var(--line); border-radius:20px; margin-bottom:6px;
+  }
+  .chip-filter b { font-weight:500; color:var(--ink); }
+
+  .tablewrap { overflow-x:auto; margin-top:2px; }
+  table { border-collapse:collapse; width:100%; min-width:900px; }
+  thead th {
+    text-align:left; font-weight:500; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-3); padding:10px 12px; border-bottom:1px solid var(--line);
+    white-space:nowrap; font-family:"IBM Plex Mono", monospace;
+  }
+  tbody tr { border-bottom:1px solid var(--line-soft); cursor:pointer; transition:background .1s; }
+  tbody tr:hover { background:var(--surface); }
+  tbody tr.sel { background:var(--accent-soft); }
+  tbody td { padding:9px 12px; vertical-align:middle; }
+  td.pat { font-weight:500; white-space:nowrap; }
+  td.pat .op { display:block; font-size:11px; color:var(--ink-3); font-weight:400; }
+  td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .dim { color:var(--ink-3); }
+  .nowrap { white-space:nowrap; }
+
+  .badge { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:20px; font-size:11.5px; white-space:nowrap; font-weight:450; }
+  .badge .dot { width:5px; height:5px; border-radius:50%; background:currentColor; flex:none; }
+  .b-1 { background:var(--sev-1-soft); color:var(--sev-1); }
+  .b-2 { background:var(--sev-2-soft); color:var(--sev-2); }
+  .b-3 { background:var(--sev-3-soft); color:var(--sev-3); }
+  .b-n { background:var(--surface-hi); color:var(--ink-2); }
+  .b-ok { background:var(--done-soft); color:var(--done); }
+  .b-flag { background:var(--flag-soft); color:var(--flag); }
+  .b-acc { background:var(--accent-soft); color:var(--accent); }
+  .code-tag { font-size:11px; color:var(--ink-3); margin-right:6px; }
+
+  .push-cell { display:flex; align-items:center; gap:8px; }
+  .push-cell .n { font-size:13px; font-weight:500; font-variant-numeric:tabular-nums; width:17px; }
+  .spark { display:block; }
+
+  .board { display:grid; gap:14px; margin-top:18px; grid-template-columns:repeat(auto-fit, minmax(232px,1fr)); }
+  .col-h { display:flex; align-items:center; gap:8px; padding:0 2px 10px; }
+  .col-h .t { font-size:12.5px; font-weight:600; }
+  .col-h .c { font-size:11px; color:var(--ink-3); background:var(--surface-hi); padding:0 6px; border-radius:10px; }
+  .col-stack { display:flex; flex-direction:column; gap:8px; }
+  .kard {
+    background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:11px 12px;
+    text-align:left; width:100%; display:flex; flex-direction:column; gap:7px;
+    transition:border-color .12s, transform .12s;
+  }
+  .kard:hover { border-color:var(--accent-line); transform:translateY(-1px); }
+  .kard .kp { font-weight:500; font-size:13px; }
+  .kard .kl { font-size:11.5px; color:var(--ink-3); }
+  .kard .krow { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .hidden { display:none !important; }
+
+  .scrim { position:fixed; inset:0; background:rgba(10,22,18,.28); opacity:0; pointer-events:none; transition:opacity .18s; z-index:20; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .peek {
+    position:fixed; top:0; right:0; height:100vh; width:min(496px,94vw);
+    background:var(--surface); border-left:1px solid var(--line); box-shadow:var(--shadow-peek); z-index:21;
+    transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
+  }
+  .peek.on { transform:translateX(0); }
+  .peek-top { display:flex; align-items:center; gap:8px; padding:11px 16px; border-bottom:1px solid var(--line); flex:none; }
+  .peek-top .id { font-size:11.5px; color:var(--ink-3); }
+  .icon-btn { width:26px; height:26px; border-radius:6px; display:grid; place-items:center; color:var(--ink-3); font-size:15px; line-height:1; }
+  .icon-btn:hover { background:var(--surface-hi); color:var(--ink); }
+  .peek-body { overflow-y:auto; padding:20px 20px 44px; display:flex; flex-direction:column; gap:22px; }
+  .peek h2 { margin:0; font-size:20px; letter-spacing:-.02em; font-weight:600; }
+  .peek .sub { color:var(--ink-3); font-size:12.5px; margin-top:3px; }
+
+  .props { display:flex; flex-direction:column; gap:1px; }
+  .prop { display:grid; grid-template-columns:140px minmax(0,1fr); align-items:center; gap:8px; }
+  .prop .pk { font-size:12px; color:var(--ink-3); }
+  .prop .pv {
+    padding:4px 7px; margin-left:-7px; border-radius:5px; font-size:13px; display:flex;
+    align-items:center; gap:6px; text-align:left; width:100%; transition:background .1s; min-height:28px;
+  }
+  button.pv:hover { background:var(--surface-hi); }
+
+  .sec-h { font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; display:flex; align-items:center; gap:8px; }
+  .sec-h::after { content:""; flex:1; height:1px; background:var(--line); }
+
+  .req { border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--surface-2); }
+  .req .bar { height:3px; background:var(--line-soft); }
+  .req .bar i { display:block; height:100%; background:var(--accent); }
+  .req .inner { padding:11px 13px; display:flex; flex-direction:column; gap:7px; }
+  .req .line { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .req .line .mk { width:14px; color:var(--done); flex:none; text-align:center; }
+  .req .line.miss .mk, .req .line.miss span { color:var(--flag); }
+  .req .hd { display:flex; align-items:baseline; gap:8px; }
+  .req .hd .n { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
+
+  .serie { display:flex; flex-direction:column; }
+  .ev { display:grid; grid-template-columns:74px 1fr; gap:12px; padding:10px 0; border-bottom:1px solid var(--line-soft); }
+  .ev:last-child { border-bottom:none; }
+  .ev .when { font-size:11.5px; color:var(--ink-3); padding-top:1px; }
+  .ev .what { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .ev .met { display:flex; gap:14px; flex-wrap:wrap; }
+  .ev .met b { font-weight:600; font-variant-numeric:tabular-nums; }
+  .ev .met span { font-size:12px; color:var(--ink-3); }
+  .ev .note { font-size:12.5px; color:var(--ink-2); }
+  .tagline { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3); border:1px solid var(--line); border-radius:5px; padding:2px 7px; width:fit-content; }
+
+  .cost { display:flex; flex-direction:column; }
+  .cost .r { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
+  .cost .r .lbl { color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cost .r .amt, .cost .tot .amt { margin-left:auto; font-variant-numeric:tabular-nums; }
+  .cost .tot { display:flex; align-items:center; padding-top:9px; font-size:13px; font-weight:600; }
+
+  .derived { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .derived .d-cell { background:var(--surface-2); padding:10px 12px; display:flex; flex-direction:column; gap:2px; }
+  .derived .d-k { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .derived .d-v { font-size:18px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+
+  .alertbox { display:flex; gap:9px; padding:10px 12px; border-radius:8px; background:var(--flag-soft); color:var(--flag); font-size:12.5px; align-items:flex-start; }
+  .alertbox b { font-weight:600; }
+  .notebox { padding:10px 12px; border-radius:8px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink-2); font-size:12.5px; }
+
+  .pop { position:fixed; z-index:30; min-width:212px; padding:4px; background:var(--surface); border:1px solid var(--line); border-radius:9px; box-shadow:var(--shadow-pop); }
+  .pop .opt { display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px; border-radius:6px; font-size:13px; text-align:left; }
+  .pop .opt:hover { background:var(--surface-hi); }
+  .pop .opt .mk { margin-left:auto; color:var(--accent); }
+  .pop.wide { min-width:312px; }
+  .pop .optx { display:flex; gap:10px; width:100%; padding:9px 9px; border-radius:7px; text-align:left; align-items:flex-start; }
+  .pop .optx:hover { background:var(--surface-hi); }
+  .pop .optx .fmt {
+    font-size:9.5px; letter-spacing:.06em; padding:2px 6px; border-radius:4px; flex:none; margin-top:1px;
+    background:var(--accent-soft); color:var(--accent); font-family:"IBM Plex Mono", monospace;
+  }
+  .pop .optx .t { font-size:13px; font-weight:500; display:block; }
+  .pop .optx .s { font-size:11.5px; color:var(--ink-3); display:block; margin-top:2px; }
+  .pop .scope { padding:8px 9px 6px; font-size:11px; color:var(--ink-3); border-top:1px solid var(--line); margin-top:4px; }
+  .pop .scope b { color:var(--ink-2); font-weight:500; }
+
+  .toast {
+    position:fixed; right:18px; bottom:18px; z-index:50; max-width:340px;
+    background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    box-shadow:var(--shadow-pop); padding:12px 14px; font-size:12.5px; color:var(--ink-2);
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .toast b { color:var(--ink); }
+  .toast .cls { position:absolute; top:6px; right:8px; color:var(--ink-3); font-size:13px; line-height:1; }
+
+  .cmdk { position:fixed; inset:0; z-index:40; display:none; align-items:flex-start; justify-content:center; padding-top:12vh; background:rgba(10,22,18,.34); }
+  .cmdk.on { display:flex; }
+  .cmdk-box { width:min(560px,92vw); background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-pop); overflow:hidden; }
+  .cmdk input { width:100%; border:none; background:none; color:var(--ink); padding:14px 16px; font-size:15px; font-family:inherit; border-bottom:1px solid var(--line); outline:none; }
+  .cmdk input::placeholder { color:var(--ink-3); }
+  .cmdk-list { max-height:336px; overflow-y:auto; padding:6px; }
+  .cmdk-grp { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); padding:8px 8px 4px; font-family:"IBM Plex Mono", monospace; }
+  .cmdk-item { display:flex; align-items:center; gap:10px; width:100%; padding:7px 8px; border-radius:7px; font-size:13.5px; text-align:left; }
+  .cmdk-item .code { font-size:11px; color:var(--ink-3); width:26px; flex:none; }
+  .cmdk-item .hint { margin-left:auto; font-size:11px; color:var(--ink-3); }
+  .cmdk-item.cur { background:var(--accent-soft); color:var(--accent); }
+  .cmdk-item.cur .code, .cmdk-item.cur .hint { color:var(--accent); }
+  .cmdk-empty { padding:24px 12px; text-align:center; color:var(--ink-3); font-size:13px; }
+
+  /* Barra de filtros — retrocompatível com o filtro global atual */
+  .filters {
+    display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap;
+    margin-top:18px; padding:12px 14px; background:var(--surface);
+    border:1px solid var(--line); border-radius:9px;
+  }
+  .fld { display:flex; flex-direction:column; gap:4px; }
+  .fld label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .fld select, .fld input {
+    font:inherit; font-size:12.5px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:6px; padding:5px 8px; min-width:120px;
+  }
+  .fld input[type="date"] { min-width:132px; }
+  .filters .grow { flex:1; }
+  .filters .period { font-size:12px; color:var(--ink-3); padding-bottom:6px; }
+  .filters .period b { color:var(--ink-2); font-weight:500; }
+  .btn-ghost { font-size:12.5px; color:var(--ink-3); padding:6px 8px; border-radius:6px; }
+  .btn-ghost:hover { background:var(--surface-hi); color:var(--ink); }
+
+  .meta-chip {
+    display:inline-flex; align-items:center; gap:8px; margin-top:12px; padding:4px 11px;
+    border-radius:20px; font-size:12px; border:1px solid var(--line); color:var(--ink-2);
+  }
+  .meta-chip .st { font-weight:600; }
+  .meta-chip.ok { border-color:var(--accent-line); background:var(--accent-soft); color:var(--accent); }
+  .meta-chip.no { border-color:var(--flag); background:var(--flag-soft); color:var(--flag); }
+
+  /* Pivô mensal */
+  .pivot tbody tr.parent { background:var(--surface-hi); font-weight:600; }
+  .pivot tbody tr.parent:hover { background:var(--surface-hi); }
+  .pivot td.ind { white-space:nowrap; }
+  .pivot td.ind .sc { color:var(--ink-3); margin-right:6px; }
+  .pivot td.mth { text-align:center; font-variant-numeric:tabular-nums; }
+  .pivot td.tot { text-align:center; font-weight:600; font-variant-numeric:tabular-nums; }
+  .pivot .z { color:var(--ink-3); }
+  .pivot thead th.c { text-align:center; }
+
+  .drill {
+    display:inline-flex; align-items:center; gap:8px; margin-bottom:6px;
+    font-size:12px; padding:3px 10px; border-radius:20px;
+    background:var(--accent-soft); color:var(--accent);
+  }
+  .drill button { color:inherit; font-size:13px; line-height:1; }
+
+  /* Páginas do legado */
+  .legacy { max-width:720px; }
+  .legacy h2 { margin:0 0 6px; font-size:20px; letter-spacing:-.02em; font-weight:600; }
+  .legacy .lead { color:var(--ink-2); font-size:13.5px; margin:0 0 20px; }
+  .lgrid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .lgrid .lrow { background:var(--surface); padding:13px 15px; display:flex; flex-direction:column; gap:3px; }
+  .lgrid .lk { font-size:10px; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .lgrid .lv { font-size:13.5px; }
+
+  @media (max-width:900px) {
+    .app { grid-template-columns:1fr; }
+    .side { display:none; }
+    .page { padding:20px 16px 56px; }
+    .topbar { padding:11px 16px; }
+  }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="ws">
+      <div class="ws-mark">H+</div>
+      <div>
+        <div class="ws-name">HealthMais</div>
+        <div class="ws-sub">Competência 08/2026</div>
+      </div>
+    </div>
+
+    <button class="kbd-btn" id="openCmd"><span>Buscar</span><span class="kbd">⌘K</span></button>
+
+    <div>
+      <div class="nav-label">Indicadores</div>
+      <nav class="nav" id="nav"></nav>
+    </div>
+
+    <div>
+      <div class="nav-label">Operação</div>
+      <nav class="nav" id="navOps"></nav>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="crumb"><span>Indicadores</span><span class="sep">/</span><b id="crumbNow">—</b></div>
+      <div class="spacer"></div>
+      <button class="btn" id="btnExport">Exportar</button>
+      <button class="btn btn-primary" id="btnNovo">Novo registro</button>
+    </div>
+
+    <div class="page" id="pageCard">
+      <div>
+        <span class="h-code mono" id="hCode">CARD</span>
+        <h1 id="hTitle">—</h1>
+        <p class="h-note" id="hNote"></p>
+        <div id="hMirror"></div>
+        <div id="hMeta"></div>
+      </div>
+
+      <div class="filters">
+        <div class="fld">
+          <label for="fBim">Período</label>
+          <select id="fBim"></select>
+        </div>
+        <div class="fld">
+          <label for="fDe">De</label>
+          <input type="date" id="fDe">
+        </div>
+        <div class="fld">
+          <label for="fAte">Até</label>
+          <input type="date" id="fAte">
+        </div>
+        <div class="fld">
+          <label for="fOp">Operadora</label>
+          <select id="fOp">
+            <option value="">Todas</option>
+            <option>Unimed</option>
+            <option>Camperj</option>
+            <option>Particular</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="fMod">Modalidade</label>
+          <select id="fMod">
+            <option value="">Todas</option>
+            <option>AD</option>
+            <option>ID</option>
+          </select>
+        </div>
+        <span class="grow"></span>
+        <span class="period">Exibindo <b id="fLabel">todos os períodos</b> · <b id="fCount">0</b> registros</span>
+        <button class="btn-ghost" id="fClear">Limpar</button>
+      </div>
+
+      <div class="split" id="stats"></div>
+      <div class="views" id="views"></div>
+      <section id="viewTable">
+        <div id="drillBar"></div>
+        <div class="tablewrap"><table><thead><tr id="thead"></tr></thead><tbody id="rows"></tbody></table></div>
+      </section>
+      <section id="viewBoard" class="hidden"><div class="board" id="board"></div></section>
+      <section id="viewPivot" class="hidden">
+        <div class="tablewrap"><table class="pivot"><thead><tr id="pthead"></tr></thead><tbody id="prows"></tbody></table></div>
+      </section>
+    </div>
+
+    <div class="page hidden" id="pageLegacy"><div class="legacy" id="legacyBody"></div></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="peek" id="peek" aria-hidden="true">
+  <div class="peek-top">
+    <span class="id mono" id="peekId">—</span>
+    <div style="flex:1"></div>
+    <button class="icon-btn" title="Anexar">+</button>
+    <button class="icon-btn" id="peekClose" title="Fechar (Esc)">✕</button>
+  </div>
+  <div class="peek-body" id="peekBody"></div>
+</aside>
+
+<div class="cmdk" id="cmdk">
+  <div class="cmdk-box">
+    <input id="cmdInput" placeholder="Buscar paciente, registro ou indicador…" autocomplete="off">
+    <div class="cmdk-list" id="cmdList"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ═══ Helpers ══════════════════════════════════════════════
+const $ = (s, r = document) => r.querySelector(s);
+const el = (t, c, txt) => { const n = document.createElement(t); if (c) n.className = c; if (txt != null) n.textContent = txt; return n; };
+const HOJE = "2026-08-28";
+const dias = (a, b = HOJE) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+const dbr = iso => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR");
+const dcurt = iso => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+const brl = n => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = n => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%";
+
+function badge(txt, kind, dot) {
+  const b = el("span", "badge " + (kind || "b-n"));
+  if (dot) b.append(el("span", "dot"));
+  b.append(document.createTextNode(txt));
+  return b;
+}
+function paciente(nome, sub) {
+  const f = document.createDocumentFragment();
+  f.append(document.createTextNode(nome));
+  if (sub) f.append(el("span", "op", sub));
+  return f;
+}
+function comCodigo(codigo, node) {
+  const f = document.createDocumentFragment();
+  f.append(el("span", "code-tag mono", codigo), node);
+  return f;
+}
+function prazoChip(prazoIso, label) {
+  const d = dias(HOJE, prazoIso);
+  if (d < 0) return badge((label || "Vencido há ") + Math.abs(d) + "d", "b-flag", true);
+  if (d <= 1) return badge("Vence em " + d + "d", "b-2", true);
+  return badge(d + " dias", "b-n");
+}
+function sparkline(vals) {
+  const w = 54, h = 16, pad = 2;
+  const max = Math.max(...vals, 1);
+  const step = vals.length > 1 ? (w - pad * 2) / (vals.length - 1) : 0;
+  const y = v => h - pad - (v / max) * (h - pad * 2);
+  const pts = vals.map((v, i) => [pad + i * step, y(v)]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const area = d + ` L${pts[pts.length - 1][0].toFixed(1)} ${h} L${pts[0][0].toFixed(1)} ${h} Z`;
+  const last = pts[pts.length - 1];
+  const cor = vals[vals.length - 1] <= vals[0] ? "var(--done)" : "var(--flag)";
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <path d="${area}" fill="${cor}" opacity=".12"></path>
+    <path d="${d}" fill="none" stroke="${cor}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"></path>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.1" fill="${cor}"></circle></svg>`;
+}
+const spark = vals => { const s = el("span"); s.innerHTML = sparkline(vals); return s; };
+function pushCell(vals) {
+  const w = el("div", "push-cell");
+  w.append(el("span", "n", String(vals[vals.length - 1])), spark(vals));
+  return w;
+}
+
+// Nomes fictícios — nenhum paciente real do sistema.
+const OPS = ["Unimed", "Camperj", "Particular"];
+
+// ═══ Cards ════════════════════════════════════════════════
+const CARDS = {};
+
+// ── 01 — Movimentação da Carteira ─────────────────────────
+CARDS["01"] = {
+  nome: "Movimentação da Carteira",
+  nota: "Cada linha é um episódio de cuidado, não um evento solto. A admissão abre o episódio; o desfecho (1.2 a 1.7) o fecha. Ninguém some da base — o episódio encerra.",
+  contagem: 42,
+  sub: { "1.1": "Admissão", "1.2": "Alta por objetivo terapêutico", "1.3": "Alta por transição de nível", "1.4": "Saída por óbito", "1.5": "Saída por internação prolongada", "1.6": "Desligamento administrativo", "1.7": "Transferência para outra prestadora" },
+  linhas: [
+    { id: "EPI-1182", pac: "Marta L. Andrade", op: "Unimed", mod: "ID", cplx: "Alta", origem: "Hospital", adm: "2026-03-18", saida: null, cod: null, disp: ["SNE", "SVD", "TQT"], solicitante: null },
+    { id: "EPI-1204", pac: "Sebastião P. Rocha", op: "Camperj", mod: "ID", cplx: "Alta", origem: "Hospital", adm: "2026-05-02", saida: null, cod: null, disp: ["GTT"], solicitante: null },
+    { id: "EPI-1231", pac: "Alcides R. Bonfim", op: "Unimed", mod: "AD", cplx: "Média", origem: "Ambulatório", adm: "2026-06-11", saida: "2026-08-19", cod: "1.2", disp: [], solicitante: null },
+    { id: "EPI-1240", pac: "Therezinha M. Couto", op: "Particular", mod: "AD", cplx: "Baixa", origem: "Domicílio", adm: "2026-06-24", saida: "2026-08-07", cod: "1.3", disp: [], solicitante: null },
+    { id: "EPI-1255", pac: "Iracema D. Bastos", op: "Unimed", mod: "ID", cplx: "Alta", origem: "Hospital", adm: "2026-07-01", saida: null, cod: null, disp: ["TQT", "GTT"], solicitante: null },
+    { id: "EPI-1262", pac: "Custódia F. Aragão", op: "Camperj", mod: "AD", cplx: "Média", origem: "Hospital", adm: "2026-07-09", saida: "2026-08-22", cod: "1.4", disp: ["SNE"], solicitante: null },
+    { id: "EPI-1270", pac: "Adalberto S. Nogueira", op: "Particular", mod: "ID", cplx: "Alta", origem: "Hospital", adm: "2026-07-15", saida: "2026-08-25", cod: "1.5", disp: ["TQT"], solicitante: null },
+    { id: "EPI-1274", pac: "Ubirajara L. Pimentel", op: "Unimed", mod: "AD", cplx: "Baixa", origem: "Ambulatório", adm: "2026-07-28", saida: "2026-08-14", cod: "1.6", disp: [], solicitante: "Operadora" },
+    { id: "EPI-1281", pac: "Zulmira N. Peixoto", op: "Camperj", mod: "AD", cplx: "Média", origem: "Domicílio", adm: "2026-08-04", saida: null, cod: null, disp: [], solicitante: null },
+    { id: "EPI-1288", pac: "Genésio T. Vilar", op: "Particular", mod: "ID", cplx: "Alta", origem: "Hospital", adm: "2026-08-12", saida: "2026-08-26", cod: "1.7", disp: ["SVD"], solicitante: null },
+  ],
+  stats(rs) {
+    const admMes = rs.filter(r => r.adm >= "2026-08-01").length;
+    const saidas = rs.filter(r => r.saida && r.saida >= "2026-08-01").length;
+    return [
+      { k: "Movimentações", v: admMes + saidas, d: "no mês", lead: true },
+      { k: "Admissões (1.1)", v: admMes, d: "entradas" },
+      { k: "Saídas (1.2 – 1.7)", v: saidas, d: "desfechos registrados" },
+      { k: "Episódios abertos", v: rs.filter(r => !r.saida).length, d: "carteira ativa" },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op + " · " + r.mod) },
+    { h: "Complexidade", cell: r => badge(r.cplx, r.cplx === "Alta" ? "b-2" : "b-n") },
+    { h: "Origem", cls: "dim", cell: r => r.origem },
+    { h: "Admissão", cls: "num dim", cell: r => dcurt(r.adm) },
+    { h: "Permanência", cls: "num", cell: r => dias(r.adm, r.saida || HOJE) + " d" },
+    { h: "Dispositivos", cls: "dim", cell: r => r.disp.length ? r.disp.join(" · ") : "—" },
+    { h: "Situação", cell: r => r.cod ? comCodigo(r.cod, badge(CARDS["01"].sub[r.cod], r.cod === "1.4" ? "b-3" : "b-n", true)) : badge("Em acompanhamento", "b-ok", true) },
+  ],
+  board: { titulo: "Board por desfecho", grupos: [["Em acompanhamento", r => !r.cod], ["Altas (1.2 · 1.3)", r => r.cod === "1.2" || r.cod === "1.3"], ["Saídas não eletivas (1.4 – 1.7)", r => ["1.4", "1.5", "1.6", "1.7"].includes(r.cod)]], card: r => [r.pac, (r.cod ? CARDS["01"].sub[r.cod] : "Ativo há " + dias(r.adm) + " dias") + " · " + r.op] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: r.op + " · " + (r.mod === "ID" ? "Internação Domiciliar" : "Atenção Domiciliar") + " · complexidade " + r.cplx.toLowerCase(),
+    props: [
+      ["Modalidade", r.mod === "ID" ? "ID — Internação Domiciliar" : "AD — Atenção Domiciliar", ["AD — Atenção Domiciliar", "ID — Internação Domiciliar"]],
+      ["Complexidade", r.cplx, ["Baixa", "Média", "Alta"]],
+      ["Origem da admissão", r.origem, ["Hospital", "Ambulatório", "Domicílio"]],
+      ["Admissão", dbr(r.adm)],
+      ["Saída", r.saida ? dbr(r.saida) : "—"],
+      ["Motivo da saída", r.cod ? r.cod + " — " + CARDS["01"].sub[r.cod] : "—"],
+      ["Solicitante", r.solicitante || "—", ["Operadora", "Família", "Prestadora"]],
+      ["Dispositivos em uso", r.disp.length ? r.disp.join(", ") : "Nenhum"],
+    ],
+    req: { itens: ["Data da admissão", "Operadora e contrato", "Modalidade AD ou ID", "Complexidade", "Dispositivos em uso", "Origem da admissão"], faltando: r.cod === "1.6" && !r.solicitante ? ["Solicitante do desligamento"] : [] },
+    blocos: [
+      r.cod === "1.6" ? { tipo: "nota", texto: "Desligamento administrativo exige registrar quem solicitou: operadora, família ou prestadora." } : null,
+      r.cod === "1.4" ? { tipo: "nota", texto: "Esta saída alimenta o card 03 — Óbitos, que detalha local, tempo desde a admissão e plano paliativo. O card 03 é espelho: não soma ao painel." } : null,
+    ].filter(Boolean),
+  }),
+};
+
+// ── 02 — Intercorrências e Resolutividade ─────────────────
+CARDS["02"] = {
+  nome: "Intercorrências e Resolutividade",
+  nota: "A taxa de internação hospitalar sai daqui, do desfecho 2.4 — o antigo card 03 deixou de existir. 2.3 e 2.4 são desfechos diferentes e nunca se somam.",
+  contagem: 17,
+  sub: { "2.1": "Resolvida pela equipe no domicílio", "2.2": "Resolvida com suporte médico", "2.3": "Remoção APH com retorno em até 24h", "2.4": "Remoção com internação hospitalar", "2.5": "Óbito durante a intercorrência" },
+  linhas: [
+    { id: "INT-0912", pac: "Marta L. Andrade", op: "Unimed", quando: "2026-08-26", hora: "03h20", causa: "Descompensação da doença de base", cod: "2.1", quem: "Enfermeira plantonista", hosp: null, retorno: null, evit: null },
+    { id: "INT-0915", pac: "Iracema D. Bastos", op: "Unimed", quando: "2026-08-24", hora: "14h05", causa: "Infecção", cod: "2.4", quem: "Médico de retaguarda", hosp: "Hospital Sul", retorno: null, evit: "Não evitável" },
+    { id: "INT-0918", pac: "Sebastião P. Rocha", op: "Camperj", quando: "2026-08-21", hora: "22h40", causa: "Falha de insumo ou equipamento", cod: "2.3", quem: "APH contratado", hosp: "Pronto-socorro Norte", retorno: "2026-08-22", evit: "Evitável" },
+    { id: "INT-0921", pac: "Custódia F. Aragão", op: "Camperj", quando: "2026-08-20", hora: "06h10", causa: "Descompensação da doença de base", cod: "2.5", quem: "Médico de retaguarda", hosp: null, retorno: null, evit: "Não evitável" },
+    { id: "INT-0924", pac: "Adalberto S. Nogueira", op: "Particular", quando: "2026-08-17", hora: "11h55", causa: "Evento adverso", cod: "2.4", quem: "Enfermeira plantonista", hosp: "Hospital Central", retorno: null, evit: "Evitável" },
+    { id: "INT-0927", pac: "Odete S. Maranhão", op: "Camperj", quando: "2026-08-13", hora: "19h30", causa: "Falha de adesão ou de suporte familiar", cod: "2.2", quem: "Médico de retaguarda", hosp: null, retorno: null, evit: null },
+    { id: "INT-0930", pac: "Genésio T. Vilar", op: "Particular", quando: "2026-08-09", hora: "08h15", causa: "Causa externa", cod: "2.3", quem: "APH contratado", hosp: "Pronto-socorro Leste", retorno: "2026-08-09", evit: "Inconclusivo" },
+    { id: "INT-0933", pac: "Neusa A. Prado", op: "Unimed", quando: "2026-08-05", hora: "16h45", causa: "Infecção", cod: "2.1", quem: "Enfermeira plantonista", hosp: null, retorno: null, evit: null },
+  ],
+  stats(rs) {
+    const n = rs.length || 1;
+    const dom = rs.filter(r => r.cod === "2.1" || r.cod === "2.2").length;
+    const intern = rs.filter(r => r.cod === "2.4").length;
+    return [
+      { k: "Intercorrências", v: rs.length, d: "no período", lead: true },
+      { k: "Resolvidas no domicílio", v: pct(dom / n * 100), d: "2.1 + 2.2 — resolutividade", meter: dom / n },
+      { k: "Taxa de internação", v: pct(intern / n * 100), d: "derivada de 2.4", warn: intern / n > .2 },
+      { k: "Remoções com retorno", v: rs.filter(r => r.cod === "2.3").length, d: "2.3 — retorno em 24h" },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Quando", cls: "num dim nowrap", cell: r => dcurt(r.quando) + " · " + r.hora },
+    { h: "Causa", cls: "dim", cell: r => r.causa },
+    { h: "Desfecho", cell: r => comCodigo(r.cod, badge(CARDS["02"].sub[r.cod], r.cod === "2.5" ? "b-3" : r.cod === "2.4" ? "b-2" : r.cod === "2.3" ? "b-1" : "b-ok", true)) },
+    { h: "Destino", cls: "dim", cell: r => r.hosp || "Domicílio" },
+    { h: "Evitabilidade", cell: r => r.evit ? badge(r.evit, r.evit === "Evitável" ? "b-flag" : "b-n") : el("span", "dim", "—") },
+  ],
+  board: { titulo: "Board por desfecho", grupos: [["Resolvida em casa (2.1 · 2.2)", r => ["2.1", "2.2"].includes(r.cod)], ["Removida com retorno (2.3)", r => r.cod === "2.3"], ["Internação e óbito (2.4 · 2.5)", r => ["2.4", "2.5"].includes(r.cod)]], card: r => [r.pac, r.causa + " · " + dcurt(r.quando)] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["02"].sub[r.cod] + " · " + dbr(r.quando) + " às " + r.hora,
+    alerta: r.cod === "2.4" && r.evit === "Evitável" ? "<b>Internação classificada como evitável.</b> Entra no numerador do indicador de evitabilidade e dispara revisão do plano de cuidado." : null,
+    props: [
+      ["Causa", r.causa, ["Descompensação da doença de base", "Infecção", "Evento adverso", "Falha de adesão ou de suporte familiar", "Falha de insumo ou equipamento", "Causa externa"]],
+      ["Desfecho", r.cod + " — " + CARDS["02"].sub[r.cod]],
+      ["Quem atendeu", r.quem, ["Enfermeira plantonista", "Médico de retaguarda", "APH contratado"]],
+      ["Hospital de destino", r.hosp || "—"],
+      ["Retorno ao domicílio", r.retorno ? dbr(r.retorno) : "—"],
+      ["Evitabilidade", r.evit || "—", ["Evitável", "Não evitável", "Inconclusivo"]],
+    ],
+    req: { itens: ["Data e hora", "Causa", "Quem atendeu", "Hospital de destino (2.4)", "Data de retorno ao domicílio", "Evitabilidade da internação"], faltando: r.cod === "2.4" && !r.retorno ? ["Data de retorno ao domicílio"] : [] },
+    blocos: [{ tipo: "nota", texto: "2.3 e 2.4 são desfechos diferentes: remoção com retorno em 24h não conta como internação. A taxa de internação do painel lê exclusivamente 2.4." }],
+  }),
+};
+
+// ── 03 — Óbitos ───────────────────────────────────────────
+CARDS["03"] = {
+  nome: "Óbitos",
+  nota: "Detalhamento clínico das saídas por óbito registradas no card 01 (1.4). Serve à revisão de caso, não à contagem — por isso não soma ao painel.",
+  espelho: "Espelho de 1.4 — não soma ao painel",
+  contagem: 3,
+  sub: { "3.1": "Esperado, com plano paliativo formalizado", "3.2": "Esperado, sem plano formalizado", "3.3": "Não esperado" },
+  linhas: [
+    { id: "OBT-0071", pac: "Custódia F. Aragão", op: "Camperj", data: "2026-08-22", local: "Domicílio", adm: "2026-07-09", cod: "3.1", diretivas: true, relacao: "Intercorrência INT-0921", revisao: "Concluída" },
+    { id: "OBT-0072", pac: "Firmino J. Aguiar", op: "Unimed", data: "2026-08-18", local: "Hospital", adm: "2026-08-17", cod: "3.3", diretivas: false, relacao: "Evento adverso EA-0233", revisao: "Pendente" },
+    { id: "OBT-0073", pac: "Dulcinéia B. Rezende", op: "Particular", data: "2026-08-06", local: "Pronto-socorro", adm: "2026-04-22", cod: "3.2", diretivas: false, relacao: "—", revisao: "Em análise" },
+  ],
+  stats(rs) {
+    return [
+      { k: "Óbitos", v: rs.length, d: "espelho de 1.4", lead: true },
+      { k: "Com plano paliativo", v: rs.filter(r => r.cod === "3.1").length, d: "3.1 — formalizado" },
+      { k: "Não esperados", v: rs.filter(r => r.cod === "3.3").length, d: "3.3 — revisão obrigatória", warn: rs.some(r => r.cod === "3.3") },
+      { k: "Em até 48h da admissão", v: rs.filter(r => dias(r.adm, r.data) <= 2).length, d: "alerta para a diretoria", warn: rs.some(r => dias(r.adm, r.data) <= 2) },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Data", cls: "num dim", cell: r => dcurt(r.data) },
+    { h: "Local", cell: r => badge(r.local, r.local === "Domicílio" ? "b-n" : "b-1") },
+    { h: "Desde a admissão", cls: "num", cell: r => { const d = dias(r.adm, r.data); return d <= 2 ? badge("até 48h", "b-flag", true) : d <= 30 ? "3 a 30 dias" : "acima de 30 dias"; } },
+    { h: "Classificação", cell: r => comCodigo(r.cod, badge(CARDS["03"].sub[r.cod], r.cod === "3.3" ? "b-3" : r.cod === "3.2" ? "b-1" : "b-n", true)) },
+    { h: "Diretivas antecipadas", cell: r => badge(r.diretivas ? "Registradas" : "Ausentes", r.diretivas ? "b-ok" : "b-n") },
+    { h: "Revisão de caso", cell: r => badge(r.revisao, r.revisao === "Pendente" ? "b-flag" : r.revisao === "Em análise" ? "b-1" : "b-ok") },
+  ],
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["03"].sub[r.cod] + " · " + dbr(r.data),
+    alerta: (r.cod === "3.3" || dias(r.adm, r.data) <= 2)
+      ? "<b>Alerta de revisão de caso enviado à diretoria médica.</b> Disparado por óbito em até 48h da admissão ou classificado como não esperado (3.3)."
+      : null,
+    props: [
+      ["Local do óbito", r.local, ["Domicílio", "Pronto-socorro", "Hospital"]],
+      ["Admissão", dbr(r.adm)],
+      ["Tempo desde a admissão", dias(r.adm, r.data) + " dias"],
+      ["Classificação", r.cod + " — " + CARDS["03"].sub[r.cod]],
+      ["Diretivas antecipadas", r.diretivas ? "Registradas" : "Não registradas"],
+      ["Relação com evento", r.relacao],
+      ["Revisão de caso", r.revisao, ["Pendente", "Em análise", "Concluída"]],
+    ],
+    req: { itens: ["Local do óbito", "Tempo desde a admissão", "Relação com evento adverso", "Diretivas antecipadas registradas", "Classificação 3.x"], faltando: r.diretivas ? [] : ["Diretivas antecipadas registradas"] },
+    blocos: [{ tipo: "nota", texto: "Este card espelha a saída 1.4 do episódio de cuidado. O óbito é contado uma única vez, no card 01 — aqui ele só ganha detalhe clínico." }],
+  }),
+};
+
+// ── 04 — Adequação e Execução do PAD ──────────────────────
+CARDS["04"] = {
+  nome: "Adequação e Execução do PAD",
+  nota: "Duas coisas no mesmo card: as alterações do plano (4.1 a 4.4) e a execução do mês — previstos contra realizados.",
+  contagem: 26,
+  sub: { "4.1": "Ampliação do plano", "4.2": "Redução do plano", "4.3": "Mudança de modalidade AD ↔ ID", "4.4": "Suspensão ou encerramento do plano" },
+  exec: { previstos: 1284, realizados: 1173 },
+  linhas: [
+    { id: "PAD-0451", pac: "Marta L. Andrade", op: "Unimed", data: "2026-08-27", cod: "4.1", motivo: "Mudança do quadro clínico", origem: "Necessidade clínica", assist: "Enfermagem", de: "12h/dia", para: "24h/dia" },
+    { id: "PAD-0454", pac: "Odete S. Maranhão", op: "Camperj", data: "2026-08-23", cod: "4.2", motivo: "Reavaliação de pertinência ou auditoria", origem: "Operadora", assist: "Fisioterapia", de: "5x/semana", para: "3x/semana" },
+    { id: "PAD-0458", pac: "Sebastião P. Rocha", op: "Camperj", data: "2026-08-20", cod: "4.3", motivo: "Pós-intercorrência ou internação", origem: "Necessidade clínica", assist: "—", de: "AD", para: "ID" },
+    { id: "PAD-0461", pac: "Ubirajara L. Pimentel", op: "Unimed", data: "2026-08-14", cod: "4.4", motivo: "Solicitação sem sustentação clínica", origem: "Família", assist: "—", de: "Ativo", para: "Encerrado" },
+    { id: "PAD-0463", pac: "Zulmira N. Peixoto", op: "Camperj", data: "2026-08-11", cod: "4.1", motivo: "Mudança do quadro clínico", origem: "Necessidade clínica", assist: "Enfermagem", de: "3x/semana", para: "Diária" },
+    { id: "PAD-0466", pac: "Genésio T. Vilar", op: "Particular", data: "2026-08-06", cod: "4.2", motivo: "Indisponibilidade de recurso", origem: "Operação", assist: "Fonoaudiologia", de: "2x/semana", para: "1x/semana" },
+    { id: "PAD-0469", pac: "Therezinha M. Couto", op: "Particular", data: "2026-08-02", cod: "4.3", motivo: "Reavaliação de pertinência ou auditoria", origem: "Operadora", assist: "—", de: "ID", para: "AD" },
+  ],
+  stats(rs) {
+    const e = CARDS["04"].exec, ad = e.realizados / e.previstos;
+    return [
+      { k: "Alterações", v: rs.length, d: "no mês", lead: true },
+      { k: "Atendimentos previstos", v: e.previstos.toLocaleString("pt-BR"), d: "conforme PAD vigente" },
+      { k: "Atendimentos realizados", v: e.realizados.toLocaleString("pt-BR"), d: (e.previstos - e.realizados) + " não realizados" },
+      { k: "Aderência", v: pct(ad * 100), d: "realizados / previstos", meter: ad, warn: ad < .9 },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Data", cls: "num dim", cell: r => dcurt(r.data) },
+    { h: "Alteração", cell: r => comCodigo(r.cod, badge(CARDS["04"].sub[r.cod], r.cod === "4.4" ? "b-3" : r.cod === "4.2" ? "b-1" : r.cod === "4.1" ? "b-acc" : "b-n", true)) },
+    { h: "De → para", cls: "nowrap", cell: r => r.de + " → " + r.para },
+    { h: "Motivo", cls: "dim", cell: r => r.motivo },
+    { h: "Origem da demanda", cell: r => badge(r.origem, r.origem === "Necessidade clínica" ? "b-ok" : "b-n") },
+  ],
+  board: { titulo: "Board por origem da demanda", grupos: [["Necessidade clínica", r => r.origem === "Necessidade clínica"], ["Operadora e auditoria", r => r.origem === "Operadora"], ["Família e operação", r => ["Família", "Operação"].includes(r.origem)]], card: r => [r.pac, CARDS["04"].sub[r.cod] + " · " + r.de + " → " + r.para] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["04"].sub[r.cod] + " · " + dbr(r.data),
+    props: [
+      ["Tipo de alteração", r.cod + " — " + CARDS["04"].sub[r.cod]],
+      ["Motivo", r.motivo, ["Mudança do quadro clínico", "Reavaliação de pertinência ou auditoria", "Pós-intercorrência ou internação", "Solicitação sem sustentação clínica", "Indisponibilidade de recurso"]],
+      ["Origem da demanda", r.origem, ["Necessidade clínica", "Família", "Operadora", "Operação"]],
+      ["Assistência afetada", r.assist, ["Enfermagem", "Fisioterapia", "Fonoaudiologia", "Medicina", "Nutrição", "Psicologia", "—"]],
+      ["Plano anterior", r.de],
+      ["Plano vigente", r.para],
+    ],
+    req: { itens: ["Motivo da alteração", "Origem da demanda", "Plano anterior e vigente", "Data de vigência"], faltando: r.origem === "Família" && r.motivo.startsWith("Solicitação") ? ["Parecer clínico sobre a solicitação"] : [] },
+    blocos: [
+      r.cod === "4.3" ? { tipo: "nota", texto: "A modalidade AD ↔ ID é atributo do episódio de cuidado. Esta alteração reescreve o campo no card 01 e não cria contagem paralela." } : null,
+      { tipo: "derived", titulo: "Execução do mês", itens: [["Previstos", "1.284"], ["Realizados", "1.173"], ["Aderência", "91,4%"]] },
+    ].filter(Boolean),
+  }),
+};
+
+// ── 05 — Eventos Adversos ─────────────────────────────────
+CARDS["05"] = {
+  nome: "Eventos Adversos",
+  nota: "Lesão por pressão saiu deste card e passou para o 06, como episódio próprio. O que fica aqui são eventos pontuais, com grau de dano e prazo de análise causal de 7 dias.",
+  contagem: 9,
+  sub: { "5.1": "Queda sem dano", "5.2": "Queda com dano", "5.3": "Broncoaspiração", "5.4": "Decanulação acidental", "5.5": "Saída acidental de GTT ou SNE", "5.6": "Saída acidental de SVD, cistostomia ou PICC", "5.7": "Erro ou omissão de medicação", "5.8": "Falha ou falta de equipamento", "5.9": "Near miss — não atingiu o paciente" },
+  linhas: [
+    { id: "EA-0233", pac: "Firmino J. Aguiar", op: "Unimed", data: "2026-08-17", cod: "5.3", dano: "Óbito", evit: "Inconclusivo", turno: "Noite", categ: "Técnico de enfermagem", cuidador: true, analise: "2026-08-24", concl: null },
+    { id: "EA-0236", pac: "Marta L. Andrade", op: "Unimed", data: "2026-08-23", cod: "5.5", dano: "Leve", evit: "Evitável", turno: "Manhã", categ: "Cuidador familiar", cuidador: true, analise: "2026-08-30", concl: null },
+    { id: "EA-0238", pac: "Adalberto S. Nogueira", op: "Particular", data: "2026-08-16", cod: "5.4", dano: "Grave", evit: "Evitável", turno: "Madrugada", categ: "Técnico de enfermagem", cuidador: false, analise: "2026-08-23", concl: "2026-08-21" },
+    { id: "EA-0240", pac: "Odete S. Maranhão", op: "Camperj", data: "2026-08-12", cod: "5.2", dano: "Moderado", evit: "Evitável", turno: "Tarde", categ: "Fisioterapeuta", cuidador: true, analise: "2026-08-19", concl: "2026-08-18" },
+    { id: "EA-0242", pac: "Neusa A. Prado", op: "Unimed", data: "2026-08-10", cod: "5.1", dano: "Sem dano", evit: "Evitável", turno: "Tarde", categ: "Cuidador familiar", cuidador: true, analise: "2026-08-17", concl: "2026-08-15" },
+    { id: "EA-0244", pac: "Sebastião P. Rocha", op: "Camperj", data: "2026-08-08", cod: "5.7", dano: "Leve", evit: "Evitável", turno: "Manhã", categ: "Enfermeiro", cuidador: false, analise: "2026-08-15", concl: "2026-08-14" },
+    { id: "EA-0246", pac: "Genésio T. Vilar", op: "Particular", data: "2026-08-04", cod: "5.9", dano: "Sem dano", evit: "Evitável", turno: "Noite", categ: "Enfermeiro", cuidador: false, analise: "2026-08-11", concl: "2026-08-09" },
+    { id: "EA-0248", pac: "Iracema D. Bastos", op: "Unimed", data: "2026-08-01", cod: "5.8", dano: "Sem dano", evit: "Não evitável", turno: "Madrugada", categ: "Técnico de enfermagem", cuidador: true, analise: "2026-08-08", concl: "2026-08-07" },
+  ],
+  stats(rs) {
+    const graves = rs.filter(r => ["Grave", "Óbito"].includes(r.dano)).length;
+    const atraso = rs.filter(r => !r.concl && r.analise < HOJE).length;
+    return [
+      { k: "Eventos", v: rs.length, d: "no mês", lead: true },
+      { k: "Com dano grave ou óbito", v: graves, d: "revisão obrigatória", warn: graves > 0 },
+      { k: "Near miss (5.9)", v: rs.filter(r => r.cod === "5.9").length, d: "não atingiu o paciente" },
+      { k: "Análise causal vencida", v: atraso, d: "prazo de 7 dias", warn: atraso > 0 },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Evento", cell: r => comCodigo(r.cod, badge(CARDS["05"].sub[r.cod], r.cod === "5.9" ? "b-ok" : "b-n", true)) },
+    { h: "Data", cls: "num dim", cell: r => dcurt(r.data) },
+    { h: "Grau do dano", cell: r => badge(r.dano, r.dano === "Óbito" || r.dano === "Grave" ? "b-3" : r.dano === "Moderado" ? "b-2" : r.dano === "Leve" ? "b-1" : "b-n", true) },
+    { h: "Evitabilidade", cell: r => badge(r.evit, r.evit === "Evitável" ? "b-flag" : "b-n") },
+    { h: "Turno", cls: "dim", cell: r => r.turno },
+    { h: "Análise causal", cell: r => r.concl ? badge("Concluída " + dcurt(r.concl), "b-ok") : prazoChip(r.analise) },
+  ],
+  board: { titulo: "Board por grau do dano", grupos: [["Sem dano e near miss", r => r.dano === "Sem dano"], ["Leve e moderado", r => ["Leve", "Moderado"].includes(r.dano)], ["Grave e óbito", r => ["Grave", "Óbito"].includes(r.dano)]], card: r => [r.pac, CARDS["05"].sub[r.cod] + " · " + dcurt(r.data)] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["05"].sub[r.cod] + " · " + dbr(r.data) + " · turno da " + r.turno.toLowerCase(),
+    alerta: !r.concl && r.analise < HOJE ? "<b>Análise causal vencida.</b> O prazo é de 7 dias a partir da notificação — venceu em " + dbr(r.analise) + "." : null,
+    props: [
+      ["Tipo", r.cod + " — " + CARDS["05"].sub[r.cod]],
+      ["Grau do dano", r.dano, ["Sem dano", "Leve", "Moderado", "Grave", "Óbito"]],
+      ["Evitabilidade", r.evit, ["Evitável", "Não evitável", "Inconclusivo"]],
+      ["Turno", r.turno, ["Manhã", "Tarde", "Noite", "Madrugada"]],
+      ["Categoria profissional presente", r.categ, ["Enfermeiro", "Técnico de enfermagem", "Fisioterapeuta", "Cuidador familiar"]],
+      ["Cuidador familiar presente", r.cuidador ? "Sim" : "Não", ["Sim", "Não"]],
+      ["Prazo da análise causal", dbr(r.analise)],
+      ["Análise concluída em", r.concl ? dbr(r.concl) : "—"],
+    ],
+    req: { itens: ["Grau do dano", "Evitabilidade", "Turno", "Categoria profissional presente", "Cuidador familiar presente", "Data de conclusão da análise causal"], faltando: r.concl ? [] : ["Data de conclusão da análise causal"] },
+    blocos: [
+      r.dano === "Óbito" ? { tipo: "nota", texto: "Evento com desfecho de óbito: o registro do óbito em si vive no card 01 (1.4) e o detalhe clínico no card 03. Aqui fica a análise causal." } : null,
+      { tipo: "nota", texto: "Lesão por pressão não se registra aqui. Abra um episódio no card 06 — Lesões de Pele." },
+    ].filter(Boolean),
+  }),
+};
+
+// ── 06 — Lesões de Pele ───────────────────────────────────
+const TIPOS6 = {
+  "6.1": ["LPP estágio 1", 1], "6.2": ["LPP estágio 2", 2], "6.3": ["LPP estágio 3 ou 4", 3],
+  "6.4": ["LPP não classificável ou tissular profunda", 3], "6.5": ["Lesão por dispositivo médico", 2],
+  "6.6": ["Dermatite associada à incontinência", 1], "6.7": ["Úlcera venosa, arterial ou pé diabético", 2],
+  "6.8": ["Ferida operatória ou skin tear", 2],
+};
+CARDS["06"] = {
+  nome: "Lesões de Pele",
+  nota: "Cada lesão é um episódio com abertura, série de avaliações e fechamento — não uma contagem de ocorrências. A origem é derivada da primeira avaliação com foto.",
+  contagem: 7,
+  sub: Object.fromEntries(Object.entries(TIPOS6).map(([k, v]) => [k, v[0]])),
+  linhas: [
+    { id: "LES-0418", pac: "Marta L. Andrade", op: "Unimed · ID", cod: "6.3", local: "Sacro", origem: "adquirida", aberta: "2026-07-14", fechada: null, braden: 11, push: [14, 13, 13, 12, 11], foto: true, cuidador: "Filha (diarista noturna)", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 1284.4], ["7.2 Horas de enfermagem em curativo", 942.0], ["7.3 Visitas extras de estomaterapeuta", 620.0]], avals: [{ d: "2026-08-25", push: 11, area: "6,4 cm²", nota: "Tecido de granulação em 70% do leito. Exsudato seroso moderado.", foto: true }, { d: "2026-08-18", push: 12, area: "7,8 cm²", nota: "Redução de exsudato após troca para espuma com prata.", foto: true }, { d: "2026-08-11", push: 13, area: "9,1 cm²", nota: "Bordas aderidas. Mantido desbridamento autolítico.", foto: true }, { d: "2026-07-14", push: 14, area: "10,2 cm²", nota: "Abertura do episódio. Braden 11 — risco alto.", foto: true }] },
+    { id: "LES-0431", pac: "Sebastião P. Rocha", op: "Camperj · ID", cod: "6.2", local: "Calcâneo direito", origem: "presente_admissao", aberta: "2026-08-02", fechada: null, braden: 13, push: [9, 9, 8], foto: true, cuidador: "Esposa", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 412.9], ["7.2 Horas de enfermagem em curativo", 318.0]], avals: [{ d: "2026-08-26", push: 8, area: "2,1 cm²", nota: "Epitelização periférica. Mantida bota de descarga de pressão.", foto: true }, { d: "2026-08-19", push: 9, area: "2,4 cm²", nota: "Sem sinais flogísticos.", foto: true }, { d: "2026-08-02", push: 9, area: "2,5 cm²", nota: "Identificada na admissão, com foto no dia da implantação.", foto: true }] },
+    { id: "LES-0442", pac: "Neusa A. Prado", op: "Unimed · AD", cod: "6.5", local: "Asa do nariz (SNE)", origem: "adquirida", aberta: "2026-08-09", fechada: null, braden: 15, push: [7, 6], foto: false, cuidador: "Filho", faltando: ["Foto datada da avaliação inicial"], custos: [["7.1 Coberturas e insumos de curativo", 168.5]], avals: [{ d: "2026-08-21", push: 6, area: "0,8 cm²", nota: "Fixação da sonda remanejada. Placa de hidrocoloide protetora.", foto: false }, { d: "2026-08-09", push: 7, area: "1,0 cm²", nota: "Abertura sem registro fotográfico dentro de 48h.", foto: false }] },
+    { id: "LES-0447", pac: "Genésio T. Vilar", op: "Particular · ID", cod: "6.7", local: "Maléolo lateral D", origem: "presente_admissao", aberta: "2026-06-30", fechada: null, braden: 16, push: [11, 10, 10, 9], foto: true, cuidador: "Cuidador contratado 12h", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 2140.0], ["7.2 Horas de enfermagem em curativo", 1608.0], ["7.5 Rateio de antimicrobianos e exames", 486.3]], avals: [{ d: "2026-08-24", push: 9, area: "5,0 cm²", nota: "Doppler mantido. Terapia compressiva tolerada.", foto: true }, { d: "2026-08-10", push: 10, area: "5,6 cm²", nota: "Leito limpo, sem odor.", foto: true }, { d: "2026-07-27", push: 10, area: "5,8 cm²", nota: "Cultura negativa. Suspenso antimicrobiano.", foto: true }, { d: "2026-06-30", push: 11, area: "6,2 cm²", nota: "Lesão prévia à admissão, documentada na implantação.", foto: true }] },
+    { id: "LES-0451", pac: "Odete S. Maranhão", op: "Camperj · ID", cod: "6.6", local: "Região perineal", origem: "adquirida", aberta: "2026-08-16", fechada: null, braden: 12, push: [8, 7], foto: true, cuidador: "Sem cuidador fixo", faltando: ["Escala de Braden reavaliada"], custos: [["7.1 Coberturas e insumos de curativo", 296.7], ["7.4 Equipamentos de prevenção e terapia", 890.0]], avals: [{ d: "2026-08-23", push: 7, area: "—", nota: "Eritema em redução após ajuste do plano de trocas.", foto: true }, { d: "2026-08-16", push: 8, area: "—", nota: "Abertura. Orientado creme barreira a cada troca.", foto: true }] },
+    { id: "LES-0455", pac: "Rubem C. Falcão", op: "Unimed · AD", cod: "6.8", local: "Antebraço esquerdo", origem: "adquirida", aberta: "2026-08-20", fechada: null, braden: 17, push: [6, 5], foto: true, cuidador: "Esposa", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 132.0]], avals: [{ d: "2026-08-27", push: 5, area: "1,4 cm²", nota: "Retalho viável, aproximado com fita adesiva estéril.", foto: true }, { d: "2026-08-20", push: 6, area: "1,6 cm²", nota: "Skin tear após transferência leito-poltrona.", foto: true }] },
+    { id: "LES-0392", pac: "Iracema D. Bastos", op: "Unimed · ID", cod: "6.2", local: "Trocanter esquerdo", origem: "adquirida", aberta: "2026-05-28", fechada: "2026-08-12", braden: 14, push: [10, 8, 6, 3, 0], foto: true, cuidador: "Dois filhos em revezamento", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 1640.2], ["7.2 Horas de enfermagem em curativo", 1272.0]], avals: [{ d: "2026-08-12", push: 0, area: "0 cm²", nota: "Fechamento do episódio. Reepitelização completa.", foto: true }, { d: "2026-07-29", push: 3, area: "0,9 cm²", nota: "Contração acelerada das bordas.", foto: true }, { d: "2026-07-01", push: 6, area: "2,8 cm²", nota: "Sem exsudato.", foto: true }, { d: "2026-05-28", push: 10, area: "5,1 cm²", nota: "Abertura do episódio.", foto: true }] },
+    { id: "LES-0404", pac: "Wilson E. Tavares", op: "Particular · ID", cod: "6.1", local: "Região occipital", origem: "presente_admissao", aberta: "2026-06-11", fechada: "2026-08-05", braden: 13, push: [5, 3, 0], foto: true, cuidador: "Cuidador contratado 24h", faltando: [], custos: [["7.1 Coberturas e insumos de curativo", 218.9]], avals: [{ d: "2026-08-05", push: 0, area: "0 cm²", nota: "Fechamento. Eritema resolvido com reposicionamento a cada 2h.", foto: true }, { d: "2026-07-08", push: 3, area: "1,1 cm²", nota: "Melhora sustentada.", foto: true }, { d: "2026-06-11", push: 5, area: "1,8 cm²", nota: "Presente na admissão.", foto: true }] },
+    { id: "LES-0459", pac: "Zulmira N. Peixoto", op: "Camperj · AD", cod: "6.4", local: "Ísquio direito", origem: "adquirida", aberta: "2026-08-24", fechada: null, braden: 10, push: [15, 15], foto: true, cuidador: "Sem cuidador fixo", faltando: ["Data prevista de reavaliação"], custos: [["7.1 Coberturas e insumos de curativo", 486.0], ["7.4 Equipamentos de prevenção e terapia", 1450.0], ["7.6 Rateio de internação atribuída à lesão", 3200.0]], avals: [{ d: "2026-08-27", push: 15, area: "12,0 cm²", nota: "Esfacelo cobrindo o leito — profundidade indeterminada. Estomaterapeuta solicitada.", foto: true }, { d: "2026-08-24", push: 15, area: "12,4 cm²", nota: "Abertura. Braden 10 — risco muito alto.", foto: true }] },
+  ],
+  stats(rs) {
+    const ativas = rs.filter(r => !r.fechada);
+    return [
+      { k: "Lesões ativas", v: ativas.length, d: "em 118 episódios abertos", lead: true },
+      { k: "Presente na admissão", v: ativas.filter(r => r.origem === "presente_admissao").length, d: "não conta como adquirida" },
+      { k: "Adquirida sob assistência", v: ativas.filter(r => r.origem === "adquirida").length, d: "indicador de resultado" },
+      { k: "Cicatrizadas no período", v: rs.filter(r => r.fechada && r.fechada >= "2026-08-01").length, d: "fechadas em 08/2026" },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Tipo", cell: r => comCodigo(r.cod, badge(TIPOS6[r.cod][0], "b-" + TIPOS6[r.cod][1], true)) },
+    { h: "Local anatômico", cls: "dim", cell: r => r.local },
+    { h: "Origem", cell: r => badge(r.origem === "adquirida" ? "Adquirida" : "Na admissão", r.origem === "adquirida" ? "b-flag" : "b-n") },
+    { h: "Aberta", cls: "num dim", cell: r => dcurt(r.aberta) },
+    { h: "Dias", cls: "num", cell: r => String(dias(r.aberta, r.fechada || HOJE)) },
+    { h: "Braden", cls: "num", cell: r => String(r.braden) },
+    { h: "PUSH", cell: r => pushCell(r.push) },
+    { h: "Status", cell: r => badge(r.fechada ? "Cicatrizada " + dcurt(r.fechada) : "Ativa", r.fechada ? "b-ok" : "b-n") },
+  ],
+  board: { titulo: "Board por origem", grupos: [["Presente na admissão", r => !r.fechada && r.origem === "presente_admissao"], ["Adquirida sob assistência", r => !r.fechada && r.origem === "adquirida"], ["Cicatrizadas no período", r => !!r.fechada]], card: r => [r.pac, r.local + " · PUSH " + r.push[r.push.length - 1] + " · Braden " + r.braden] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: TIPOS6[r.cod][0] + " · " + r.local + " · aberta há " + dias(r.aberta, r.fechada || HOJE) + " dias",
+    alerta: !r.foto ? "<b>Sem foto em 48h da implantação.</b> O sistema gravou esta lesão como <b>adquirida sob assistência</b>. Anexar a foto datada reclassifica o episódio." : null,
+    props: [
+      ["Tipo", r.cod + " — " + TIPOS6[r.cod][0]],
+      ["Local anatômico", r.local, ["Sacro", "Calcâneo direito", "Trocanter esquerdo", "Ísquio direito", "Região occipital", "Região perineal"]],
+      ["Origem", r.origem === "adquirida" ? "Adquirida sob assistência" : "Presente na admissão"],
+      ["Aberta em", dbr(r.aberta)],
+      ["Fechada em", r.fechada ? dbr(r.fechada) : "—"],
+      ["Escala de Braden", r.braden + (r.braden <= 12 ? "  ·  risco alto" : "")],
+      ["Cuidador familiar", r.cuidador, ["Esposa", "Filho", "Filha (diarista noturna)", "Cuidador contratado 12h", "Cuidador contratado 24h", "Sem cuidador fixo"]],
+    ],
+    req: { itens: ["Local anatômico", "Data de abertura", "Escala de Braden", "Área e escore PUSH em série", "Foto datada", "Data prevista de reavaliação"], faltando: r.faltando },
+    blocos: [
+      { tipo: "timeline", titulo: "Avaliações", itens: r.avals.map(a => ({ when: dbr(a.d), met: [["PUSH", a.push], ["Área", a.area]], note: a.nota, tag: a.foto ? "Foto anexada" : "Sem foto" })) },
+      { tipo: "money", titulo: "Custo vinculado · card 07", linhas: r.custos, totalLabel: "Total do episódio" },
+    ],
+  }),
+};
+
+// ── 07 — Custo e Evitabilidade das Lesões ─────────────────
+CARDS["07"] = {
+  nome: "Custo e Evitabilidade das Lesões",
+  nota: "Campo de valor, não contador. Todo lançamento é vinculado a um episódio de lesão do card 06 — nunca solto no paciente.",
+  contagem: null,
+  sub: { "7.1": "Coberturas e insumos de curativo", "7.2": "Horas de enfermagem em curativo", "7.3": "Visitas extras de enfermeiro ou estomaterapeuta", "7.4": "Equipamentos de prevenção e terapia", "7.5": "Rateio de antimicrobianos e exames de ferida", "7.6": "Rateio de internação atribuída à lesão" },
+  get linhas() {
+    return CARDS["06"].linhas.map(l => ({
+      id: "CST-" + l.id.slice(4), lesao: l.id, pac: l.pac, op: l.op, cod: l.cod,
+      local: l.local, origem: l.origem, aberta: l.aberta, fechada: l.fechada, custos: l.custos,
+      total: l.custos.reduce((s, c) => s + c[1], 0),
+      glosa: l.origem === "adquirida" && l.custos.some(c => c[0].startsWith("7.6")),
+    }));
+  },
+  stats(rs) {
+    const total = rs.reduce((s, r) => s + r.total, 0);
+    const div = total || 1;
+    const evit = rs.filter(r => r.origem === "adquirida").reduce((s, r) => s + r.total, 0);
+    const enc = rs.filter(r => r.fechada);
+    const custoEnc = enc.reduce((s, r) => s + r.total, 0) / (enc.length || 1);
+    const glosa = rs.filter(r => r.glosa).reduce((s, r) => s + r.total, 0);
+    return [
+      { k: "Custo do período", v: brl(total), d: "todos os episódios", lead: true },
+      { k: "Custo evitável", v: pct(evit / div * 100), d: "lesões adquiridas sob assistência", meter: evit / div, warn: evit / div > .5 },
+      { k: "Custo por episódio encerrado", v: brl(custoEnc), d: enc.length + " episódios fechados" },
+      { k: "Risco de glosa", v: pct(glosa / div * 100), d: "internação atribuída à lesão adquirida", warn: glosa > 0 },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Episódio", cls: "mono dim", cell: r => r.lesao },
+    { h: "Lesão", cell: r => comCodigo(r.cod, badge(TIPOS6[r.cod][0], "b-" + TIPOS6[r.cod][1], true)) },
+    { h: "Origem", cell: r => badge(r.origem === "adquirida" ? "Adquirida" : "Na admissão", r.origem === "adquirida" ? "b-flag" : "b-n") },
+    { h: "Lançamentos", cls: "num dim", cell: r => String(r.custos.length) },
+    { h: "Custo acumulado", cls: "num", cell: r => brl(r.total) },
+    { h: "Glosa", cell: r => r.glosa ? badge("Em risco", "b-flag", true) : el("span", "dim", "—") },
+  ],
+  board: { titulo: "Board por evitabilidade", grupos: [["Evitável — adquirida", r => r.origem === "adquirida"], ["Não evitável — na admissão", r => r.origem === "presente_admissao"], ["Encerrados no período", r => !!r.fechada]], card: r => [r.pac, brl(r.total) + " · " + r.local] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: "Episódio " + r.lesao + " · " + TIPOS6[r.cod][0],
+    alerta: r.glosa ? "<b>Risco de glosa.</b> Há rateio de internação atribuída a uma lesão adquirida sob assistência. A operadora pode recusar o valor." : null,
+    props: [
+      ["Episódio de lesão", r.lesao],
+      ["Local anatômico", r.local],
+      ["Origem", r.origem === "adquirida" ? "Adquirida sob assistência" : "Presente na admissão"],
+      ["Situação", r.fechada ? "Encerrado em " + dbr(r.fechada) : "Em curso"],
+      ["Custo acumulado", brl(r.total)],
+    ],
+    blocos: [
+      { tipo: "money", titulo: "Lançamentos do episódio", linhas: r.custos, totalLabel: "Total" },
+      { tipo: "derived", titulo: "Indicadores derivados", itens: [["Evitável", r.origem === "adquirida" ? "100%" : "0%"], ["Por dia", brl(r.total / Math.max(1, 30))], ["Glosa", r.glosa ? "Em risco" : "—"]] },
+      { tipo: "nota", texto: "Origem dos dados: almoxarifado (7.1 e 7.4), escala realizada e tabela de custo/hora por categoria (7.2 e 7.3), faturamento (7.5 e 7.6). Enquanto a integração não existir, o lançamento é manual e fica marcado como tal." },
+    ],
+  }),
+};
+
+// ── 08 — Infecção e Antimicrobianos ───────────────────────
+CARDS["08"] = {
+  nome: "Infecção e Antimicrobianos",
+  nota: "O corte antigo por tempo de antibiótico deixou de existir. A classificação agora é por topografia, e o alerta dispara com 10 dias ou mais de uso sem reavaliação.",
+  contagem: 11,
+  sub: { "8.1": "ITU associada a cateter vesical", "8.2": "ITU sem cateter", "8.3": "Respiratória com traqueostomia ou VM", "8.4": "Pneumonia aspirativa", "8.5": "Sítio de inserção de GTT, PICC ou TQT", "8.6": "Ferida ou lesão por pressão infectada", "8.7": "Pele e partes moles", "8.8": "Outras topografias" },
+  linhas: [
+    { id: "INF-0341", pac: "Iracema D. Bastos", op: "Unimed", cod: "8.3", classe: "assistencial", disp: "Traqueostomia", inicio: "2026-08-15", cultura: true, via: "Endovenosa", atb: "Piperacilina-tazobactam", dias: 13, ajuste: false, desfecho: "Em tratamento" },
+    { id: "INF-0344", pac: "Marta L. Andrade", op: "Unimed", cod: "8.1", classe: "assistencial", disp: "Cateter vesical", inicio: "2026-08-19", cultura: true, via: "Oral", atb: "Fosfomicina", dias: 9, ajuste: true, desfecho: "Em tratamento" },
+    { id: "INF-0347", pac: "Genésio T. Vilar", op: "Particular", cod: "8.6", classe: "assistencial", disp: "Nenhum", inicio: "2026-08-11", cultura: true, via: "Oral", atb: "Cefalexina", dias: 7, ajuste: true, desfecho: "Resolvida" },
+    { id: "INF-0350", pac: "Sebastião P. Rocha", op: "Camperj", cod: "8.4", classe: "comunitaria", disp: "GTT", inicio: "2026-08-08", cultura: false, via: "Endovenosa", atb: "Ceftriaxona", dias: 10, ajuste: false, desfecho: "Em tratamento" },
+    { id: "INF-0353", pac: "Odete S. Maranhão", op: "Camperj", cod: "8.2", classe: "comunitaria", disp: "Nenhum", inicio: "2026-08-05", cultura: true, via: "Oral", atb: "Nitrofurantoína", dias: 5, ajuste: false, desfecho: "Resolvida" },
+    { id: "INF-0356", pac: "Adalberto S. Nogueira", op: "Particular", cod: "8.5", classe: "assistencial", disp: "PICC", inicio: "2026-08-02", cultura: true, via: "Endovenosa", atb: "Vancomicina", dias: 14, ajuste: true, desfecho: "Internação" },
+    { id: "INF-0359", pac: "Neusa A. Prado", op: "Unimed", cod: "8.7", classe: "comunitaria", disp: "Nenhum", inicio: "2026-07-30", cultura: false, via: "Oral", atb: "Amoxicilina-clavulanato", dias: 7, ajuste: false, desfecho: "Resolvida" },
+  ],
+  stats(rs) {
+    const assist = rs.filter(r => r.classe === "assistencial").length;
+    const alerta = rs.filter(r => r.dias >= 10 && !r.ajuste).length;
+    return [
+      { k: "Infecções", v: rs.length, d: "no mês", lead: true },
+      { k: "Comunitária ou na admissão", v: rs.length - assist, d: "não atribuída à assistência" },
+      { k: "Relacionada à assistência", v: assist, d: "indicador de resultado", warn: assist > rs.length / 2 },
+      { k: "Antimicrobiano ≥ 10 dias", v: alerta, d: "sem reavaliação registrada", warn: alerta > 0 },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Topografia", cell: r => comCodigo(r.cod, badge(CARDS["08"].sub[r.cod], "b-n", true)) },
+    { h: "Classificação", cell: r => badge(r.classe === "assistencial" ? "Relacionada à assistência" : "Comunitária", r.classe === "assistencial" ? "b-flag" : "b-n") },
+    { h: "Dispositivo", cls: "dim", cell: r => r.disp },
+    { h: "Cultura", cell: r => badge(r.cultura ? "Coletada antes" : "Não coletada", r.cultura ? "b-ok" : "b-1") },
+    { h: "Antimicrobiano", cls: "dim nowrap", cell: r => r.atb + " · " + r.via.toLowerCase() },
+    { h: "Dias de uso", cls: "num", cell: r => r.dias >= 10 && !r.ajuste ? badge(r.dias + " dias", "b-flag", true) : String(r.dias) },
+    { h: "Desfecho", cell: r => badge(r.desfecho, r.desfecho === "Resolvida" ? "b-ok" : r.desfecho === "Internação" ? "b-3" : "b-n") },
+  ],
+  board: { titulo: "Board por classificação", grupos: [["Comunitária ou na admissão", r => r.classe === "comunitaria"], ["Relacionada à assistência", r => r.classe === "assistencial"], ["Antimicrobiano em alerta", r => r.dias >= 10 && !r.ajuste]], card: r => [r.pac, CARDS["08"].sub[r.cod] + " · " + r.dias + " dias de " + r.atb] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["08"].sub[r.cod] + " · início em " + dbr(r.inicio),
+    alerta: r.dias >= 10 && !r.ajuste ? "<b>Antimicrobiano há " + r.dias + " dias sem reavaliação.</b> Alerta automático para a equipe médica a partir de 10 dias de uso." : null,
+    props: [
+      ["Topografia", r.cod + " — " + CARDS["08"].sub[r.cod]],
+      ["Classificação", r.classe === "assistencial" ? "Relacionada à assistência" : "Comunitária ou presente na admissão", ["Comunitária ou presente na admissão", "Relacionada à assistência"]],
+      ["Dispositivo associado", r.disp, ["Nenhum", "Cateter vesical", "Traqueostomia", "GTT", "PICC"]],
+      ["Cultura antes do antibiótico", r.cultura ? "Coletada" : "Não coletada", ["Coletada", "Não coletada"]],
+      ["Antimicrobiano", r.atb],
+      ["Via", r.via, ["Oral", "Endovenosa"]],
+      ["Dias de uso", String(r.dias)],
+      ["Ajuste após cultura", r.ajuste ? "Realizado" : "Não realizado", ["Realizado", "Não realizado"]],
+      ["Desfecho", r.desfecho, ["Em tratamento", "Resolvida", "Internação"]],
+    ],
+    req: { itens: ["Dispositivo associado", "Cultura coletada antes do antibiótico", "Via oral ou endovenosa", "Dias de uso", "Ajuste após cultura", "Desfecho"], faltando: r.cultura ? [] : ["Cultura coletada antes do antibiótico"] },
+    blocos: [r.cod === "8.6" ? { tipo: "nota", texto: "Infecção de lesão por pressão: o episódio da lesão vive no card 06 e o rateio de antimicrobiano entra como lançamento 7.5 naquele episódio." } : null].filter(Boolean),
+  }),
+};
+
+// ── 09 — Ouvidoria ────────────────────────────────────────
+CARDS["09"] = {
+  nome: "Ouvidoria",
+  nota: "A categoria “Reclamações e Solicitações” foi extinta. Manifestação com mais de um teor é classificada pelo de maior criticidade; os demais entram como motivo adicional.",
+  contagem: 14,
+  sub: { "9.1": "Reclamação", "9.2": "Solicitação", "9.3": "Sugestão", "9.4": "Elogio", "9.5": "Dúvida ou pedido de informação" },
+  linhas: [
+    { id: "OUV-0612", pac: "Marta L. Andrade", op: "Unimed", data: "2026-08-26", cod: "9.1", teores: ["9.2"], motivo: "Atraso ou falta de profissional", origem: "Família", prazo: "2026-08-31", proced: null, resp: null },
+    { id: "OUV-0615", pac: "Genésio T. Vilar", op: "Particular", data: "2026-08-24", cod: "9.1", teores: [], motivo: "Conduta técnica", origem: "Família", prazo: "2026-08-27", proced: null, resp: null },
+    { id: "OUV-0618", pac: "Odete S. Maranhão", op: "Camperj", data: "2026-08-21", cod: "9.2", teores: [], motivo: "Insumo ou equipamento", origem: "Paciente", prazo: "2026-08-28", proced: "Procedente", resp: "2026-08-25" },
+    { id: "OUV-0621", pac: "Sebastião P. Rocha", op: "Camperj", data: "2026-08-18", cod: "9.4", teores: [], motivo: "Postura e relacionamento", origem: "Família", prazo: "2026-08-25", proced: "Procedente", resp: "2026-08-20" },
+    { id: "OUV-0624", pac: "Neusa A. Prado", op: "Unimed", data: "2026-08-14", cod: "9.5", teores: [], motivo: "Faturamento ou autorização", origem: "Operadora", prazo: "2026-08-21", proced: "Improcedente", resp: "2026-08-19" },
+    { id: "OUV-0627", pac: "Zulmira N. Peixoto", op: "Camperj", data: "2026-08-11", cod: "9.1", teores: ["9.5"], motivo: "Comunicação e informação", origem: "Equipe interna", prazo: "2026-08-18", proced: "Parcialmente", resp: "2026-08-17" },
+    { id: "OUV-0630", pac: "Rubem C. Falcão", op: "Unimed", data: "2026-08-07", cod: "9.3", teores: [], motivo: "Agendamento", origem: "Família", prazo: "2026-08-14", proced: "Procedente", resp: "2026-08-12" },
+    { id: "OUV-0633", pac: "Therezinha M. Couto", op: "Particular", data: "2026-08-04", cod: "9.2", teores: [], motivo: "Troca de profissional", origem: "Paciente", prazo: "2026-08-11", proced: "Procedente", resp: "2026-08-08" },
+  ],
+  stats(rs) {
+    const abertas = rs.filter(r => !r.resp);
+    const vencidas = abertas.filter(r => r.prazo < HOJE).length;
+    const resp = rs.filter(r => r.resp);
+    const noPrazo = resp.filter(r => r.resp <= r.prazo).length;
+    return [
+      { k: "Manifestações", v: rs.length, d: "no mês", lead: true },
+      { k: "Reclamações (9.1)", v: rs.filter(r => r.cod === "9.1").length, d: "maior criticidade" },
+      { k: "Em aberto", v: abertas.length, d: vencidas ? vencidas + " fora do SLA" : "todas dentro do prazo", warn: vencidas > 0 },
+      { k: "Resposta no prazo", v: pct(noPrazo / (resp.length || 1) * 100), d: "SLA de 5 dias úteis", meter: noPrazo / (resp.length || 1) },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Teor", cell: r => comCodigo(r.cod, badge(CARDS["09"].sub[r.cod], r.cod === "9.1" ? "b-2" : r.cod === "9.4" ? "b-ok" : "b-n", true)) },
+    { h: "Motivo", cls: "dim", cell: r => r.motivo },
+    { h: "Teores adicionais", cls: "dim mono", cell: r => r.teores.length ? r.teores.join(" · ") : "—" },
+    { h: "Origem", cell: r => badge(r.origem, "b-n") },
+    { h: "Aberta", cls: "num dim", cell: r => dcurt(r.data) },
+    { h: "SLA", cell: r => r.resp ? badge("Respondida " + dcurt(r.resp), r.resp <= r.prazo ? "b-ok" : "b-flag") : prazoChip(r.prazo) },
+    { h: "Procedência", cell: r => r.proced ? badge(r.proced, r.proced === "Procedente" ? "b-2" : r.proced === "Parcialmente" ? "b-1" : "b-n") : el("span", "dim", "—") },
+  ],
+  board: { titulo: "Board por situação", grupos: [["Em aberto", r => !r.resp], ["Respondidas no prazo", r => r.resp && r.resp <= r.prazo], ["Respondidas fora do prazo", r => r.resp && r.resp > r.prazo]], card: r => [r.pac, CARDS["09"].sub[r.cod] + " · " + r.motivo] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: CARDS["09"].sub[r.cod] + " · aberta em " + dbr(r.data),
+    alerta: !r.resp && r.prazo < HOJE ? "<b>SLA de resposta vencido.</b> O prazo de 5 dias úteis expirou em " + dbr(r.prazo) + "." : null,
+    props: [
+      ["Teor principal", r.cod + " — " + CARDS["09"].sub[r.cod]],
+      ["Teores adicionais", r.teores.length ? r.teores.map(t => t + " — " + CARDS["09"].sub[t]).join(", ") : "—"],
+      ["Motivo", r.motivo, ["Atraso ou falta de profissional", "Troca de profissional", "Conduta técnica", "Postura e relacionamento", "Insumo ou equipamento", "Comunicação e informação", "Faturamento ou autorização", "Agendamento"]],
+      ["Origem", r.origem, ["Família", "Paciente", "Operadora", "Equipe interna"]],
+      ["Prazo de resposta", dbr(r.prazo)],
+      ["Respondida em", r.resp ? dbr(r.resp) : "—"],
+      ["Procedência", r.proced || "—", ["Procedente", "Parcialmente", "Improcedente"]],
+    ],
+    req: { itens: ["Motivo", "Origem", "Procedência", "Data de resposta"], faltando: r.resp ? [] : ["Data de resposta", "Procedência"] },
+    blocos: [
+      r.teores.length ? { tipo: "nota", texto: "Manifestação com mais de um teor: classificada por " + r.cod + " (maior criticidade). Os demais teores ficam registrados como motivo adicional e não geram contagem própria." } : null,
+    ].filter(Boolean),
+  }),
+};
+
+// ── 10 — Vulnerabilidade e Proteção Social ────────────────
+CARDS["10"] = {
+  nome: "Vulnerabilidade e Proteção Social",
+  nota: "“Em triagem” substitui a antiga “não categorizada” e é status temporário com prazo de 7 dias. Nenhum caso encerra a competência sem categoria.",
+  contagem: 6,
+  sub: { "10.1": "Negligência ou abandono do cuidado", "10.2": "Violência física", "10.3": "Violência psicológica", "10.4": "Violência sexual", "10.5": "Violência financeira ou patrimonial", "10.6": "Ausência ou insuficiência de cuidador", "10.7": "Moradia inadequada ou ambiente inseguro", "10.8": "Conflito familiar que interfere no plano", "10.9": "Recusa ou sabotagem do cuidado" },
+  linhas: [
+    { id: "VUL-0128", pac: "Odete S. Maranhão", op: "Camperj", data: "2026-08-25", cod: null, triagemAte: "2026-09-01", quem: "Enfermeira da visita", aval: null, conduta: null, notif: false, reaval: null },
+    { id: "VUL-0130", pac: "Zulmira N. Peixoto", op: "Camperj", data: "2026-08-19", cod: "10.6", triagemAte: null, quem: "Assistente social", aval: "2026-08-21", conduta: "Acionada rede de apoio familiar", notif: false, reaval: "2026-09-18" },
+    { id: "VUL-0132", pac: "Neusa A. Prado", op: "Unimed", data: "2026-08-16", cod: "10.1", triagemAte: null, quem: "Médico assistente", aval: "2026-08-18", conduta: "Notificação ao serviço social do município", notif: true, reaval: "2026-09-15" },
+    { id: "VUL-0134", pac: "Ubirajara L. Pimentel", op: "Unimed", data: "2026-08-12", cod: "10.7", triagemAte: null, quem: "Fisioterapeuta", aval: "2026-08-14", conduta: "Adaptação de ambiente orientada e reavaliada", notif: false, reaval: "2026-09-11" },
+    { id: "VUL-0136", pac: "Marta L. Andrade", op: "Unimed", data: "2026-08-06", cod: "10.8", triagemAte: null, quem: "Assistente social", aval: "2026-08-08", conduta: "Mediação familiar com plano pactuado", notif: false, reaval: "2026-09-05" },
+    { id: "VUL-0138", pac: "Rubem C. Falcão", op: "Unimed", data: "2026-08-01", cod: "10.9", triagemAte: null, quem: "Enfermeira da visita", aval: "2026-08-03", conduta: "Termo de recusa assinado e plano revisto", notif: false, reaval: "2026-08-31" },
+  ],
+  stats(rs) {
+    const triagem = rs.filter(r => !r.cod);
+    const venc = triagem.filter(r => r.triagemAte < HOJE).length;
+    const sem72 = rs.filter(r => !r.aval || dias(r.data, r.aval) > 3).length;
+    return [
+      { k: "Casos", v: rs.length, d: "no mês", lead: true },
+      { k: "Em triagem", v: triagem.length, d: venc ? venc + " com prazo vencido" : "prazo de 7 dias", warn: venc > 0 },
+      { k: "Notificação compulsória", v: rs.filter(r => r.notif).length, d: "acionada no período" },
+      { k: "Sem avaliação em 72h", v: sem72, d: "serviço social", warn: sem72 > 0 },
+    ];
+  },
+  cols: [
+    { h: "Paciente", cls: "pat", cell: r => paciente(r.pac, r.op) },
+    { h: "Categoria", cell: r => r.cod ? comCodigo(r.cod, badge(CARDS["10"].sub[r.cod], ["10.2", "10.3", "10.4"].includes(r.cod) ? "b-3" : r.cod === "10.1" ? "b-2" : "b-n", true)) : badge("Em triagem", "b-1", true) },
+    { h: "Identificado por", cls: "dim", cell: r => r.quem },
+    { h: "Aberto", cls: "num dim", cell: r => dcurt(r.data) },
+    { h: "Avaliação social", cell: r => r.aval ? badge("em " + dias(r.data, r.aval) + " dias", dias(r.data, r.aval) <= 3 ? "b-ok" : "b-1") : badge("Pendente", "b-flag", true) },
+    { h: "Notificação", cell: r => r.notif ? badge("Compulsória", "b-2", true) : el("span", "dim", "—") },
+    { h: "Prazo", cell: r => r.cod ? (r.reaval ? badge("Reavaliar " + dcurt(r.reaval), "b-n") : el("span", "dim", "—")) : prazoChip(r.triagemAte) },
+  ],
+  board: { titulo: "Board por situação", grupos: [["Em triagem (7 dias)", r => !r.cod], ["Categorizados e em acompanhamento", r => !!r.cod && !r.notif], ["Com notificação compulsória", r => r.notif]], card: r => [r.pac, (r.cod ? CARDS["10"].sub[r.cod] : "Aguardando categorização") + " · " + r.quem] },
+  peek: r => ({
+    titulo: r.pac,
+    sub: (r.cod ? CARDS["10"].sub[r.cod] : "Em triagem") + " · aberto em " + dbr(r.data),
+    alerta: !r.cod ? "<b>Caso em triagem.</b> Status temporário com prazo de 7 dias, até " + dbr(r.triagemAte) + ". A competência não fecha com caso sem categoria." : null,
+    props: [
+      ["Categoria", r.cod ? r.cod + " — " + CARDS["10"].sub[r.cod] : "Em triagem", Object.entries(CARDS["10"].sub).map(([k, v]) => k + " — " + v)],
+      ["Quem identificou", r.quem, ["Enfermeira da visita", "Assistente social", "Médico assistente", "Fisioterapeuta"]],
+      ["Avaliação do serviço social", r.aval ? dbr(r.aval) + " (" + dias(r.data, r.aval) + " dias)" : "Pendente"],
+      ["Conduta adotada", r.conduta || "—"],
+      ["Notificação compulsória", r.notif ? "Realizada" : "Não indicada", ["Realizada", "Não indicada"]],
+      ["Comunicação à operadora", r.cod ? "Realizada" : "—"],
+      ["Reavaliação em 30 dias", r.reaval ? dbr(r.reaval) : "—"],
+    ],
+    req: { itens: ["Quem identificou", "Avaliação do serviço social em até 72h", "Conduta adotada", "Notificação compulsória quando indicada", "Comunicação à operadora", "Reavaliação em 30 dias"], faltando: r.cod ? [] : ["Categoria do caso", "Avaliação do serviço social em até 72h", "Conduta adotada"] },
+    blocos: [],
+  }),
+};
+
+// ═══ Render ═══════════════════════════════════════════════
+const ORDEM = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"];
+let atual = "06", linhasAtual = [], modoBoard = false, drill = null;
+
+// Campos usados pelos filtros globais, por card.
+const opDe = r => (r.op || "").split(" · ")[0];
+const modDe = r => r.mod || (r.op || "").split(" · ")[1] || "";
+const CAMPOS = {
+  "01": { data: r => r.adm, op: opDe, mod: modDe },
+  "02": { data: r => r.quando, op: opDe, mod: modDe },
+  "03": { data: r => r.data, op: opDe, mod: modDe },
+  "04": { data: r => r.data, op: opDe, mod: modDe },
+  "05": { data: r => r.data, op: opDe, mod: modDe },
+  "06": { data: r => r.aberta, op: opDe, mod: modDe },
+  "07": { data: r => r.aberta, op: opDe, mod: modDe },
+  "08": { data: r => r.inicio, op: opDe, mod: modDe },
+  "09": { data: r => r.data, op: opDe, mod: modDe },
+  "10": { data: r => r.data, op: opDe, mod: modDe },
+};
+
+// Metas — o targetType / targetDirection / targetValue do modelo atual, preservado.
+const METAS = {
+  "01": { txt: "Saídas não eletivas ≤ 30% das saídas do mês", ok: rs => { const s = rs.filter(r => r.cod); return !s.length || s.filter(r => ["1.4", "1.5", "1.6", "1.7"].includes(r.cod)).length / s.length <= .3; } },
+  "02": { txt: "Resolutividade no domicílio ≥ 70%", ok: rs => !rs.length || rs.filter(r => ["2.1", "2.2"].includes(r.cod)).length / rs.length >= .7 },
+  "04": { txt: "Aderência ao PAD ≥ 90%", ok: () => CARDS["04"].exec.realizados / CARDS["04"].exec.previstos >= .9 },
+  "05": { txt: "Eventos com dano grave ou óbito = 0", ok: rs => !rs.some(r => ["Grave", "Óbito"].includes(r.dano)) },
+  "06": { txt: "Lesões adquiridas sob assistência ≤ 2 no mês", ok: rs => rs.filter(r => !r.fechada && r.origem === "adquirida").length <= 2 },
+  "07": { txt: "Custo evitável ≤ 30% do custo do período", ok: rs => { const t = rs.reduce((s, r) => s + r.total, 0); return !t || rs.filter(r => r.origem === "adquirida").reduce((s, r) => s + r.total, 0) / t <= .3; } },
+  "08": { txt: "Infecção relacionada à assistência ≤ 40%", ok: rs => !rs.length || rs.filter(r => r.classe === "assistencial").length / rs.length <= .4 },
+  "09": { txt: "Resposta dentro do SLA ≥ 90%", ok: rs => { const r2 = rs.filter(r => r.resp); return !r2.length || r2.filter(r => r.resp <= r.prazo).length / r2.length >= .9; } },
+  "10": { txt: "Nenhum caso em triagem com prazo vencido", ok: rs => !rs.some(r => !r.cod && r.triagemAte < HOJE) },
+};
+
+// Pivô mensal: um registro pode render mais de uma linha (01 conta admissão e saída).
+const PIVOT = {
+  "01": r => [{ cod: "1.1", data: r.adm, v: 1 }].concat(r.cod ? [{ cod: r.cod, data: r.saida, v: 1 }] : []),
+  "07": r => r.custos.map(c => ({ cod: c[0].slice(0, 3), data: r.aberta, v: c[1] })),
+  "10": r => [{ cod: r.cod || "—", data: r.data, v: 1 }],
+};
+
+// ── Filtro global (bimestre + intervalo + operadora + modalidade) ──
+const ANO = 2026;
+const BIMESTRES = [
+  { v: "all", l: "Todos os períodos", i: "", f: "" },
+  { v: "b1", l: `Jan – Fev ${ANO}`, i: `${ANO}-01-01`, f: `${ANO}-02-28` },
+  { v: "b2", l: `Mar – Abr ${ANO}`, i: `${ANO}-03-01`, f: `${ANO}-04-30` },
+  { v: "b3", l: `Mai – Jun ${ANO}`, i: `${ANO}-05-01`, f: `${ANO}-06-30` },
+  { v: "b4", l: `Jul – Ago ${ANO}`, i: `${ANO}-07-01`, f: `${ANO}-08-31` },
+  { v: "b5", l: `Set – Out ${ANO}`, i: `${ANO}-09-01`, f: `${ANO}-10-31` },
+  { v: "b6", l: `Nov – Dez ${ANO}`, i: `${ANO}-11-01`, f: `${ANO}-12-31` },
+];
+const F = { bim: "all", de: "", ate: "", op: "", mod: "" };
+const bimAtivo = () => BIMESTRES.find(b => b.v === F.bim) || BIMESTRES[0];
+const inicioF = () => F.de || bimAtivo().i;
+const fimF = () => F.ate || bimAtivo().f;
+const rotuloPeriodo = () => (F.de || F.ate)
+  ? (F.de ? dbr(F.de) : "…") + " – " + (F.ate ? dbr(F.ate) : "…")
+  : bimAtivo().l.toLowerCase();
+
+function filtrar(codigo, linhas, ignorarDrill) {
+  const c = CAMPOS[codigo], i = inicioF(), f = fimF();
+  return linhas.filter(r => {
+    const d = c.data(r);
+    if (i && d && d < i) return false;
+    if (f && d && d > f) return false;
+    if (F.op && c.op(r) !== F.op) return false;
+    if (F.mod && c.mod(r) !== F.mod) return false;
+    if (!ignorarDrill && drill && (r.cod || "—") !== drill) return false;
+    return true;
+  });
+}
+
+const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+const selBim = $("#fBim");
+BIMESTRES.forEach(b => { const o = el("option", null, b.l); o.value = b.v; selBim.append(o); });
+selBim.addEventListener("change", e => { F.bim = e.target.value; irPara(atual); });
+$("#fDe").addEventListener("change", e => { F.de = e.target.value; irPara(atual); });
+$("#fAte").addEventListener("change", e => { F.ate = e.target.value; irPara(atual); });
+$("#fOp").addEventListener("change", e => { F.op = e.target.value; irPara(atual); });
+$("#fMod").addEventListener("change", e => { F.mod = e.target.value; irPara(atual); });
+$("#fClear").addEventListener("click", () => {
+  F.bim = "all"; F.de = ""; F.ate = ""; F.op = ""; F.mod = ""; drill = null;
+  selBim.value = "all"; $("#fDe").value = ""; $("#fAte").value = ""; $("#fOp").value = ""; $("#fMod").value = "";
+  irPara(atual);
+});
+
+// ── Páginas mantidas do sistema atual ──
+const PAGES = {
+  eventos: { nome: "Eventos", ct: "105", lead: "Lista única de todos os registros das dez categorias, com filtro por intervalo de ocorrência, busca por paciente e edição em linha.", itens: [["Mantido", "Filtro por intervalo da data de ocorrência, busca, ordenação e anexo de arquivo até 5 MB por registro."], ["Muda", "Deixa de existir “indicador + subindicador genérico”: cada linha abre no formulário tipado da sua categoria."], ["Novo", "Coluna de origem do registro — sistema ou legado importado — para separar o histórico migrado."]] },
+  pacientes: { nome: "Pacientes", ct: "134", lead: "Cadastro com operadora, datas de admissão e nascimento, anexo e histórico completo de registros.", itens: [["Mantido", "Cadastro, anexo de documento e histórico por paciente."], ["Muda", "O paciente deixa de carregar a lista de eventos embutida; passa a ter episódios de cuidado, e o histórico é montado por consulta."], ["Novo", "Um episódio aberto por paciente é garantido pelo banco, não por validação de tela."]] },
+  inativos: { nome: "Pacientes inativos", ct: "16", lead: "Quem saiu por alta, óbito ou desligamento continua visível e auditável, fora do denominador dos indicadores.", itens: [["Mantido", "Página própria, com motivo e data da inativação."], ["Muda", "“Inativo” vira consequência do episódio fechado (saída 1.2 a 1.7), não uma flag solta no paciente."], ["Novo", "Reabertura de episódio é um registro novo, com data e responsável, em vez de reverter a flag."]] },
+  relatorios: { nome: "Relatórios", ct: "PDF", lead: "Tabela pivô mensal por indicador e subindicador, gráficos de barra e linha, e exportação em PDF.", itens: [["Mantido", "Pivô mensal, evolução por período, exportação em PDF e recorte por operadora."], ["Muda", "Os números saem de views do banco, não de contagem no navegador — o relatório passa a bater com o painel por construção."], ["Novo", "Recorte por origem do registro e comparação entre competências fechadas."]] },
+  certificados: { nome: "Certificados", ct: "—", lead: "Emissão de certificado com frente e verso, logo, assinatura e carga horária.", itens: [["Mantido", "Layout de frente e verso, assinatura e geração para impressão."], ["Muda", "Sai do bundle do painel e vira geração sob demanda, com o mesmo modelo."], ["Novo", "Registro de emissão fica na auditoria: quem emitiu, quando e para quem."]] },
+  triagem: { nome: "Registros do formulário público", ct: "3", lead: "Ocorrências enviadas sem login pelo formulário aberto, aguardando vínculo com um paciente.", itens: [["Mantido", "Formulário público, fila de pendentes e vínculo manual ao paciente."], ["Muda", "As categorias liberadas deixam de ser prefixo de texto (“08 -”, “09 -”, “10 -”) e passam a ser marcadas no catálogo."], ["Novo", "Enquanto pendente, o registro não entra em nenhum indicador — hoje isso depende de o admin lembrar de vincular."]] },
+  auditoria: { nome: "Auditoria", ct: "624", lead: "Histórico de quem criou, alterou ou removeu cada registro, com valores anteriores.", itens: [["Mantido", "Trilha completa por registro, com autor e data."], ["Muda", "Sai do event store manual em Mongo e passa a trigger de auditoria no Postgres — mesma informação, sem depender de a aplicação lembrar de gravar."], ["Novo", "Diferença campo a campo entre versões, e não só o payload inteiro."]] },
+  usuarios: { nome: "Usuários e acesso", ct: "9", lead: "Contas, perfis e login com token assinado.", itens: [["Mantido", "Login, perfis e controle de acesso por página."], ["Muda", "Autorização passa a ser verificada também na API, por recurso — hoje a checagem é predominantemente de tela."], ["Novo", "Perfil somente-leitura para auditoria da operadora."]] },
+  notificacoes: { nome: "Notificações", ct: "6", lead: "Avisos de registro novo e pendências, com marcação de lido.", itens: [["Mantido", "Sino com contador, marcação de lido e link para o registro."], ["Muda", "Deixa de ser só “novo evento”: as regras do documento viram alertas — óbito em 48h, antimicrobiano com 10 dias, SLA da ouvidoria, triagem de 7 dias."], ["Novo", "Alerta com destinatário definido por regra, como a revisão de caso que vai à diretoria médica."]] },
+  fechamento: { nome: "Fechar competência", ct: "", lead: "Encerramento do mês: valida pendências, congela os números e libera a comparação entre períodos.", itens: [["Novo", "Não existe hoje. O fechamento recusa competência com caso em triagem, análise causal vencida ou campo obrigatório faltando."], ["Muda", "Depois de fechada, a competência vira leitura: correção exige registro de retificação com autor e motivo."]] },
+};
+
+const navOps = $("#navOps");
+Object.entries(PAGES).forEach(([k, p]) => {
+  const b = el("button", "navitem");
+  b.type = "button";
+  b.append(el("span", "code", "·"), el("span", "nm", p.nome));
+  if (p.ct) b.append(el("span", "ct mono", p.ct));
+  b.addEventListener("click", () => abrirPagina(k));
+  navOps.append(b);
+});
+
+function abrirPagina(chave) {
+  const p = PAGES[chave];
+  fechar();
+  document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
+  [...navOps.children].forEach((b, i) => b.classList.toggle("on", Object.keys(PAGES)[i] === chave));
+  $("#crumbNow").textContent = p.nome;
+  $("#pageCard").classList.add("hidden");
+  $("#pageLegacy").classList.remove("hidden");
+  const box = $("#legacyBody");
+  box.innerHTML = "";
+  box.append(el("h2", null, p.nome), el("p", "lead", p.lead));
+  const g = el("div", "lgrid");
+  p.itens.forEach(([k, v]) => {
+    const row = el("div", "lrow");
+    row.append(el("span", "lk", k), el("span", "lv", v));
+    g.append(row);
+  });
+  box.append(g);
+  window.scrollTo({ top: 0 });
+}
+
+const navBox = $("#nav");
+ORDEM.forEach(c => {
+  const b = el("button", "navitem");
+  b.type = "button";
+  b.append(el("span", "code mono", c), el("span", "nm", CARDS[c].nome));
+  b.append(el("span", "ct mono", CARDS[c].contagem == null ? "R$" : String(CARDS[c].contagem)));
+  b.addEventListener("click", () => irPara(c));
+  navBox.append(b);
+});
+
+function irPara(codigo, manterDrill) {
+  if (codigo !== atual && !manterDrill) drill = null;
+  atual = codigo;
+  modoBoard = false;
+  const card = CARDS[codigo];
+  linhasAtual = filtrar(codigo, card.linhas);
+
+  $("#pageCard").classList.remove("hidden");
+  $("#pageLegacy").classList.add("hidden");
+  [...navBox.children].forEach((b, i) => b.classList.toggle("on", ORDEM[i] === codigo));
+  [...navOps.children].forEach(b => b.classList.remove("on"));
+  $("#crumbNow").textContent = codigo + " — " + card.nome;
+  $("#hCode").textContent = "CARD " + codigo;
+  $("#hTitle").textContent = card.nome;
+  $("#hNote").textContent = card.nota;
+  $("#fLabel").textContent = rotuloPeriodo();
+  $("#fCount").textContent = String(linhasAtual.length);
+
+  const mirror = $("#hMirror");
+  mirror.innerHTML = "";
+  if (card.espelho) mirror.append(el("span", "mirror", card.espelho));
+
+  const metaBox = $("#hMeta");
+  metaBox.innerHTML = "";
+  const meta = METAS[codigo];
+  if (meta) {
+    const bateu = meta.ok(linhasAtual);
+    const chip = el("span", "meta-chip " + (bateu ? "ok" : "no"));
+    chip.append(el("span", "st", bateu ? "Meta atingida" : "Fora da meta"), document.createTextNode(meta.txt));
+    metaBox.append(chip);
+  }
+
+  const drillBar = $("#drillBar");
+  drillBar.innerHTML = "";
+  if (drill) {
+    const d = el("span", "drill");
+    d.append(document.createTextNode("Filtrado por " + drill + (card.sub[drill] ? " — " + card.sub[drill] : "")));
+    const x = el("button", null, "✕");
+    x.addEventListener("click", () => { drill = null; irPara(codigo); });
+    d.append(x);
+    drillBar.append(d);
+  }
+
+  const stats = $("#stats");
+  stats.innerHTML = "";
+  card.stats(linhasAtual).forEach(s => {
+    const c = el("div", "cell" + (s.lead ? " lead" : s.warn ? " warn" : ""));
+    c.append(el("span", "k", s.k), el("span", "v", String(s.v)), el("span", "d", s.d));
+    if (s.meter != null) {
+      const m = el("div", "meter"); const i = el("i");
+      i.style.width = Math.round(Math.min(1, s.meter) * 100) + "%";
+      m.append(i); c.append(m);
+    }
+    stats.append(c);
+  });
+
+  const views = $("#views");
+  views.innerHTML = "";
+  const abas = [["tabela", "Tabela"]];
+  if (card.board) abas.push(["board", card.board.titulo]);
+  abas.push(["pivot", "Evolução mensal"]);
+
+  const botoes = {};
+  abas.forEach(([k, rot]) => {
+    const b = el("button", "tab", rot);
+    b.addEventListener("click", () => mostrar(k));
+    botoes[k] = b;
+    views.append(b);
+  });
+  views.append(el("span", "spacer"));
+  const chip = el("span", "chip-filter");
+  chip.append(document.createTextNode("Subcategorias "), el("b", null, String(Object.keys(card.sub).length)));
+  views.append(chip);
+
+  function mostrar(k) {
+    modoBoard = k === "board";
+    Object.entries(botoes).forEach(([kk, b]) => b.classList.toggle("on", kk === k));
+    $("#viewTable").classList.toggle("hidden", k !== "tabela");
+    $("#viewBoard").classList.toggle("hidden", k !== "board");
+    $("#viewPivot").classList.toggle("hidden", k !== "pivot");
+  }
+  mostrar("tabela");
+
+  const thead = $("#thead");
+  thead.innerHTML = "";
+  card.cols.forEach(c => thead.append(el("th", null, c.h)));
+
+  const tbody = $("#rows");
+  tbody.innerHTML = "";
+  linhasAtual.forEach(r => {
+    const tr = el("tr");
+    tr.dataset.id = r.id;
+    tr.tabIndex = 0;
+    card.cols.forEach(c => {
+      const td = el("td", c.cls || null);
+      const v = c.cell(r);
+      td.append(typeof v === "string" ? document.createTextNode(v) : v);
+      tr.append(td);
+    });
+    tr.addEventListener("click", () => abrir(r.id));
+    tr.addEventListener("keydown", e => { if (e.key === "Enter") abrir(r.id); });
+    tbody.append(tr);
+  });
+
+  const board = $("#board");
+  board.innerHTML = "";
+  if (card.board) {
+    card.board.grupos.forEach(([titulo, filtro]) => {
+      const itens = linhasAtual.filter(filtro);
+      const col = el("div");
+      const h = el("div", "col-h");
+      h.append(el("span", "t", titulo), el("span", "c mono", String(itens.length)));
+      const stack = el("div", "col-stack");
+      itens.forEach(r => {
+        const [tit, sub] = card.board.card(r);
+        const k = el("button", "kard");
+        k.append(el("span", "kp", tit), el("span", "kl", sub));
+        k.addEventListener("click", () => abrir(r.id));
+        stack.append(k);
+      });
+      col.append(h, stack);
+      board.append(col);
+    });
+  }
+  // ── Evolução mensal (pivô do relatório atual) ──
+  const base = filtrar(codigo, card.linhas, true);
+  const entradas = base.flatMap(r => (PIVOT[codigo] ? PIVOT[codigo](r) : [{ cod: r.cod || "—", data: CAMPOS[codigo].data(r), v: 1 }]))
+    .filter(e => e.data);
+  const ehValor = codigo === "07";
+  const mesesAtivos = MESES.map((_, i) => i).filter(i => entradas.some(e => new Date(e.data + "T12:00:00").getMonth() === i));
+
+  const pthead = $("#pthead");
+  pthead.innerHTML = "";
+  pthead.append(el("th", null, "Indicador"));
+  mesesAtivos.forEach(i => pthead.append(el("th", "c", MESES[i])));
+  pthead.append(el("th", "c", "Total"));
+
+  const soma = (filtro) => {
+    const linha = mesesAtivos.map(i => entradas.filter(e => filtro(e) && new Date(e.data + "T12:00:00").getMonth() === i).reduce((s, e) => s + e.v, 0));
+    return [linha, linha.reduce((s, n) => s + n, 0)];
+  };
+  const celulas = (tr, vals, total) => {
+    vals.forEach(v => {
+      const td = el("td", "mth" + (v ? "" : " z"));
+      td.textContent = v ? (ehValor ? brl(v) : String(v)) : "—";
+      tr.append(td);
+    });
+    const t = el("td", "tot");
+    t.textContent = ehValor ? brl(total) : String(total);
+    tr.append(t);
+  };
+
+  const prows = $("#prows");
+  prows.innerHTML = "";
+  const trPai = el("tr", "parent");
+  trPai.append(el("td", "ind", codigo + " — " + card.nome));
+  const [valsPai, totalPai] = soma(() => true);
+  celulas(trPai, valsPai, totalPai);
+  prows.append(trPai);
+
+  const codigos = Object.keys(card.sub).concat(entradas.some(e => e.cod === "—") ? ["—"] : []);
+  codigos.forEach(sc => {
+    const tr = el("tr");
+    tr.tabIndex = 0;
+    const td = el("td", "ind");
+    td.append(el("span", "sc mono", sc), document.createTextNode(sc === "—" ? "Em triagem" : card.sub[sc]));
+    tr.append(td);
+    const [vals, total] = soma(e => e.cod === sc);
+    celulas(tr, vals, total);
+    tr.addEventListener("click", () => { drill = sc; irPara(codigo, true); });
+    prows.append(tr);
+  });
+
+  fechar();
+  window.scrollTo({ top: 0 });
+}
+
+// ═══ Side peek ════════════════════════════════════════════
+const peek = $("#peek"), scrim = $("#scrim"), peekBody = $("#peekBody");
+
+function propRow(chave, valor, opcoes) {
+  const row = el("div", "prop");
+  row.append(el("span", "pk", chave));
+  const v = opcoes ? el("button", "pv") : el("div", "pv");
+  if (typeof valor === "string") v.textContent = valor; else v.append(valor);
+  if (opcoes) v.addEventListener("click", e => popover(e.currentTarget, opcoes, v));
+  row.append(v);
+  return row;
+}
+function popover(anchor, opcoes, alvo) {
+  fecharPop();
+  const r = anchor.getBoundingClientRect();
+  const p = el("div", "pop");
+  p.id = "pop";
+  const atualTxt = alvo.textContent.trim();
+  opcoes.forEach(o => {
+    const b = el("button", "opt", o);
+    if (o === atualTxt) b.append(el("span", "mk", "✓"));
+    b.addEventListener("click", () => { alvo.textContent = o; fecharPop(); });
+    p.append(b);
+  });
+  document.body.append(p);
+  const alt = p.offsetHeight;
+  p.style.left = Math.max(8, Math.min(r.left, window.innerWidth - p.offsetWidth - 12)) + "px";
+  p.style.top = (r.bottom + alt > window.innerHeight - 12 ? Math.max(8, r.top - alt - 4) : r.bottom + 4) + "px";
+  setTimeout(() => document.addEventListener("click", foraDoPop), 0);
+}
+const foraDoPop = e => { if (!e.target.closest("#pop")) fecharPop(); };
+function fecharPop() { const p = $("#pop"); if (p) p.remove(); document.removeEventListener("click", foraDoPop); }
+
+function abrir(id) {
+  const card = CARDS[atual];
+  const r = linhasAtual.find(x => x.id === id);
+  if (!r) return;
+  const cfg = card.peek(r);
+
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.toggle("sel", tr.dataset.id === id));
+  $("#peekId").textContent = r.id;
+  peekBody.innerHTML = "";
+
+  const head = el("div");
+  head.append(el("h2", null, cfg.titulo), el("div", "sub", cfg.sub));
+  peekBody.append(head);
+
+  if (cfg.alerta) { const a = el("div", "alertbox"); a.innerHTML = cfg.alerta; peekBody.append(a); }
+
+  const props = el("div", "props");
+  cfg.props.forEach(([k, v, o]) => props.append(propRow(k, v, o)));
+  peekBody.append(props);
+
+  if (cfg.req) {
+    const total = cfg.req.itens.length, faltam = cfg.req.faltando.length, ok = total - faltam;
+    const box = el("div", "req");
+    const bar = el("div", "bar"); const fill = el("i");
+    fill.style.width = Math.round(ok / total * 100) + "%"; bar.append(fill);
+    const inner = el("div", "inner");
+    const hd = el("div", "hd");
+    hd.append(el("span", "sec-h", "Campos obrigatórios"), el("span", "n mono", ok + "/" + total));
+    inner.append(hd);
+    cfg.req.itens.forEach(c => {
+      const falta = cfg.req.faltando.some(f => f.toLowerCase().startsWith(c.split(" ")[0].toLowerCase()));
+      const line = el("div", "line" + (falta ? " miss" : ""));
+      line.append(el("span", "mk", falta ? "!" : "✓"), el("span", null, c));
+      inner.append(line);
+    });
+    box.append(bar, inner);
+    peekBody.append(box);
+  }
+
+  (cfg.blocos || []).forEach(b => {
+    const box = el("div");
+    if (b.tipo === "nota") { const n = el("div", "notebox"); n.textContent = b.texto; box.append(n); }
+
+    if (b.tipo === "timeline") {
+      box.append(el("div", "sec-h", b.titulo));
+      const serie = el("div", "serie");
+      b.itens.forEach(it => {
+        const ev = el("div", "ev");
+        ev.append(el("div", "when mono", it.when));
+        const what = el("div", "what");
+        const met = el("div", "met");
+        it.met.forEach(([k, v]) => { const s = el("span"); s.innerHTML = k + " <b>" + v + "</b>"; met.append(s); });
+        what.append(met, el("div", "note", it.note));
+        if (it.tag) what.append(el("span", "tagline", it.tag));
+        ev.append(what);
+        serie.append(ev);
+      });
+      box.append(serie);
+    }
+
+    if (b.tipo === "money") {
+      box.append(el("div", "sec-h", b.titulo));
+      const cost = el("div", "cost");
+      let total = 0;
+      b.linhas.forEach(([lbl, v]) => {
+        total += v;
+        const row = el("div", "r");
+        row.append(el("span", "lbl", lbl), el("span", "amt mono", brl(v)));
+        cost.append(row);
+      });
+      const tot = el("div", "tot");
+      tot.append(el("span", null, b.totalLabel), el("span", "amt mono", brl(total)));
+      cost.append(tot);
+      box.append(cost);
+    }
+
+    if (b.tipo === "derived") {
+      box.append(el("div", "sec-h", b.titulo));
+      const d = el("div", "derived");
+      d.style.marginTop = "8px";
+      b.itens.forEach(([k, v]) => {
+        const c = el("div", "d-cell");
+        c.append(el("span", "d-k", k), el("span", "d-v", v));
+        d.append(c);
+      });
+      box.append(d);
+    }
+
+    box.style.display = "flex";
+    box.style.flexDirection = "column";
+    box.style.gap = "10px";
+    peekBody.append(box);
+  });
+
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+  $("#peekClose").focus();
+}
+
+function fechar() {
+  peek.classList.remove("on");
+  peek.setAttribute("aria-hidden", "true");
+  scrim.classList.remove("on");
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.remove("sel"));
+}
+$("#peekClose").addEventListener("click", fechar);
+scrim.addEventListener("click", fechar);
+$("#btnNovo").addEventListener("click", () => {});
+
+// ═══ Exportação ═══════════════════════════════════════════
+const EXPORTS = [
+  ["PDF", "Relatório da competência", "Capa, resumo dos dez cards com meta, pivô mensal, alertas em aberto e página de assinatura."],
+  ["XLSX", "Base e pivô em Excel", "Uma aba por card com as linhas do filtro, aba de pivô mensal e aba de metas com atingido ou não."],
+  ["PPTX", "Apresentação para a operadora", "Um slide por card: número do período, meta, evolução mensal e o que exige ação."],
+];
+
+function toast(titulo, corpo) {
+  const anterior = $(".toast");
+  if (anterior) anterior.remove();
+  const t = el("div", "toast");
+  const x = el("button", "cls", "✕");
+  x.addEventListener("click", () => t.remove());
+  t.append(x, el("b", null, titulo), el("span", null, corpo));
+  document.body.append(t);
+  setTimeout(() => t.remove(), 9000);
+}
+
+$("#btnExport").addEventListener("click", e => {
+  fecharPop();
+  const r = e.currentTarget.getBoundingClientRect();
+  const p = el("div", "pop wide");
+  p.id = "pop";
+  const ehPagina = !$("#pageLegacy").classList.contains("hidden");
+  const escopo = ehPagina ? $("#crumbNow").textContent : atual + " — " + CARDS[atual].nome;
+
+  EXPORTS.forEach(([fmt, titulo, desc]) => {
+    const b = el("button", "optx");
+    b.append(el("span", "fmt", fmt));
+    const w = el("span");
+    w.append(el("span", "t", titulo), el("span", "s", desc));
+    b.append(w);
+    b.addEventListener("click", () => {
+      fecharPop();
+      toast(titulo + " · " + fmt,
+        "Gerado no servidor a partir do recorte atual: " + escopo + ", período " + rotuloPeriodo() +
+        (F.op ? ", operadora " + F.op : "") + (F.mod ? ", modalidade " + F.mod : "") +
+        ". Nesta prévia o download fica desativado pelo sandbox.");
+    });
+    p.append(b);
+  });
+
+  const sc = el("div", "scope");
+  sc.append(document.createTextNode("Recorte: "), el("b", null, escopo),
+    document.createTextNode(" · " + rotuloPeriodo() + " · " + (F.op || "todas as operadoras") + " · " + (F.mod || "AD e ID")));
+  p.append(sc);
+
+  document.body.append(p);
+  p.style.left = Math.max(8, Math.min(r.left - 120, window.innerWidth - p.offsetWidth - 12)) + "px";
+  p.style.top = (r.bottom + 6) + "px";
+  setTimeout(() => document.addEventListener("click", foraDoPop), 0);
+});
+
+// ═══ Command palette ══════════════════════════════════════
+const cmdk = $("#cmdk"), cmdInput = $("#cmdInput"), cmdList = $("#cmdList");
+let cur = 0, itensCmd = [];
+
+function montarCmd(q) {
+  const t = q.trim().toLowerCase();
+  cmdList.innerHTML = "";
+  itensCmd = [];
+
+  const registros = [];
+  ORDEM.forEach(c => CARDS[c].linhas.forEach(r => registros.push({ c, r })));
+  const achados = registros.filter(({ c, r }) =>
+    !t || r.pac.toLowerCase().includes(t) || r.id.toLowerCase().includes(t) || CARDS[c].nome.toLowerCase().includes(t)
+  ).slice(0, 14);
+  const inds = ORDEM.filter(c => !t || CARDS[c].nome.toLowerCase().includes(t) || c.includes(t));
+
+  const grupo = (titulo, arr, render) => {
+    if (!arr.length) return;
+    cmdList.append(el("div", "cmdk-grp", titulo));
+    arr.forEach(x => { const b = render(x); cmdList.append(b); itensCmd.push(b); });
+  };
+
+  grupo("Registros", achados, ({ c, r }) => {
+    const b = el("button", "cmdk-item");
+    b.append(el("span", "code mono", c), el("span", null, r.pac), el("span", "hint", CARDS[c].nome));
+    b.addEventListener("click", () => { fecharCmd(); drill = null; irPara(c); setTimeout(() => abrir(r.id), 60); });
+    return b;
+  });
+  grupo("Indicadores", inds, c => {
+    const b = el("button", "cmdk-item");
+    b.append(el("span", "code mono", c), el("span", null, CARDS[c].nome));
+    b.addEventListener("click", () => { fecharCmd(); drill = null; irPara(c); });
+    return b;
+  });
+
+  const pgs = Object.entries(PAGES).filter(([, p]) => !t || p.nome.toLowerCase().includes(t));
+  grupo("Páginas", pgs, ([k, p]) => {
+    const b = el("button", "cmdk-item");
+    b.append(el("span", "code mono", "·"), el("span", null, p.nome));
+    b.addEventListener("click", () => { fecharCmd(); abrirPagina(k); });
+    return b;
+  });
+
+  if (!itensCmd.length) cmdList.append(el("div", "cmdk-empty", "Nada encontrado para “" + q + "”"));
+  cur = 0; marcar();
+}
+const marcar = () => itensCmd.forEach((b, i) => b.classList.toggle("cur", i === cur));
+function abrirCmd() { cmdk.classList.add("on"); cmdInput.value = ""; montarCmd(""); cmdInput.focus(); }
+function fecharCmd() { cmdk.classList.remove("on"); }
+$("#openCmd").addEventListener("click", abrirCmd);
+cmdk.addEventListener("click", e => { if (e.target === cmdk) fecharCmd(); });
+cmdInput.addEventListener("input", e => montarCmd(e.target.value));
+
+document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    cmdk.classList.contains("on") ? fecharCmd() : abrirCmd();
+    return;
+  }
+  if (e.key === "Escape") {
+    fecharPop();
+    if (cmdk.classList.contains("on")) fecharCmd(); else fechar();
+    return;
+  }
+  if (!cmdk.classList.contains("on") || !itensCmd.length) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); cur = (cur + 1) % itensCmd.length; marcar(); itensCmd[cur].scrollIntoView({ block: "nearest" }); }
+  if (e.key === "ArrowUp") { e.preventDefault(); cur = (cur - 1 + itensCmd.length) % itensCmd.length; marcar(); itensCmd[cur].scrollIntoView({ block: "nearest" }); }
+  if (e.key === "Enter") { e.preventDefault(); itensCmd[cur].click(); }
+});
+
+irPara("01");
+</script>
