@@ -466,12 +466,50 @@
   .lgrid .lk { font-size:10px; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
   .lgrid .lv { font-size:13.5px; }
 
+  /* Botao do menu e rodape da gaveta: so existem no estreito. */
+  .btn-menu { display:none; }
+  .side-rodape { display:none; margin-top:auto; padding-top:12px;
+    border-top:1px solid var(--line); flex-direction:column; gap:1px; }
+  .btn-menu svg { display:block; width:16px; height:16px; }
+
   @media (max-width:900px) {
     .app { grid-template-columns:1fr; }
-    .side { display:none; }
+    /* A sidebar nao some: vira gaveta. Escondida sem substituto, os 21 itens
+       de navegacao ficavam inalcancaveis -- inclusive o botao da paleta ⌘K,
+       que era a unica outra porta. */
+    .side {
+      position:fixed; top:0; left:0; z-index:25;
+      width:min(284px,86vw); height:100vh;
+      transform:translateX(-100%);
+      /* visibility, e nao so transform: fora da tela por transform, os 21
+         itens continuariam no tab order e anunciados por leitor de tela.
+         O atraso deixa a animacao de saida terminar antes de sumir. */
+      visibility:hidden;
+      transition:transform .22s cubic-bezier(.4,0,.2,1), visibility 0s .22s;
+      box-shadow:18px 0 44px rgba(15,23,42,.16);
+    }
+    .side.on {
+      transform:translateX(0);
+      visibility:visible;
+      transition:transform .22s cubic-bezier(.4,0,.2,1), visibility 0s;
+    }
+    .btn-menu { display:inline-flex; }
     .page { padding:20px 16px 56px; }
-    .topbar { padding:11px 16px; }
+    .topbar { padding:11px 12px; gap:7px; }
+    /* Quatro botoes mais o breadcrumb nao cabem em 375px. As duas acoes
+       secundarias descem para a gaveta; ficam o tema e a acao primaria. */
+    .topbar #btnExport, .topbar #btnSair { display:none; }
+    .side-rodape { display:flex; }
+    .crumb { font-size:12px; white-space:nowrap; overflow:hidden;
+      text-overflow:ellipsis; display:block; min-width:0; flex:1; }
+    .crumb span:first-child, .crumb .sep { display:none; }
+    .split { grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); }
+    .split .v { font-size:21px; }
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .side { box-shadow:18px 0 44px rgba(0,0,0,.5); }
+  }
+  :root[data-theme="dark"] .side { box-shadow:18px 0 44px rgba(0,0,0,.5); }
 </style>
 
 <div class="app">
@@ -496,10 +534,18 @@
       <div class="nav-label">Operação</div>
       <nav class="nav" id="navOps"></nav>
     </div>
+
+    <div class="side-rodape" id="sideRodape">
+      <button class="kbd-btn" id="btnExportGav"><span>Exportar</span></button>
+      <button class="kbd-btn" id="btnSairGav"><span>Sair</span></button>
+    </div>
   </aside>
 
   <main class="main">
     <div class="topbar">
+      <button class="btn btn-ico btn-menu" id="btnMenu" type="button" aria-label="Menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
       <div class="crumb"><span>Indicadores</span><span class="sep">/</span><b id="crumbNow">—</b></div>
       <div class="spacer"></div>
       <button class="btn btn-ico" id="btnTema" type="button" aria-label="Tema"></button>
@@ -2977,6 +3023,32 @@ abrirPaginaOp = function (chave) {
   ["certWrap", "relCartas"].forEach(id => { const n = $("#" + id); if (n) n.remove(); });
   _abrirPaginaOp(chave);
 };
+
+// ═══ Gaveta da navegação em tela estreita ═════════════════════
+// Abaixo de 900px a sidebar sai do fluxo e passa a deslizar sobre o scrim que
+// o peek ja usa. Fecha ao escolher um item -- senao a gaveta cobriria
+// justamente a pagina que a pessoa acabou de abrir.
+const side = document.querySelector(".side");
+const btnMenu = $("#btnMenu");
+const gaveta = aberta => {
+  side.classList.toggle("on", aberta);
+  scrim.classList.toggle("on", aberta);
+  btnMenu.setAttribute("aria-expanded", aberta ? "true" : "false");
+};
+btnMenu.addEventListener("click", () => gaveta(!side.classList.contains("on")));
+side.addEventListener("click", e => { if (e.target.closest(".navitem")) gaveta(false); });
+scrim.addEventListener("click", () => gaveta(false));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && side.classList.contains("on")) gaveta(false);
+});
+// Ao voltar para tela larga a sidebar e fixa de novo: o estado da gaveta nao
+// pode sobrar preso.
+addEventListener("resize", () => { if (innerWidth > 900 && side.classList.contains("on")) gaveta(false); });
+
+// Os botoes da gaveta reaproveitam os handlers da topbar, em vez de duplicar
+// a logica: um clique programatico no original.
+$("#btnExportGav").addEventListener("click", () => { gaveta(false); $("#btnExport").click(); });
+$("#btnSairGav").addEventListener("click", () => { gaveta(false); $("#btnSair").click(); });
 
 irPara("01");
 </script>
