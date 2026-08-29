@@ -391,6 +391,71 @@
   .notebox.empty { color:var(--ink-3); font-style:italic; }
   .alertbox.acc { background:var(--accent-soft); color:var(--accent); }
 
+  /* Login */
+  .login { position:fixed; inset:0; z-index:60; background:var(--ground);
+    display:none; align-items:center; justify-content:center; padding:24px; }
+  .login.on { display:flex; }
+  .login-card { width:min(400px,100%); background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; padding:32px 28px; text-align:center; box-shadow:var(--shadow-pop); }
+  .login-mark { width:44px; height:44px; border-radius:10px; background:var(--accent); color:#fff;
+    display:grid; place-items:center; font-size:17px; font-weight:600; margin:0 auto 18px; }
+  :root[data-theme="dark"] .login-mark, :root:not([data-theme="light"]) .login-mark { color:#0E141C; }
+  .login h2 { margin:0 0 6px; font-size:19px; letter-spacing:-.02em; font-weight:600; }
+  .login p { margin:0 0 22px; font-size:13px; color:var(--ink-3); }
+  .login .btn { width:100%; justify-content:center; padding:9px 14px; font-size:13.5px; }
+  .login .dom { margin-top:16px; font-size:11.5px; color:var(--ink-3);
+    border-top:1px solid var(--line); padding-top:14px; }
+  .login .dom b { color:var(--ink-2); font-weight:500; font-family:"IBM Plex Mono", monospace; }
+
+  /* Certificados */
+  .cert-wrap { display:grid; grid-template-columns:300px minmax(0,1fr); gap:22px; margin-top:22px; }
+  @media (max-width:900px) { .cert-wrap { grid-template-columns:1fr; } }
+  .cert-form { display:flex; flex-direction:column; gap:12px; }
+  .cert-form .fld { gap:5px; }
+  .cert-form input, .cert-form textarea, .cert-form select {
+    font:inherit; font-size:12.5px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:6px; padding:6px 8px; width:100%; }
+  .cert-form textarea { min-height:64px; resize:vertical; }
+  .cert-paper { background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    padding:38px 40px; display:flex; flex-direction:column; align-items:center;
+    text-align:center; min-height:400px; justify-content:center; gap:14px; }
+  .cert-paper .marca { font-family:"IBM Plex Mono", monospace; font-size:11px;
+    letter-spacing:.22em; color:var(--accent); text-transform:uppercase; }
+  .cert-paper .tipo { font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3); }
+  .cert-paper .nome { font-size:26px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .cert-paper .corpo { font-size:13px; color:var(--ink-2); max-width:46ch; line-height:1.6; }
+  .cert-paper .risca { width:56px; height:1px; background:var(--line); }
+  .cert-paper .assinaturas { display:flex; gap:34px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
+  .cert-paper .ass { display:flex; flex-direction:column; gap:3px; min-width:150px; }
+  .cert-paper .ass .risco { height:1px; background:var(--ink-3); margin-bottom:5px; }
+  .cert-paper .ass .n { font-size:12.5px; font-weight:500; }
+  .cert-paper .ass .c { font-size:11px; color:var(--ink-3); }
+  .cert-lote { font-size:11.5px; color:var(--ink-3); margin-top:2px; }
+
+  /* Gráficos */
+  .cartas { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+    gap:14px; margin-top:22px; }
+  .carta { background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:15px 16px 10px; }
+  .carta h3 { margin:0 0 2px; font-size:13px; font-weight:600; letter-spacing:-.01em; }
+  .carta .cap { margin:0 0 12px; font-size:11.5px; color:var(--ink-3); }
+  .carta svg { display:block; width:100%; overflow:visible; }
+  .g-grid { stroke:var(--line-soft); stroke-width:1; }
+  .g-eixo { fill:var(--ink-3); font-size:10px; font-family:"IBM Plex Mono", monospace; }
+  .g-rot { fill:var(--ink-2); font-size:11px; }
+  .g-val { fill:var(--ink-2); font-size:10.5px; font-family:"IBM Plex Mono", monospace; }
+  .g-barra { fill:var(--accent); }
+  .g-alvo { fill:transparent; cursor:pointer; }
+  .g-alvo:hover ~ .g-barra, .g-barra.hi { opacity:.82; }
+  .g-linha { fill:none; stroke:var(--accent); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .g-area { fill:var(--accent); opacity:.07; }
+  .g-ponto { fill:var(--accent); stroke:var(--surface); stroke-width:2; }
+  .g-cross { stroke:var(--ink-3); stroke-width:1; stroke-dasharray:3 3; opacity:0; }
+  .g-tip { position:absolute; pointer-events:none; background:var(--surface);
+    border:1px solid var(--line); border-radius:7px; box-shadow:var(--shadow-pop);
+    padding:7px 10px; font-size:12px; opacity:0; transition:opacity .1s; z-index:15; white-space:nowrap; }
+  .g-tip b { font-variant-numeric:tabular-nums; }
+  .carta { position:relative; }
+
   /* Páginas do legado */
   .legacy { max-width:720px; margin-top:34px; }
   .legacy .sec-h { margin-bottom:12px; }
@@ -438,6 +503,7 @@
       <div class="crumb"><span>Indicadores</span><span class="sep">/</span><b id="crumbNow">—</b></div>
       <div class="spacer"></div>
       <button class="btn btn-ico" id="btnTema" type="button" aria-label="Tema"></button>
+      <button class="btn" id="btnSair">Sair</button>
       <button class="btn" id="btnExport">Exportar</button>
       <button class="btn btn-primary" id="btnNovo">Novo registro</button>
     </div>
@@ -579,6 +645,16 @@
   </div>
   <div class="peek-body" id="peekBody"></div>
 </aside>
+
+<div class="login" id="login">
+  <div class="login-card">
+    <div class="login-mark">H+</div>
+    <h2>Painel de Indicadores</h2>
+    <p>Entre com a conta corporativa para acessar.</p>
+    <button class="btn btn-primary" id="btnEntrar">Entrar com Google</button>
+    <div class="dom">Acesso restrito ao domínio <b id="loginDominio">healthmaiscuidados.com</b></div>
+  </div>
+</div>
 
 <div class="cmdk" id="cmdk">
   <div class="cmdk-box">
@@ -2553,7 +2629,7 @@ function opFechamento() {
 const ESPECIAIS = { relatorios: opRelatorios, certificados: opCertificados, fechamento: opFechamento };
 
 // ─── Substitui a navegação de Operação ─────────────────────────────
-function abrirPaginaOp(chave) {
+var abrirPaginaOp = function (chave) {
   const p = PAGES[chave];
   fechar();
   document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
@@ -2598,7 +2674,7 @@ function abrirPaginaOp(chave) {
   });
   box.append(g);
   window.scrollTo({ top: 0 });
-}
+};
 
 [...navOps.children].forEach((b, i) => {
   const chave = Object.keys(PAGES)[i];
@@ -2623,6 +2699,284 @@ function opAplicarDados(d) {
   });
   if (opAtual) abrirPaginaOp(opAtual);
 }
+
+// ═══ Login ════════════════════════════════════════════════════
+// O app real autentica no Google e restringe por dominio (ALLOWED_DOMAIN).
+// Aqui a tela existe para o fluxo ficar completo no prototipo: Sair mostra,
+// Entrar volta. Nao ha autenticacao de verdade e nao deve haver -- e mockup.
+const login = $("#login");
+$("#btnSair").addEventListener("click", () => {
+  fechar();
+  login.classList.add("on");
+});
+$("#btnEntrar").addEventListener("click", () => login.classList.remove("on"));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && login.classList.contains("on")) login.classList.remove("on");
+});
+
+// ═══ Gráficos ═════════════════════════════════════════════════
+// Serie unica nos dois, de proposito. As cores de status do painel
+// (#B00020 e #2E7D32) tem separacao de 3.8 em deuteranopia -- vermelho e verde
+// viram a mesma coisa. Como paleta categorica elas reprovam; como series unicas
+// sobre o accent, o problema nao existe. O detalhe por indicador fica no pivo,
+// que e tabela e nao depende de cor nenhuma.
+const gEsc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+function carta(titulo, legenda) {
+  const c = el("div", "carta");
+  c.append(el("h3", null, titulo), el("p", "cap", legenda));
+  const tip = el("div", "g-tip");
+  c.append(tip);
+  c._tip = tip;
+  return c;
+}
+
+function dica(carta, x, y, html) {
+  const t = carta._tip;
+  t.innerHTML = html;
+  t.style.opacity = "1";
+  const cx = Math.max(6, Math.min(carta.clientWidth - t.offsetWidth - 6, x - t.offsetWidth / 2));
+  t.style.left = cx + "px";
+  t.style.top = Math.max(4, y - t.offsetHeight - 10) + "px";
+}
+const semDica = c => { c._tip.style.opacity = "0"; };
+
+/** Barras horizontais: magnitude comparada, ordenada. Ponta arredondada só do
+ *  lado do dado; a base fica reta, ancorada no eixo. */
+function graficoBarras(carta, itens) {
+  const n = itens.length, alturaLinha = 26, padL = 168, padR = 46, h = n * alturaLinha + 8, w = 640;
+  const max = Math.max(1, ...itens.map(i => i.valor));
+  const larg = w - padL - padR;
+  const p = [];
+  itens.forEach((it, i) => {
+    const y = i * alturaLinha + 5, bh = 12, by = y + 3;
+    const bw = Math.max(2, larg * it.valor / max), r = Math.min(4, bw);
+    p.push(`<text class="g-rot" x="${padL - 10}" y="${by + 10}" text-anchor="end">${gEsc(it.rotulo)}</text>`);
+    // Path em vez de rect: rect com rx arredonda os quatro cantos, e a base
+    // precisa ficar reta contra o eixo.
+    p.push(`<path class="g-barra" d="M${padL} ${by} H${padL + bw - r} a${r} ${r} 0 0 1 ${r} ${r} v${bh - 2*r} a${r} ${r} 0 0 1 -${r} ${r} H${padL} Z"></path>`);
+    p.push(`<text class="g-val" x="${padL + bw + 8}" y="${by + 10}">${it.valor}</text>`);
+    p.push(`<rect class="g-alvo" x="0" y="${y}" width="${w}" height="${alturaLinha}" data-i="${i}"></rect>`);
+  });
+  p.push(`<line class="g-grid" x1="${padL}" y1="0" x2="${padL}" y2="${h - 4}"></line>`);
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("role", "img");
+  svg.innerHTML = p.join("");
+  carta.append(svg);
+  svg.querySelectorAll(".g-alvo").forEach(alvo => {
+    const it = itens[+alvo.dataset.i];
+    alvo.addEventListener("mousemove", ev => {
+      const r = carta.getBoundingClientRect();
+      dica(carta, ev.clientX - r.left, ev.clientY - r.top,
+           `<b>${it.valor}</b> ${it.valor === 1 ? "evento" : "eventos"}<br>${gEsc(it.completo || it.rotulo)}`);
+    });
+    alvo.addEventListener("mouseleave", () => semDica(carta));
+  });
+}
+
+/** Linha: mudança ao longo do tempo. Crosshair + tooltip, como o skill pede. */
+function graficoLinha(carta, pontos) {
+  const w = 640, h = 190, padL = 38, padR = 14, padT = 12, padB = 26;
+  const max = Math.max(1, ...pontos.map(p => p.valor));
+  const passo = pontos.length > 1 ? (w - padL - padR) / (pontos.length - 1) : 0;
+  const X = i => padL + i * passo;
+  const Y = v => padT + (h - padT - padB) * (1 - v / max);
+  const p = [];
+  [0, 0.5, 1].forEach(f => {
+    const y = Y(max * f);
+    p.push(`<line class="g-grid" x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}"></line>`);
+    p.push(`<text class="g-eixo" x="${padL - 8}" y="${y + 3}" text-anchor="end">${Math.round(max * f)}</text>`);
+  });
+  const d = pontos.map((pt, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(pt.valor).toFixed(1)}`).join(" ");
+  p.push(`<path class="g-area" d="${d} L${X(pontos.length - 1)} ${Y(0)} L${X(0)} ${Y(0)} Z"></path>`);
+  p.push(`<path class="g-linha" d="${d}"></path>`);
+  pontos.forEach((pt, i) => {
+    p.push(`<text class="g-eixo" x="${X(i)}" y="${h - 8}" text-anchor="middle">${gEsc(pt.rotulo)}</text>`);
+    p.push(`<circle class="g-ponto" cx="${X(i)}" cy="${Y(pt.valor)}" r="4"></circle>`);
+  });
+  p.push(`<line class="g-cross" id="gcross" x1="0" y1="${padT}" x2="0" y2="${h - padB}"></line>`);
+  pontos.forEach((pt, i) => {
+    p.push(`<rect class="g-alvo" x="${X(i) - passo/2}" y="0" width="${passo || w}" height="${h}" data-i="${i}"></rect>`);
+  });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("role", "img");
+  svg.innerHTML = p.join("");
+  carta.append(svg);
+  const cross = svg.querySelector("#gcross");
+  svg.querySelectorAll(".g-alvo").forEach(alvo => {
+    const i = +alvo.dataset.i, pt = pontos[i];
+    alvo.addEventListener("mousemove", ev => {
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i));
+      cross.style.opacity = "1";
+      const r = carta.getBoundingClientRect();
+      dica(carta, ev.clientX - r.left, ev.clientY - r.top,
+           `<b>${pt.valor}</b> ${pt.valor === 1 ? "evento" : "eventos"}<br>${gEsc(pt.completo || pt.rotulo)}`);
+    });
+    alvo.addEventListener("mouseleave", () => { cross.style.opacity = "0"; semDica(carta); });
+  });
+}
+
+const MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const rotuloMes = m => MES[+m.slice(5,7) - 1] + "/" + m.slice(2,4);
+
+// ═══ Certificados ═════════════════════════════════════════════
+const CERT = {
+  participante: "", titulo: "Capacitação em Segurança do Paciente",
+  horas: "8", data: "2026-08-28",
+  conteudo: "Identificação do paciente, higiene das mãos, prevenção de lesão por pressão e notificação de eventos adversos.",
+  instrutor: "Raphael Nogueira", instrutorCargo: "Enfermeiro responsável técnico",
+  representante: "Diretoria Médica", representanteCargo: "HealthMais Atendimento Domiciliar",
+  rotulo: "Certificamos que",
+};
+
+function certPreview() {
+  const p = el("div", "cert-paper");
+  p.append(el("div", "marca", "HealthMais"));
+  p.append(el("div", "tipo", "Certificado"));
+  p.append(el("div", "nome", CERT.participante || "Nome do participante"));
+  const corpo = el("div", "corpo");
+  corpo.textContent = "concluiu " + (CERT.titulo || "—") + ", com carga horária de "
+    + (CERT.horas || "0") + " horas, em " + (CERT.data ? dbr(CERT.data) : "—") + ".";
+  p.append(el("div", "risca"), corpo);
+  if (CERT.conteudo) {
+    const c = el("div", "corpo");
+    c.style.fontSize = "12px";
+    c.style.color = "var(--ink-3)";
+    c.textContent = "Conteúdo: " + CERT.conteudo;
+    p.append(c);
+  }
+  const ass = el("div", "assinaturas");
+  [[CERT.instrutor, CERT.instrutorCargo], [CERT.representante, CERT.representanteCargo]]
+    .forEach(([n, c]) => {
+      if (!n) return;
+      const a = el("div", "ass");
+      a.append(el("div", "risco"), el("div", "n", n), el("div", "c", c || ""));
+      ass.append(a);
+    });
+  p.append(ass);
+  return p;
+}
+
+function opCertificadosNovo() {
+  const s = $("#opStats");
+  s.innerHTML = "";
+  const lote = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
+  [["Emitidos no histórico", (OP.certificados || {}).emitidos ?? 0, "o dump não registra emissão", "warn"],
+   ["Na fila", lote.length || (CERT.participante ? 1 : 0), "deste lote", "lead"],
+   ["Carga horária", (CERT.horas || "0") + "h", "por certificado"]
+  ].forEach(([k, v, sub, cls]) => {
+    const c = el("div", "cell" + (cls ? " " + cls : ""));
+    c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", sub));
+    s.append(c);
+  });
+  $("#opFiltros").classList.add("hidden");
+  $("#opHead").innerHTML = "";
+  $("#opRows").innerHTML = "";
+  $("#opTabela").classList.add("hidden");
+  $("#opVazio").classList.add("hidden");
+
+  const antigo = $("#certWrap");
+  if (antigo) antigo.remove();
+  const wrap = el("div", "cert-wrap");
+  wrap.id = "certWrap";
+
+  const form = el("div", "cert-form");
+  const campo = (chave, rotulo, tipo) => {
+    const f = el("div", "fld");
+    f.append(el("label", null, rotulo));
+    const i = document.createElement(tipo === "area" ? "textarea" : "input");
+    if (tipo && tipo !== "area") i.type = tipo;
+    i.value = CERT[chave] || "";
+    i.addEventListener("input", () => {
+      CERT[chave] = i.value;
+      const novo = certPreview();
+      wrap.replaceChild(novo, wrap.lastChild);
+      const lote2 = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
+      s.children[1].querySelector(".v").textContent =
+        String(lote2.length || (CERT.participante ? 1 : 0));
+      s.children[2].querySelector(".v").textContent = (CERT.horas || "0") + "h";
+    });
+    f.append(i);
+    return f;
+  };
+  form.append(el("div", "sec-h", "Certificado"));
+  form.append(campo("participante", "Participante"));
+  form.append(campo("titulo", "Título"));
+  form.append(campo("horas", "Carga horária", "number"));
+  form.append(campo("data", "Data", "date"));
+  form.append(campo("conteudo", "Conteúdo programático", "area"));
+  form.append(el("div", "sec-h", "Assinaturas"));
+  form.append(campo("instrutor", "Instrutor"));
+  form.append(campo("instrutorCargo", "Cargo do instrutor"));
+  form.append(campo("representante", "Representante"));
+  form.append(campo("representanteCargo", "Cargo do representante"));
+  form.append(el("div", "sec-h", "Emissão em lote"));
+  form.append(campo("lote", "Um nome por linha", "area"));
+  const acoes = el("div");
+  acoes.style.display = "flex";
+  acoes.style.gap = "8px";
+  const bImp = el("button", "btn", "Imprimir");
+  bImp.addEventListener("click", () => window.print());
+  const bLote = el("button", "btn btn-primary", "Gerar lote");
+  bLote.addEventListener("click", () => {
+    const nomes = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
+    if (!nomes.length) { toast("Nenhum nome no lote", "Preencha um nome por linha."); return; }
+    toast(nomes.length + " certificado(s) na fila",
+          "No app real cada um vira uma folha frente e verso para impressão.");
+  });
+  acoes.append(bImp, bLote);
+  form.append(acoes);
+  const nota = el("div", "cert-lote");
+  nota.textContent = "O gerador de verdade vive em frontend/src/views/CertificatesView.vue, com frente, verso e assinatura digitalizada. Aqui é a prévia do conteúdo.";
+  form.append(nota);
+
+  wrap.append(form, certPreview());
+  $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
+}
+
+// ═══ Relatórios com gráficos ══════════════════════════════════
+function opRelatoriosNovo() {
+  opRelatorios();
+  const antigo = $("#relCartas");
+  if (antigo) antigo.remove();
+  const r = OP.relatorios || { meses: [], linhas: [] };
+  const inds = r.linhas.filter(l => l.nivel === "indicador");
+  if (!inds.length) return;
+
+  const cartas = el("div", "cartas");
+  cartas.id = "relCartas";
+
+  const c1 = carta("Eventos por indicador",
+                   "Ordenado por volume · " + inds.length + " indicadores com registro");
+  graficoBarras(c1, inds
+    .map(l => ({ rotulo: l.nome.length > 26 ? l.nome.slice(0, 25) + "…" : l.nome,
+                 completo: l.nome, valor: l.total }))
+    .sort((a, b) => b.valor - a.valor));
+  cartas.append(c1);
+
+  const c2 = carta("Evolução mensal",
+                   "Total de eventos por mês de ocorrência · " + r.meses.length + " meses");
+  graficoLinha(c2, r.meses.map(m => ({
+    rotulo: rotuloMes(m), completo: m,
+    valor: inds.reduce((a, l) => a + (l.meses[m] || 0), 0),
+  })));
+  cartas.append(c2);
+
+  $("#opTabela").parentElement.insertBefore(cartas, $("#opTabela"));
+}
+
+// Troca as duas telas pelas versões novas.
+ESPECIAIS.certificados = opCertificadosNovo;
+ESPECIAIS.relatorios = opRelatoriosNovo;
+
+// Ao sair de Certificados ou Relatórios, o que eles injetaram tem que sumir.
+const _abrirPaginaOp = abrirPaginaOp;
+abrirPaginaOp = function (chave) {
+  ["certWrap", "relCartas"].forEach(id => { const n = $("#" + id); if (n) n.remove(); });
+  _abrirPaginaOp(chave);
+};
 
 irPara("01");
 </script>
