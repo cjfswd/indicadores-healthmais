@@ -594,8 +594,8 @@
   .voltar { font-size:12px; color:var(--accent); padding:4px 0; display:inline-flex; gap:6px; }
 
   /* Gráficos */
-  .cartas { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
-    gap:14px; margin-top:22px; }
+  /* Uma carta por linha, ocupando a largura toda. */
+  .cartas { display:grid; grid-template-columns:1fr; gap:14px; margin-top:22px; }
   .carta { background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:15px 16px 10px; }
   .carta h3 { margin:0 0 2px; font-size:13px; font-weight:600; letter-spacing:-.01em; }
   .carta .cap { margin:0 0 12px; font-size:11.5px; color:var(--ink-3); }
@@ -657,8 +657,18 @@
   .lgrid .lk { font-size:10px; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
   .lgrid .lv { font-size:13.5px; }
 
-  /* Botao do menu e rodape da gaveta: so existem no estreito. */
-  .btn-menu { display:none; }
+  /* O botao existe em qualquer largura: no estreito abre a gaveta, no largo
+     recolhe a coluna. O rodape da gaveta continua so no estreito. */
+  .btn-menu { display:inline-flex; }
+  /* Coluna recolhida, SO no largo. Com display:none a sidebar sai do grid, e o
+     main passa a ocupar a PRIMEIRA trilha -- deixar 0 ali espremia a pagina
+     inteira. Por isso o grid vira de uma coluna so quando ela some.
+     A media query nao e detalhe: sem ela, quem recolheu no desktop abriria a
+     gaveta vazia no celular, porque este display:none venceria a gaveta. */
+  @media (min-width:901px) {
+    .app.sem-menu { grid-template-columns:minmax(0,1fr); }
+    .app.sem-menu > .side { display:none; }
+  }
   .side-rodape { display:none; margin-top:auto; padding-top:12px;
     border-top:1px solid var(--line); flex-direction:column; gap:1px; }
   .btn-menu svg { display:block; width:16px; height:16px; }
@@ -684,7 +694,6 @@
       visibility:visible;
       transition:transform .22s cubic-bezier(.4,0,.2,1), visibility 0s;
     }
-    .btn-menu { display:inline-flex; }
     .page { padding:20px 16px 56px; }
     .topbar { padding:11px 12px; gap:7px; }
     /* Quatro botoes mais o breadcrumb nao cabem em 375px. As duas acoes
@@ -3252,7 +3261,7 @@ function graficoColunas(carta, itens, opcoes) {
  *  Ponta arredondada so no topo -- a base fica reta contra o eixo. */
 function graficoAgrupado(carta, categorias, series, opcoes) {
   const cfg = opcoes || {};
-  const w = 640, h = 230, padT = 24, padB = 30, padL = 8, padR = 8;
+  const w = 1000, h = 230, padT = 24, padB = 30, padL = 10, padR = 10;
   const n = categorias.length;
   if (!n || !series.length) return;
   const max = Math.max(1, ...series.flatMap(s => s.valores));
@@ -4151,7 +4160,32 @@ const gaveta = aberta => {
   scrim.classList.toggle("on", aberta);
   btnMenu.setAttribute("aria-expanded", aberta ? "true" : "false");
 };
-btnMenu.addEventListener("click", () => gaveta(!side.classList.contains("on")));
+const app = document.querySelector(".app");
+const LARGO = () => innerWidth > 900;
+
+/** No largo o menu recolhe a coluna; no estreito ele desliza sobre o scrim.
+ *  Sao dois gestos diferentes para o mesmo botao, e a escolha do largo fica
+ *  guardada -- quem recolhe quer a tela cheia da proxima vez tambem. */
+function alternarMenu() {
+  if (LARGO()) {
+    const oculto = app.classList.toggle("sem-menu");
+    btnMenu.setAttribute("aria-expanded", oculto ? "false" : "true");
+    try { localStorage.setItem("menu", oculto ? "oculto" : "visivel"); } catch (e) {}
+    // O grafico e desenhado em viewBox, mas a carta mede a largura em px.
+    if (typeof opAtual !== "undefined" && opAtual === "relatorios") opRelatoriosNovo();
+    const cc = $("#cardCartas");
+    if (cc && typeof atual === "string" && CARDS[atual]) cardGraficos(atual);
+  } else {
+    gaveta(!side.classList.contains("on"));
+  }
+}
+btnMenu.addEventListener("click", alternarMenu);
+try {
+  if (localStorage.getItem("menu") === "oculto") {
+    app.classList.add("sem-menu");
+    btnMenu.setAttribute("aria-expanded", "false");
+  }
+} catch (e) {}
 side.addEventListener("click", e => { if (e.target.closest(".navitem")) gaveta(false); });
 scrim.addEventListener("click", () => gaveta(false));
 document.addEventListener("keydown", e => {
@@ -4159,7 +4193,12 @@ document.addEventListener("keydown", e => {
 });
 // Ao voltar para tela larga a sidebar e fixa de novo: o estado da gaveta nao
 // pode sobrar preso.
-addEventListener("resize", () => { if (innerWidth > 900 && side.classList.contains("on")) gaveta(false); });
+addEventListener("resize", () => {
+  if (LARGO() && side.classList.contains("on")) gaveta(false);
+  // No estreito quem manda e a gaveta: a classe do largo sairia do caminho
+  // sozinha pelo media query, mas deixa-la ligada confundiria o aria-expanded.
+  if (!LARGO()) btnMenu.setAttribute("aria-expanded", side.classList.contains("on") ? "true" : "false");
+});
 
 // Os botoes da gaveta reaproveitam os handlers da topbar, em vez de duplicar
 // a logica: um clique programatico no original.
