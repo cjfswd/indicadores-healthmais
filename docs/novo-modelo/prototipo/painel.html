@@ -427,6 +427,8 @@
   .cert-paper .risca { width:56px; height:1px; background:var(--line); }
   .cert-paper .assinaturas { display:flex; gap:34px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
   .cert-paper .ass { display:flex; flex-direction:column; gap:3px; min-width:150px; }
+  .cert-paper .ass .rubrica { height:17px; font-style:italic; display:flex;
+    align-items:flex-end; justify-content:center; margin-bottom:2px; }
   .cert-paper .ass .risco { height:1px; background:var(--ink-3); margin-bottom:5px; }
   .cert-paper .ass .n { font-size:12.5px; font-weight:500; }
   .cert-paper .ass .c { font-size:11px; color:var(--ink-3); }
@@ -455,6 +457,27 @@
     padding:7px 10px; font-size:12px; opacity:0; transition:opacity .1s; z-index:15; white-space:nowrap; }
   .g-tip b { font-variant-numeric:tabular-nums; }
   .carta { position:relative; }
+
+  .cert-paper.verso { justify-content:flex-start; text-align:left; padding:30px 34px; }
+  .cert-paper .back-h { font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .cert-paper .back-c { font-size:11.5px; color:var(--ink-3); margin-bottom:14px; }
+  .cert-paper table.prog { width:100%; border-collapse:collapse; min-width:0; }
+  .cert-paper table.prog th { font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-3); text-align:left; padding:6px 8px; border-bottom:1px solid var(--line);
+    font-family:"IBM Plex Mono", monospace; font-weight:500; }
+  .cert-paper table.prog td { font-size:12px; padding:6px 8px; border-bottom:1px solid var(--line-soft);
+    color:var(--ink-2); vertical-align:top; }
+  .cert-paper table.prog td.num, .cert-paper table.prog th.num { width:34px; color:var(--ink-3);
+    font-family:"IBM Plex Mono", monospace; }
+  .cert-paper .back-meta { display:flex; gap:20px; flex-wrap:wrap; font-size:11.5px;
+    color:var(--ink-3); margin-top:14px; }
+  .cert-paper .back-meta b { color:var(--ink-2); font-weight:500; }
+  .cert-paper .emitente { margin-top:auto; padding-top:16px; border-top:1px solid var(--line);
+    font-size:10.5px; color:var(--ink-3); line-height:1.65; width:100%; }
+  .cert-paper .emitente b { display:block; color:var(--ink-2); font-size:11px; font-weight:600;
+    letter-spacing:.02em; margin-bottom:2px; }
+  .cert-abas { display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+  .cert-vazio { color:var(--ink-3); font-style:italic; font-size:12px; }
 
   /* Páginas do legado */
   .legacy { max-width:720px; margin-top:34px; }
@@ -2868,50 +2891,162 @@ const MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","
 const rotuloMes = m => MES[+m.slice(5,7) - 1] + "/" + m.slice(2,4);
 
 // ═══ Certificados ═════════════════════════════════════════════
+// Campos, textos e padroes vem de frontend/src/views/CertificatesView.vue e dos
+// componentes CertificateSheet/CertificateBackSheet. Nao invente valor aqui: se
+// o gerador mudar, este bloco muda junto, senao a previa mente sobre o que sai
+// na impressao.
+const CERT_EMITENTE = {
+  nome: "HEALTHMAIS CUIDADOS E GESTÃO LTDA",
+  cnpj: "56.028.702/0001-38",
+  endereco: "Rua Ministro Edgar da Costa, nº 80, Grupo 408 — Centro, Nova Iguaçu/RJ",
+  email: "contato@healthmaiscuidados.com",
+  telefone: "(21) 97982-8951",
+  site: "www.healthmaiscuidados.com",
+};
+// Assinatura que acompanha o sistema, em public/certificates/.
+const CERT_ASSINATURA = "Dr. Raphael Figueiredo Pereira";
+
 const CERT = {
-  participante: "", titulo: "Capacitação em Segurança do Paciente",
-  horas: "8", data: "2026-08-28",
-  conteudo: "Identificação do paciente, higiene das mãos, prevenção de lesão por pressão e notificação de eventos adversos.",
-  instrutor: "Raphael Nogueira", instrutorCargo: "Enfermeiro responsável técnico",
-  representante: "Diretoria Médica", representanteCargo: "HealthMais Atendimento Domiciliar",
-  rotulo: "Certificamos que",
+  participant: "Fulano de Tal",
+  title: "Assistência de Enfermagem no Home Care: Segurança do Paciente, Urgências e Boas Práticas Assistenciais",
+  hours: "03 horas",
+  date: "2026-08-28",
+  content: "Prevenção de Lesão por Pressão, aspiração, cuidados com a TQT e GTT, intercorrências clínicas, manuseio de equipamentos, RCP, conduta e ética profissional.",
+  instructorName: "",
+  instructorRole: "",
+  instructorRole2: "Coordenadora de Enfermagem",
+  instructorSignature: "",
+  repName: "",
+  repRole: "",
+  repRole2: "Diretor Médico",
+  repSignature: "/certificates/assinatura-raphael.png",
+  studentLabel: "Aluno(a)",
+  bulk: "",
 };
 
-function certPreview() {
-  const p = el("div", "cert-paper");
-  p.append(el("div", "marca", "HealthMais"));
-  p.append(el("div", "tipo", "Certificado"));
-  p.append(el("div", "nome", CERT.participante || "Nome do participante"));
-  const corpo = el("div", "corpo");
-  corpo.textContent = "concluiu " + (CERT.titulo || "—") + ", com carga horária de "
-    + (CERT.horas || "0") + " horas, em " + (CERT.data ? dbr(CERT.data) : "—") + ".";
-  p.append(el("div", "risca"), corpo);
-  if (CERT.conteudo) {
-    const c = el("div", "corpo");
-    c.style.fontSize = "12px";
-    c.style.color = "var(--ink-3)";
-    c.textContent = "Conteúdo: " + CERT.conteudo;
-    p.append(c);
+const certLote = () => (CERT.bulk || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+const certParticipante = () => certLote().length ? certLote()[0] : CERT.participant;
+
+/** Data por extenso, como o CertificateSheet formata. */
+function certData(iso) {
+  if (!iso) return "____/____/________";
+  try {
+    return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR",
+      { day: "2-digit", month: "long", year: "numeric" });
+  } catch (e) { return iso; }
+}
+
+/** Mesma quebra do verso: linhas, ponto e virgula, ou virgulas com 3+ itens. */
+function certTopicos() {
+  const raw = (CERT.content || "").trim().replace(/\.$/, "");
+  if (!raw) return [];
+  let partes = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (partes.length === 1) partes = raw.split(";").map(x => x.trim()).filter(Boolean);
+  if (partes.length === 1) {
+    const virgulas = raw.split(",").map(x => x.trim()).filter(Boolean);
+    if (virgulas.length >= 3) partes = virgulas;
   }
+  return partes;
+}
+
+const certTemRep = () => !!(CERT.repName || CERT.repRole || CERT.repRole2);
+
+function certFrente() {
+  const p = el("div", "cert-paper");
+  p.append(el("div", "marca", "HealthMais Atendimento Domiciliar"));
+  const cab = el("div");
+  cab.append(el("div", "tipo", "Certificado"));
+  const sub = el("div", "tipo");
+  sub.textContent = "de capacitação";
+  cab.append(sub);
+  p.append(cab);
+  p.append(el("div", "corpo", "Certificamos que"));
+  p.append(el("div", "nome", certParticipante() || "____________________________"));
+  p.append(el("div", "corpo", "concluiu com aproveitamento a capacitação"));
+  const curso = el("div", "corpo");
+  curso.style.fontWeight = "500";
+  curso.style.color = "var(--ink)";
+  curso.textContent = CERT.title || "—";
+  p.append(curso);
+  const linha = el("div", "corpo");
+  linha.append(document.createTextNode("com carga horária de "));
+  linha.append(el("b", null, CERT.hours || "—"));
+  linha.append(document.createTextNode(", realizada em "));
+  linha.append(el("b", null, certData(CERT.date)));
+  linha.append(document.createTextNode("."));
+  p.append(linha);
+
   const ass = el("div", "assinaturas");
-  [[CERT.instrutor, CERT.instrutorCargo], [CERT.representante, CERT.representanteCargo]]
-    .forEach(([n, c]) => {
-      if (!n) return;
-      const a = el("div", "ass");
-      a.append(el("div", "risco"), el("div", "n", n), el("div", "c", c || ""));
-      ass.append(a);
-    });
+  const bloco = (nome, papeis, rubrica) => {
+    const a = el("div", "ass");
+    // Slot de altura fixa mesmo vazio: o CertificateSheet usa .cert-sign-slot
+    // para as tres linhas ficarem na mesma altura. Sem ele, so a assinatura com
+    // rubrica desce, e as tres desalinham.
+    const r = el("div", "c rubrica");
+    r.textContent = rubrica || "";
+    a.append(r);
+    a.append(el("div", "risco"));
+    if (nome) a.append(el("div", "n", nome));
+    papeis.filter(Boolean).forEach(x => a.append(el("div", "c", x)));
+    return a;
+  };
+  ass.append(bloco(CERT.instructorName, [CERT.instructorRole, CERT.instructorRole2],
+                   CERT.instructorSignature ? "assinatura aplicada" : ""));
+  if (certTemRep()) {
+    ass.append(bloco(CERT.repName, [CERT.repRole, CERT.repRole2],
+                     CERT.repSignature ? CERT_ASSINATURA : ""));
+  }
+  // A 3a e do aluno: assina a mao, com o nome impresso abaixo.
+  if (CERT.studentLabel) ass.append(bloco(certParticipante(), [CERT.studentLabel], ""));
   p.append(ass);
   return p;
 }
 
+function certVerso() {
+  const p = el("div", "cert-paper verso");
+  p.append(el("div", "back-h", "Conteúdo Programático"));
+  if (CERT.title) p.append(el("div", "back-c", CERT.title));
+  const itens = certTopicos();
+  if (itens.length) {
+    const t = document.createElement("table");
+    t.className = "prog";
+    t.innerHTML = "<thead><tr><th class='num'>Nº</th><th>Tópico</th></tr></thead>";
+    const tb = document.createElement("tbody");
+    itens.forEach((x, i) => {
+      const tr = el("tr");
+      tr.append(el("td", "num", String(i + 1)), el("td", null, x));
+      tb.append(tr);
+    });
+    t.append(tb);
+    p.append(t);
+  } else {
+    p.append(el("div", "cert-vazio", "Sem conteúdo programático."));
+  }
+  const meta = el("div", "back-meta");
+  if (CERT.hours) { const s = el("span"); s.append(document.createTextNode("Carga horária: "), el("b", null, CERT.hours)); meta.append(s); }
+  const part = certParticipante();
+  if (part) { const s = el("span"); s.append(document.createTextNode("Participante: "), el("b", null, part)); meta.append(s); }
+  p.append(meta);
+
+  const e = el("div", "emitente");
+  e.append(el("b", null, CERT_EMITENTE.nome));
+  [`CNPJ ${CERT_EMITENTE.cnpj}`, CERT_EMITENTE.endereco,
+   `${CERT_EMITENTE.email} · ${CERT_EMITENTE.telefone}`, CERT_EMITENTE.site]
+    .forEach(l => e.append(el("div", null, l)));
+  p.append(e);
+  return p;
+}
+
+let certAba = "frente";
+
 function opCertificadosNovo() {
+  const lote = certLote();
   const s = $("#opStats");
   s.innerHTML = "";
-  const lote = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
   [["Emitidos no histórico", (OP.certificados || {}).emitidos ?? 0, "o dump não registra emissão", "warn"],
-   ["Na fila", lote.length || (CERT.participante ? 1 : 0), "deste lote", "lead"],
-   ["Carga horária", (CERT.horas || "0") + "h", "por certificado"]
+   ["Folhas a imprimir", (lote.length || 1) * 2, "frente e verso por certificado", "lead"],
+   ["No lote", lote.length || 1, lote.length ? "nomes na lista" : "sem lote: só o participante"],
+   ["Tópicos no verso", certTopicos().length, "linhas da tabela"]
   ].forEach(([k, v, sub, cls]) => {
     const c = el("div", "cell" + (cls ? " " + cls : ""));
     c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", sub));
@@ -2935,51 +3070,80 @@ function opCertificadosNovo() {
     const i = document.createElement(tipo === "area" ? "textarea" : "input");
     if (tipo && tipo !== "area") i.type = tipo;
     i.value = CERT[chave] || "";
-    i.addEventListener("input", () => {
-      CERT[chave] = i.value;
-      const novo = certPreview();
-      wrap.replaceChild(novo, wrap.lastChild);
-      const lote2 = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
-      s.children[1].querySelector(".v").textContent =
-        String(lote2.length || (CERT.participante ? 1 : 0));
-      s.children[2].querySelector(".v").textContent = (CERT.horas || "0") + "h";
-    });
+    i.addEventListener("input", () => { CERT[chave] = i.value; certRedesenha(wrap, s); });
     f.append(i);
     return f;
   };
   form.append(el("div", "sec-h", "Certificado"));
-  form.append(campo("participante", "Participante"));
-  form.append(campo("titulo", "Título"));
-  form.append(campo("horas", "Carga horária", "number"));
-  form.append(campo("data", "Data", "date"));
-  form.append(campo("conteudo", "Conteúdo programático", "area"));
-  form.append(el("div", "sec-h", "Assinaturas"));
-  form.append(campo("instrutor", "Instrutor"));
-  form.append(campo("instrutorCargo", "Cargo do instrutor"));
-  form.append(campo("representante", "Representante"));
-  form.append(campo("representanteCargo", "Cargo do representante"));
+  form.append(campo("participant", "Participante"));
+  form.append(campo("title", "Título da capacitação"));
+  // hours e texto no gerador ("03 horas"), nao numero.
+  form.append(campo("hours", "Carga horária"));
+  form.append(campo("date", "Data", "date"));
+  form.append(campo("content", "Conteúdo programático", "area"));
+  form.append(el("div", "sec-h", "Instrutor"));
+  form.append(campo("instructorName", "Nome"));
+  form.append(campo("instructorRole", "Cargo"));
+  form.append(campo("instructorRole2", "Cargo (2ª linha)"));
+  form.append(el("div", "sec-h", "Representante"));
+  form.append(campo("repName", "Nome"));
+  form.append(campo("repRole", "Cargo"));
+  form.append(campo("repRole2", "Cargo (2ª linha)"));
+  form.append(el("div", "sec-h", "Aluno"));
+  form.append(campo("studentLabel", "Rótulo da assinatura"));
   form.append(el("div", "sec-h", "Emissão em lote"));
-  form.append(campo("lote", "Um nome por linha", "area"));
+  form.append(campo("bulk", "Um nome por linha", "area"));
+
   const acoes = el("div");
   acoes.style.display = "flex";
   acoes.style.gap = "8px";
-  const bImp = el("button", "btn", "Imprimir");
-  bImp.addEventListener("click", () => window.print());
-  const bLote = el("button", "btn btn-primary", "Gerar lote");
-  bLote.addEventListener("click", () => {
-    const nomes = (CERT.lote || "").split("\n").map(x => x.trim()).filter(Boolean);
-    if (!nomes.length) { toast("Nenhum nome no lote", "Preencha um nome por linha."); return; }
-    toast(nomes.length + " certificado(s) na fila",
-          "No app real cada um vira uma folha frente e verso para impressão.");
+  const bImp = el("button", "btn btn-primary");
+  bImp.textContent = certLote().length > 1
+    ? "Imprimir " + certLote().length + " certificados" : "Imprimir / Salvar PDF";
+  bImp.id = "certImprimir";
+  bImp.addEventListener("click", () => {
+    const n = certLote().length || 1;
+    toast(n + (n === 1 ? " certificado" : " certificados"),
+          "No app real sai frente e verso por participante, em " + (n * 2) + " folhas.");
   });
-  acoes.append(bImp, bLote);
+  acoes.append(bImp);
   form.append(acoes);
   const nota = el("div", "cert-lote");
-  nota.textContent = "O gerador de verdade vive em frontend/src/views/CertificatesView.vue, com frente, verso e assinatura digitalizada. Aqui é a prévia do conteúdo.";
+  nota.textContent = "Campos e textos vêm de CertificatesView.vue. A assinatura digitalizada e o fundo impresso ficam no gerador; aqui é a prévia do conteúdo.";
   form.append(nota);
 
-  wrap.append(form, certPreview());
+  const painel = el("div");
+  const abas = el("div", "cert-abas");
+  [["frente", "Frente"], ["verso", "Verso"]].forEach(([k, r]) => {
+    const b = el("button", "tab" + (certAba === k ? " on" : ""), r);
+    b.type = "button";
+    b.addEventListener("click", () => { certAba = k; certRedesenha(wrap, s); });
+    abas.append(b);
+  });
+  painel.append(abas, certAba === "frente" ? certFrente() : certVerso());
+
+  wrap.append(form, painel);
   $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
+}
+
+function certRedesenha(wrap, s) {
+  const painel = wrap.lastChild;
+  painel.innerHTML = "";
+  const abas = el("div", "cert-abas");
+  [["frente", "Frente"], ["verso", "Verso"]].forEach(([k, r]) => {
+    const b = el("button", "tab" + (certAba === k ? " on" : ""), r);
+    b.type = "button";
+    b.addEventListener("click", () => { certAba = k; certRedesenha(wrap, s); });
+    abas.append(b);
+  });
+  painel.append(abas, certAba === "frente" ? certFrente() : certVerso());
+  const lote = certLote();
+  s.children[1].querySelector(".v").textContent = String((lote.length || 1) * 2);
+  s.children[2].querySelector(".v").textContent = String(lote.length || 1);
+  s.children[3].querySelector(".v").textContent = String(certTopicos().length);
+  const bImp = $("#certImprimir");
+  if (bImp) bImp.textContent = lote.length > 1
+    ? "Imprimir " + lote.length + " certificados" : "Imprimir / Salvar PDF";
 }
 
 // ═══ Relatórios com gráficos ══════════════════════════════════
