@@ -52,7 +52,6 @@ CREATE TABLE migracao_evento (
     ocorrencia_em       date,
     observacoes         text,
     assistencia         text,
-    operadora           text,
 
     -- O que o inventario da Fase 1 concluiu
     classe            migracao_classe NOT NULL,
