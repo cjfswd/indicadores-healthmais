@@ -203,6 +203,10 @@
   .b-flag { background:var(--flag-soft); color:var(--flag); }
   .b-acc { background:var(--accent-soft); color:var(--accent); }
   .code-tag { font-size:11px; color:var(--ink-3); margin-right:6px; }
+  /* Codigo dentro do badge: mesma cor do rotulo, um pouco recuado, para ler
+     como "9.1 Reclamacao" e nao como dois selos colados. */
+  .badge .badge-cod { font-family:"IBM Plex Mono", monospace; font-weight:600;
+    opacity:.72; letter-spacing:-.01em; }
 
   .push-cell { display:flex; align-items:center; gap:8px; }
   .push-cell .n { font-size:13px; font-weight:500; font-variant-numeric:tabular-nums; width:17px; }
@@ -590,7 +594,9 @@
   .lista-ev .d { font-size:11.5px; color:var(--ink-3); flex:none; width:64px;
     font-family:"IBM Plex Mono", monospace; }
   .lista-ev .p { font-size:13px; font-weight:500; }
-  .lista-ev .o { font-size:11.5px; color:var(--ink-3); display:block; }
+  .lista-ev .o { font-size:11.5px; color:var(--ink-3); display:flex;
+    align-items:center; gap:6px; margin-top:2px; }
+  .lista-ev .o .badge { font-size:11px; }
   .voltar { font-size:12px; color:var(--accent); padding:4px 0; display:inline-flex; gap:6px; }
 
   /* Gráficos */
@@ -637,6 +643,28 @@
     letter-spacing:.02em; margin-bottom:2px; }
   .cert-abas { display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:14px; }
   .cert-vazio { color:var(--ink-3); font-style:italic; font-size:12px; }
+
+  /* Impressao = PDF. O navegador ja sabe gerar PDF; o que falta e a pagina
+     saber o que nao deve ir junto. */
+  .print-cab { display:none; }
+  @media print {
+    @page { size:A4 landscape; margin:12mm; }
+    .side, .topbar, .scrim, .peek, .cmdk, .toast, .pop,
+    .g-tip, .filters .btn-ghost, .g-alvo, .legacy-abrir { display:none !important; }
+    .app { display:block; }
+    .page { max-width:none; padding:0; }
+    body { background:#fff; color:#000; }
+    .print-cab { display:block; margin-bottom:14px; padding-bottom:10px;
+      border-bottom:1px solid #999; }
+    .print-cab h1 { font-size:16pt; margin:0 0 3px; }
+    .print-cab .sub { font-size:9pt; color:#444; }
+    /* Nada de carta partida entre paginas. */
+    .carta, .split, .req, .lgrid { break-inside:avoid; }
+    .cartas { gap:10px; }
+    table { font-size:8.5pt; }
+    thead { display:table-header-group; }
+    tr { break-inside:avoid; }
+  }
 
   /* Páginas do legado */
   .legacy { max-width:720px; margin-top:34px; }
@@ -934,7 +962,33 @@ function paciente(nome, sub) {
   if (sub) f.append(el("span", "op", sub));
   return f;
 }
+/** Badge de indicador ou subindicador, com o codigo SEMPRE dentro.
+ *  Aceita "9.1 - Reclamacao", "09 - No de ouvidorias" ou so o nome; separa o
+ *  codigo do rotulo e monta um selo unico. Fora do selo o numero lia como se
+ *  fosse outra coluna, e a classificacao aparecia partida em dois. */
+function badgeCategoria(texto, kind) {
+  const t = String(texto || "").trim();
+  const m = t.match(/^([\d.]+)\s*[-—]?\s*(.*)$/);
+  const b = el("span", "badge " + (kind || "b-acc"));
+  if (m && m[1]) {
+    b.append(el("span", "badge-cod", m[1]));
+    if (m[2]) b.append(document.createTextNode(m[2]));
+  } else {
+    b.append(document.createTextNode(t || "—"));
+  }
+  return b;
+}
+
 function comCodigo(codigo, node) {
+  // O codigo entra DENTRO do badge. Fora dele lia como se fosse outra coluna,
+  // e a classificacao aparecia partida: o numero de um lado, o rotulo do
+  // outro, sem nada dizendo que sao a mesma coisa.
+  if (node && node.classList && node.classList.contains("badge")) {
+    const c = el("span", "badge-cod", codigo);
+    const ponto = node.querySelector(".dot");
+    if (ponto) ponto.after(c); else node.prepend(c);
+    return node;
+  }
   const f = document.createDocumentFragment();
   f.append(el("span", "code-tag mono", codigo), node);
   return f;
@@ -2290,35 +2344,112 @@ function toast(titulo, corpo) {
   setTimeout(() => t.remove(), 9000);
 }
 
+// ═══ Exportação ═══════════════════════════════════════════
+// Excel sai como CSV com BOM: abre no Excel sem aviso de extensao e sem
+// depender de biblioteca de zip, que um arquivo estatico nao tem como
+// carregar. PDF sai pela impressao do navegador, com uma folha de estilo que
+// tira a navegacao e evita cortar carta no meio.
+// O de verdade, no app, usa exceljs e Playwright -- e o que o README do
+// novo-modelo ja descreve.
+
+/** Le a tabela que esta na tela. Exportar o DOM garante que o arquivo bate
+ *  com o que a pessoa esta vendo, inclusive filtro e ordenacao. */
+function tabelaVisivel() {
+  const secoes = [
+    ["#pageMigracao", "#pageMigracao table"],
+    ["#pageLegacy", "#opTabela table"],
+    ["#pageCard", "#viewTable table, #viewPivot table"],
+  ];
+  for (const [pag, sel] of secoes) {
+    const p = $(pag);
+    if (!p || p.classList.contains("hidden")) continue;
+    for (const t of document.querySelectorAll(sel)) {
+      if (t.offsetParent !== null && t.querySelector("tbody tr")) return t;
+    }
+  }
+  return null;
+}
+
+function nomeDaPagina() {
+  if (!$("#pageMigracao").classList.contains("hidden")) return "Migração";
+  if (!$("#pageLegacy").classList.contains("hidden")) return $("#opTitulo").textContent || "Operação";
+  return atual + " — " + (CARDS[atual] ? CARDS[atual].nome : "");
+}
+
+function recorteDaPagina() {
+  if (!$("#pageLegacy").classList.contains("hidden")) {
+    return $("#opTitulo").textContent === "Relatórios" ? relRecorte() : "sem filtro de período";
+  }
+  if (!$("#pageMigracao").classList.contains("hidden")) return "todos os casos ambíguos";
+  return cardRecorte();
+}
+
+const csvCampo = v => '"' + String(v == null ? "" : v).replace(/\s+/g, " ").trim().replace(/"/g, '""') + '"';
+
+function exportarExcel() {
+  const t = tabelaVisivel();
+  if (!t) { toast("Nada para exportar", "Esta página não tem tabela na tela."); return; }
+  const linha = tr => [...tr.children].map(c => csvCampo(c.textContent)).join(";");
+  const corpo = [...t.querySelectorAll("tbody tr")];
+  const cabecalho = [...t.querySelectorAll("thead tr")].map(linha);
+  // Ponto e virgula: o Excel em pt-BR usa virgula como decimal, e com virgula
+  // de separador ele joga a linha toda numa celula so.
+  const csv = [
+    csvCampo(nomeDaPagina()),
+    csvCampo("Recorte: " + recorteDaPagina()),
+    "",
+    ...cabecalho,
+    ...corpo.map(linha),
+  ].join("\r\n");
+
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nomeDaPagina().replace(/[^\w\u00C0-\u024F -]/g, "").trim().replace(/\s+/g, "-") + ".csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Excel exportado", corpo.length + " linha(s) · separador ponto e vírgula, para o Excel em pt-BR.");
+}
+
+function exportarPDF() {
+  const antigo = $("#printCab");
+  if (antigo) antigo.remove();
+  const cab = el("div", "print-cab");
+  cab.id = "printCab";
+  cab.append(el("h1", null, nomeDaPagina()));
+  const sub = el("div", "sub");
+  sub.textContent = "Recorte: " + recorteDaPagina() + " · Competência " + (OP.competencia || "08/2026")
+                    + " · gerado em " + dbr(OP.gerado || "2026-08-29");
+  cab.append(sub);
+  const pag = [...document.querySelectorAll(".page")].find(x => !x.classList.contains("hidden"));
+  if (pag) pag.prepend(cab);
+  // O peek aberto imprimiria por cima; fecha antes.
+  fechar();
+  fecharPop();
+  setTimeout(() => window.print(), 60);
+}
+
 $("#btnExport").addEventListener("click", e => {
   fecharPop();
   const r = e.currentTarget.getBoundingClientRect();
   const p = el("div", "pop wide");
   p.id = "pop";
-  const ehPagina = !$("#pageLegacy").classList.contains("hidden");
-  const escopo = ehPagina ? $("#crumbNow").textContent : atual + " — " + CARDS[atual].nome;
 
-  EXPORTS.forEach(([fmt, titulo, desc]) => {
+  [["XLSX", "Excel", "A tabela desta página, com o recorte no topo. Abre direto no Excel.", exportarExcel],
+   ["PDF", "PDF", "Imprime a página sem a navegação, em A4 paisagem.", exportarPDF],
+  ].forEach(([fmt, titulo, desc, fn]) => {
     const b = el("button", "optx");
     b.append(el("span", "fmt", fmt));
     const w = el("span");
     w.append(el("span", "t", titulo), el("span", "s", desc));
     b.append(w);
-    b.addEventListener("click", () => {
-      fecharPop();
-      toast(titulo + " · " + fmt,
-        "Gerado no servidor a partir do recorte atual: " + escopo + ", " + empresaPor(F.emp).nome +
-        ", período " + rotuloPeriodo() +
-        (F.op ? ", operadora " + F.op : "") + (F.mod ? ", modalidade " + F.mod : "") +
-        ". Nesta prévia o download fica desativado pelo sandbox.");
-    });
+    b.addEventListener("click", () => { fecharPop(); fn(); });
     p.append(b);
   });
 
   const sc = el("div", "scope");
-  sc.append(document.createTextNode("Recorte: "), el("b", null, escopo),
-    document.createTextNode(" · " + empresaPor(F.emp).nome + " · " + rotuloPeriodo() +
-      " · " + (F.op || "todas as operadoras") + " · " + (F.mod || "AD e ID")));
+  sc.append(document.createTextNode("Página: "), el("b", null, nomeDaPagina()),
+            document.createTextNode(" · " + recorteDaPagina()));
   p.append(sc);
 
   document.body.append(p);
@@ -2748,7 +2879,7 @@ const TELAS = {
     cols: [
       ["Data", r => el("span", "dim nowrap", dbr(r.data))],
       ["Paciente", r => { const t = el("span"); t.append(document.createTextNode(r.paciente), el("span","op",r.operadora)); return t; }, "pat"],
-      ["Categoria", r => { const t = el("span"); t.append(el("span","code-tag mono",r.card), document.createTextNode(r.subindicador.replace(/^\s*[\d.]+\s*-\s*/,""))); return t; }],
+      ["Categoria", r => badgeCategoria(r.subindicador || r.indicador, "b-acc")],
       ["Observação", r => opTrunc(r.observacoes)],
       ["Anexo", r => r.anexo ? badge("sim","b-acc") : el("span","dim","—")],
     ],
@@ -2816,7 +2947,7 @@ const TELAS = {
     cols: [
       ["Nome informado", r => document.createTextNode(r.nome_bruto || "—"), "pat"],
       ["Data", r => el("span","dim nowrap", r.data ? dbr(r.data) : "—")],
-      ["Categoria", r => opTrunc(r.subindicador || r.indicador)],
+      ["Categoria", r => badgeCategoria(r.subindicador || r.indicador, "b-acc")],
       ["Relator", r => el("span","dim", r.relator || "—")],
       ["Status", r => badge(r.status || "—", opBadge[r.status] || "b-n", true)],
       ["Vínculo", r => r.vinculado ? badge("vinculado","b-ok") : badge("pendente","b-flag")],
@@ -3894,7 +4025,9 @@ function relListaEventos(titulo, subtitulo, eventos) {
     b.append(el("span", "d", ev.data ? dbr(ev.data) : "—"));
     const w = el("span");
     w.append(el("span", "p", ev.paciente));
-    w.append(el("span", "o", ev.subindicador.replace(/^\s*[\d.]+\s*-\s*/, "") + " · " + ev.operadora));
+    const o = el("span", "o");
+    o.append(badgeCategoria(ev.subindicador, "b-n"), document.createTextNode(" " + ev.operadora));
+    w.append(o);
     b.append(w);
     b.addEventListener("click", () => relDetalheEvento(ev, () => relListaEventos(titulo, subtitulo, eventos)));
     lista.append(b);
@@ -3932,8 +4065,15 @@ function relDetalheEvento(ev, voltar) {
     props.append(r);
   };
   linha("Card", ev.card + " — " + (CARDS[ev.card] ? CARDS[ev.card].nome : ev.indicador));
-  linha("Indicador", ev.indicador);
-  linha("Subindicador", ev.subindicador);
+  const selo = (k, v, kind) => {
+    const r = el("div", "prop");
+    const pv = el("span", "pv");
+    pv.append(badgeCategoria(v, kind));
+    r.append(el("span", "pk", k), pv);
+    props.append(r);
+  };
+  selo("Indicador", ev.indicador, "b-n");
+  selo("Subindicador", ev.subindicador, "b-acc");
   linha("Assistência", ev.assistencia);
   linha("Anexo", ev.anexo ? "sim" : "não");
   linha("Paciente", ev.paciente);
