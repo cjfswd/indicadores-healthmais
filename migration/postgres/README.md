@@ -78,6 +78,68 @@ uma FK que resolve sozinha esconderia o problema.
 
 Distribuição após a carga: Camperj 101, Unimed 36, Particular 5.
 
+## Rodar no servidor
+
+O container já tem Postgres com outras coisas dentro, então nada vai para
+`public`: tudo vive no schema `painel`.
+
+```bash
+python gerar_migracao.py                       # gera migracoes/001_base.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migracoes/001_base.sql
+```
+
+O arquivo é **gerado** a partir de `schema.sql` e `schema_migracao.sql` — não
+edite lá, senão os dois divergem. Ele é seguro num banco em uso:
+
+- cria e usa `painel`; não escreve em `public`
+- roda numa transação: falha no meio não deixa meia migração
+- idempotente: `IF NOT EXISTS`, `OR REPLACE`, `DROP` antes do trigger
+- registra a versão em `painel.migracoes`, com data e usuário
+
+```bash
+node testar_migracao.mjs migracoes/001_base.sql /tmp/data.sql
+```
+
+O teste sobe um Postgres em memória **com coisas já em `public`** — incluindo
+uma tabela `patients` homônima de propósito — aplica, confere que nada de lá
+foi tocado, aplica de novo e confere que não duplicou. As duas `patients`
+convivem porque estão em schemas diferentes.
+
+Limite conhecido: `CREATE TABLE IF NOT EXISTS` não adiciona coluna a tabela que
+já existe. Este arquivo serve para a primeira aplicação; mudança de coluna
+depois exige uma migração numerada nova com `ALTER` — que é por que ele já
+nasce como `001`.
+
+## O painel lendo do Postgres
+
+`consultas_painel.sql` produz o mesmo `dados.json` que o painel já consome, uma
+consulta por página. É o que permite trocar a fonte sem tocar na tela, e é o
+que a API vai executar quando existir.
+
+```bash
+node painel_do_postgres.mjs /tmp/data.sql /tmp/dados-pg.json
+```
+
+Comparado campo a campo com o JSON gerado do dump, o resultado é **idêntico**
+em pacientes, eventos, usuários, notificações e triagem. Duas diferenças
+sobraram, e as duas são a migração fazendo o trabalho dela:
+
+| Campo | Dump | Postgres | Por quê |
+| --- | --- | --- | --- |
+| `situacao` | 61 excluídos, 1 inativo | 50 e 12 | migração de inativação aplicada na carga |
+| `operadoras.pacientes` | Particular com 2 | com 5 | os 3 sem vínculo viraram particulares |
+
+A comparação achou dois defeitos meus antes disso, que valem registro porque
+são os erros clássicos de portar leitura para SQL:
+
+**Espaço em branco.** 33 observações diferiam só por espaço no fim — o gerador
+do dump normalizava, o SQL não. Resolvido com `regexp_replace(btrim(...))`.
+
+**Fuso horário.** Uma notificação caía num dia diferente: `to_char` usa o fuso
+da sessão, e um registro perto da meia-noite muda de data. Todo `to_char` de
+timestamp agora leva `AT TIME ZONE 'UTC'`. Sem isso o mesmo banco daria
+respostas diferentes conforme o fuso do servidor.
+
 ## Pendências
 
 1. **A migração de inativação foi aplicada na carga, não no Mongo.** O Postgres
