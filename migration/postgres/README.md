@@ -33,10 +33,12 @@ psql "$DATABASE_URL" -f schema.sql -f /tmp/data.sql
 
 ## Validação em duas camadas
 
-**1. Modelo relacional — SQLite, dentro do `etl.py`.** Carrega tudo com
-`foreign_keys=ON` e roda `foreign_key_check`: FKs resolvem, chaves únicas não
-colidem, `NOT NULL` se sustenta, cardinalidade bate com a origem. O SQL emitido
-também é executado, o que exercita o escape de aspas.
+**1. Modelo — Python puro, dentro do `etl.py`.** Confere chaves primárias,
+`UNIQUE`, FKs e cardinalidade antes de emitir qualquer SQL.
+
+Isto rodava em SQLite até o schema ganhar `ENUM`, coluna gerada, `btrim` e
+`octet_length`. Manter um tradutor de dialeto para um alvo que ninguém usa só
+produzia falha falsa, então saiu.
 
 **2. Dialeto — Postgres real, em memória, via PGlite.** Postgres compilado em
 WASM: roda sem servidor, sem Docker, sem instalar nada além de um pacote npm.
@@ -50,11 +52,17 @@ Validado contra **PostgreSQL 18.3**: `schema.sql` aplica sem erro, a carga entra
 em ~110ms, `jsonb` responde aos operadores (`data ? '$push'`), e `date` /
 `timestamptz` aceitam comparação e `interval`.
 
-Essa segunda camada não é redundante. Ela achou um bug que o SQLite não tem como
-mostrar: **`subindicators.id` é `bigserial` e a carga traz id explícito, o que não
-avança a sequence** — ela ficava em 1 com `max(id) = 32`, e o primeiro `INSERT`
-do app quebrava com violação de PK. O `etl.py` agora emite o `setval`
-correspondente no fim da carga.
+Essa segunda camada paga por si. O que ela pegou e nenhuma verificação em
+memória pegaria:
+
+- **`bigserial` com id explícito não avança a sequence.** Ficava em 1 com
+  `max(id) = 32`, e o primeiro `INSERT` do app quebrava com violação de PK.
+  Resolvido com `setval` no fim da carga.
+- **Coluna gerada exige expressão `IMMUTABLE`.** `situacao` como `enum` foi
+  recusada duas vezes — o `CASE` devolve `text`, e converter text em enum é
+  `STABLE`. Ficou `text`.
+- **`INSERT` posicional bate na coluna gerada.** A emissão passou a listar as
+  colunas explicitamente.
 
 ## Decisões que vieram dos dados
 
@@ -64,7 +72,7 @@ correspondente no fim da carga.
 | `patients.events` vira tabela | 206 eventos aninhados. Elimina a corrida de índice documentada em `docs/DEPLOY.md`, onde um `$set` por posição podia gravar no evento errado. |
 | Evento liga por **nome** | O snapshot de indicador embutido no evento não tem `_id`. Os 206 casam por nome com indicador e subindicador — por isso `indicators.name` é `UNIQUE`. |
 | `subindicators.id` sintético | Subindicador não tem `_id` no Mongo. A chave natural é `(indicator_id, name)`. |
-| Sem `bytea` | `file` é nulo nos 142 pacientes. Se anexo voltar, entra como `bytea` ou referência externa. |
+| Anexo em tabela própria | 5 MB em coluna faria todo `SELECT` do evento arrastar o conteúdo. `CHECK` de tamanho no banco, não só na tela. |
 | Datas anuláveis | `birthDate` preenchido em 3 de 142, `admissionDate` em 9. String vazia vira `NULL`, não epoch. |
 
 ## Sobre a operadora
