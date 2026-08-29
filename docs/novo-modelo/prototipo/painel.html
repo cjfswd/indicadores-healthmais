@@ -544,6 +544,11 @@
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
     --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
   }
+  /* Cabecalho dos small multiples: a legenda de operadora e a mesma nos dez
+     cards, entao sai uma vez so em cima da grade em vez de dez vezes. */
+  .cartas-topo { grid-column:1/-1; padding:2px 2px 0; }
+  .cartas-topo h3 { margin:0 0 2px; font-size:13px; font-weight:600; letter-spacing:-.01em; }
+  .cartas-topo .cap { margin:0 0 10px; font-size:11.5px; color:var(--ink-3); }
   .g-toggle { display:flex; gap:2px; margin:0 0 12px; }
   .g-toggle button { font-size:11.5px; color:var(--ink-3); padding:3px 10px;
     border:1px solid var(--line); border-radius:20px; }
@@ -3240,7 +3245,10 @@ function graficoAgrupado(carta, categorias, series, opcoes) {
   const max = Math.max(1, ...series.flatMap(s => s.valores));
   const faixa = (w - padL - padR) / n;
   const GAP = 2;
-  const largGrupo = Math.min(cfg.largura || 54, faixa - 10);
+  // Largura acompanha o espaco: com duas categorias a faixa e enorme e um teto
+  // fixo deixava velas finas perdidas no vazio; com dez, o teto proporcional
+  // e que segura. O menor dos dois manda.
+  const largGrupo = Math.min(faixa * 0.6, cfg.largura || 118);
   const larg = Math.max(3, (largGrupo - GAP * (series.length - 1)) / series.length);
   const alturaUtil = h - padT - padB;
   const p = [];
@@ -3716,7 +3724,7 @@ function cardGraficos(codigo) {
     legenda(c2, series);
     graficoAgrupado(c2, meses.map(m => ({ rotulo: rotuloMes(m), completo: m })), series.map(sr => ({
       ...sr, valores: meses.map(m => linhas.filter(l => dataDaLinha(l).slice(0, 7) === m && l.op === sr.nome).length),
-    })), { largura: 60, aoClicar: (cat, sr) => cardLista("Registros de " + cat.rotulo, sr.nome,
+    })), { largura: 130, aoClicar: (cat, sr) => cardLista("Registros de " + cat.rotulo, sr.nome,
         linhas.filter(l => dataDaLinha(l).slice(0, 7) === cat.completo && l.op === sr.nome)) });
     cartas.append(c2);
   }
@@ -3758,7 +3766,6 @@ function cardLista(titulo, operadora, linhas) {
 const CORES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"];
 const prefixoDe = t => (String(t).match(/^\s*([\d.]+)/) || [, "?"])[1];
 let relFiltro = {};
-let relSerie = "op";   // "op" | "sub" -- corte das velas no card por nome
 
 function relOperadoras() {
   return [...new Set((OP.eventos || []).map(e => e.operadora))].sort();
@@ -3980,64 +3987,50 @@ function opRelatoriosNovo() {
   legendaCodigos(c1, cats);
   cartas.append(c1);
 
-  // ── Por nome do indicador, com a serie alternavel ──
-  // O eixo continua no codigo porque o nome nao cabe sob coluna vertical; o
-  // nome vive na legenda abaixo e no tooltip. A serie alterna entre operadora
-  // e subindicador: sao os dois cortes que a pagina precisa, e um grafico com
-  // as duas dimensoes ao mesmo tempo teria 30 velas ilegiveis.
-  const cNome = carta("Eventos por nome do indicador",
-                      "Velas por " + (relSerie === "op" ? "operadora" : "subindicador")
-                      + " · " + d.length + " eventos no recorte");
-  const alt = el("div", "g-toggle");
-  [["op", "Operadora"], ["sub", "Subindicador"]].forEach(([k, r]) => {
-    const b = el("button", relSerie === k ? "on" : "", r);
-    b.type = "button";
-    b.addEventListener("click", () => { relSerie = k; opRelatoriosNovo(); });
-    alt.append(b);
-  });
-  cNome.append(alt);
-
-  const indCats = [...new Set(d.map(e => e.card))].sort().map(c => {
-    const ex = d.find(e => e.card === c) || {};
-    return { rotulo: c, completo: ex.indicador || c,
-             legenda: (ex.indicador || "").replace(/^\s*[\d.]+\s*[-\u2014]\s*/, ""),
-             total: d.filter(e => e.card === c).length };
-  }).sort((a, b) => b.total - a.total);
-
-  let serieNome;
-  if (relSerie === "op") {
-    serieNome = ops.map((o, i) => ({
-      nome: o, cor: CORES[i % CORES.length],
-      valores: indCats.map(x => d.filter(e => e.card === x.rotulo && e.operadora === o).length),
-      casa: e => e.operadora === o,
-    }));
-  } else {
-    // A ordinal do subindicador (.1, .2, ...) e o unico corte comum a todos os
-    // indicadores -- "1.1" e "9.1" sao ambos o primeiro. O nome real de cada um
-    // aparece no tooltip, que sabe de qual indicador se trata.
-    const ordinais = [...new Set(d.map(e => (prefixoDe(e.subindicador).split(".")[1] || "?")))]
-      .sort().slice(0, 8);
-    serieNome = ordinais.map((o, i) => ({
-      nome: "." + o, cor: CORES[i % CORES.length],
-      valores: indCats.map(x => d.filter(e => e.card === x.rotulo
-        && (prefixoDe(e.subindicador).split(".")[1] || "?") === o).length),
-      casa: e => (prefixoDe(e.subindicador).split(".")[1] || "?") === o,
-    }));
+  // ── Um card por indicador ──
+  // Small multiples em vez de um grafico com alternador: com um indicador por
+  // card, o nome cabe no titulo e as duas dimensoes entram juntas -- eixo em
+  // subindicador, velas em operadora. Era o alternador que existia so porque
+  // as tres dimensoes nao cabiam num grafico so.
+  const grupos = [...new Set(d.map(e => e.card))].sort();
+  if (grupos.length > 1) {
+    const cabeca = el("div", "cartas-topo");
+    cabeca.append(el("h3", null, "Eventos por indicador, um card cada"));
+    cabeca.append(el("p", "cap", "Eixo em subindicador · velas por operadora · "
+                     + grupos.length + " indicadores no recorte"));
+    legenda(cabeca, series);
+    cartas.append(cabeca);
   }
-  legenda(cNome, serieNome);
-  graficoAgrupado(cNome, indCats, serieNome, {
-    aoClicar: (cat, sr) => {
-      const sel = d.filter(e => e.card === cat.rotulo && sr.casa(e));
-      relListaEventos(cat.completo, sr.nome + " · " + sel.length + " no recorte", sel);
-    },
-    nomeSerie: (cat, sr) => {
-      if (relSerie === "op") return sr.nome;
-      const ex = d.find(e => e.card === cat.rotulo && sr.casa(e));
-      return ex ? ex.subindicador : sr.nome;
-    },
+
+  grupos.forEach(cd => {
+    const doCard = d.filter(e => e.card === cd);
+    const nome = (doCard[0] || {}).indicador || cd;
+    const subs = [...new Set(doCard.map(e => prefixoDe(e.subindicador)))].sort();
+    const cats = subs.map(sc => {
+      const ex = doCard.find(e => prefixoDe(e.subindicador) === sc) || {};
+      return {
+        rotulo: sc,
+        completo: ex.subindicador || sc,
+        legenda: (ex.subindicador || "").replace(/^\s*[\d.]+\s*[-\u2014]\s*/, ""),
+      };
+    });
+    const c = carta(nome, doCard.length + (doCard.length === 1 ? " evento" : " eventos")
+                    + " · " + subs.length + (subs.length === 1 ? " subindicador" : " subindicadores"));
+    graficoAgrupado(c, cats, series.map(sr => ({
+      ...sr,
+      valores: cats.map(x => doCard.filter(e => prefixoDe(e.subindicador) === x.rotulo
+                                            && e.operadora === sr.nome).length),
+    })), {
+      largura: 118,
+      aoClicar: (cat, sr) => {
+        const sel = doCard.filter(e => prefixoDe(e.subindicador) === cat.rotulo
+                                    && e.operadora === sr.nome);
+        relListaEventos(cat.completo, sr.nome + " · " + nome, sel);
+      },
+    });
+    legendaCodigos(c, cats);
+    cartas.append(c);
   });
-  legendaCodigos(cNome, indCats);
-  cartas.append(cNome);
 
   // ── Mensal, agrupado por operadora ──
   const meses = [...new Set(d.map(e => e.data.slice(0, 7)))].sort();
@@ -4045,7 +4038,7 @@ function opRelatoriosNovo() {
   legenda(c2, series);
   graficoAgrupado(c2, meses.map(m => ({ rotulo: rotuloMes(m), completo: m })), series.map(sr => ({
     ...sr, valores: meses.map(m => d.filter(e => e.data.slice(0, 7) === m && e.operadora === sr.nome).length),
-  })), { largura: 60, aoClicar: (cat, sr) => relListaEventos(
+  })), { largura: 130, aoClicar: (cat, sr) => relListaEventos(
       "Eventos de " + cat.rotulo, sr.nome + " · " + cat.completo,
       d.filter(e => e.data.slice(0, 7) === cat.completo && e.operadora === sr.nome)) });
   cartas.append(c2);
