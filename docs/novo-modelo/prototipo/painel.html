@@ -1,48 +1,57 @@
-<title>Painel de Indicadores</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // Tema antes da primeira pintura. Claro e o padrao, como o sistema.
+  try {
+    var t = localStorage.getItem("tema") || "claro";
+    if (t !== "auto") document.documentElement.setAttribute("data-theme", t === "claro" ? "light" : "dark");
+  } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+</script>
+<title>Painel HealthMais</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
 
 <style>
   :root {
-    --ground:#F4F6F4; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-hi:#EDF1EE;
-    --line:#E0E5E1; --line-soft:#EBEFEB;
-    --ink:#15211D; --ink-2:#47554F; --ink-3:#77857E;
-    --accent:#1F5F52; --accent-soft:#E4EFEA; --accent-line:#BFD8CF;
-    --flag:#A3462F; --flag-soft:#F6E9E4;
-    --sev-1:#9A7B1F; --sev-1-soft:#F5EEDA;
-    --sev-2:#B0632A; --sev-2-soft:#F7E9DC;
-    --sev-3:#A3462F; --sev-3-soft:#F6E4DE;
-    --done:#3F6B5C; --done-soft:#E5EEE9;
-    --shadow-peek:-18px 0 44px rgba(12,30,24,.10);
-    --shadow-pop:0 12px 32px rgba(12,30,24,.16);
+    --ground:#F3F5F8; --surface:#FFFFFF; --surface-2:#FAFBFC; --surface-hi:#EAEFF5;
+    --line:#DDE3EA; --line-soft:#E9EDF2;
+    --ink:#15202E; --ink-2:#475467; --ink-3:#78859A;
+    --accent:#1F3A63; --accent-soft:#E7EEF7; --accent-line:#C2D3E7;
+    --flag:#B00020; --flag-soft:#FAE6E9;
+    --sev-1:#8D6E00; --sev-1-soft:#FBF0D6;
+    --sev-2:#B45309; --sev-2-soft:#FBEBDD;
+    --sev-3:#B00020; --sev-3-soft:#FAE3E6;
+    --done:#2E7D32; --done-soft:#E6F1E7;
+    --shadow-peek:-18px 0 44px rgba(15,23,42,.10);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.16);
     --radius:7px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground:#0E1412; --surface:#151D1A; --surface-2:#121A17; --surface-hi:#1E2A25;
-      --line:#26332D; --line-soft:#1E2A25;
-      --ink:#E7EDE9; --ink-2:#A7B5AE; --ink-3:#7B8A83;
-      --accent:#5CB09B; --accent-soft:#1A2E28; --accent-line:#2C4A41;
-      --flag:#E08A6C; --flag-soft:#33201A;
+      --ground:#0E141C; --surface:#151D27; --surface-2:#121922; --surface-hi:#1E2937;
+      --line:#26313F; --line-soft:#1E2833;
+      --ink:#E7EDF4; --ink-2:#A7B3C2; --ink-3:#7B8797;
+      --accent:#7FAEE3; --accent-soft:#16283C; --accent-line:#2C4257;
+      --flag:#E88A8A; --flag-soft:#33191C;
       --sev-1:#D6B45C; --sev-1-soft:#2E2716;
       --sev-2:#DE9059; --sev-2-soft:#32241A;
-      --sev-3:#E08A6C; --sev-3-soft:#33201A;
-      --done:#6FAE99; --done-soft:#1B2A25;
+      --sev-3:#E88A8A; --sev-3-soft:#33191C;
+      --done:#6FBF73; --done-soft:#1A2A1C;
       --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
       --shadow-pop:0 12px 32px rgba(0,0,0,.55);
     }
   }
   :root[data-theme="dark"] {
-    --ground:#0E1412; --surface:#151D1A; --surface-2:#121A17; --surface-hi:#1E2A25;
-    --line:#26332D; --line-soft:#1E2A25;
-    --ink:#E7EDE9; --ink-2:#A7B5AE; --ink-3:#7B8A83;
-    --accent:#5CB09B; --accent-soft:#1A2E28; --accent-line:#2C4A41;
-    --flag:#E08A6C; --flag-soft:#33201A;
+    --ground:#0E141C; --surface:#151D27; --surface-2:#121922; --surface-hi:#1E2937;
+    --line:#26313F; --line-soft:#1E2833;
+    --ink:#E7EDF4; --ink-2:#A7B3C2; --ink-3:#7B8797;
+    --accent:#7FAEE3; --accent-soft:#16283C; --accent-line:#2C4257;
+    --flag:#E88A8A; --flag-soft:#33191C;
     --sev-1:#D6B45C; --sev-1-soft:#2E2716;
     --sev-2:#DE9059; --sev-2-soft:#32241A;
-    --sev-3:#E08A6C; --sev-3-soft:#33201A;
-    --done:#6FAE99; --done-soft:#1B2A25;
+    --sev-3:#E88A8A; --sev-3-soft:#33191C;
+    --done:#6FBF73; --done-soft:#1A2A1C;
     --shadow-peek:-18px 0 44px rgba(0,0,0,.5);
     --shadow-pop:0 12px 32px rgba(0,0,0,.55);
   }
@@ -65,14 +74,21 @@
     padding:14px 10px 24px; display:flex; flex-direction:column; gap:18px;
     position:sticky; top:0; height:100vh; overflow-y:auto;
   }
-  .ws { display:flex; align-items:center; gap:9px; padding:4px 6px; }
+  .ws {
+    display:flex; align-items:center; gap:9px; width:100%; padding:5px 6px; text-align:left;
+    border:1px solid transparent; border-radius:var(--radius); transition:background .12s, border-color .12s;
+  }
+  .ws:hover { background:var(--surface-hi); border-color:var(--line); }
+  .ws-txt { min-width:0; }
+  .ws-chev { margin-left:auto; flex:none; width:13px; height:13px; color:var(--ink-3); }
   .ws-mark {
     width:22px; height:22px; border-radius:5px; flex:none; background:var(--accent);
     color:#fff; display:grid; place-items:center; font-size:11px; font-weight:600; letter-spacing:-.02em;
   }
-  :root[data-theme="dark"] .ws-mark, :root:not([data-theme="light"]) .ws-mark { color:#0E1412; }
+  :root[data-theme="dark"] .ws-mark, :root:not([data-theme="light"]) .ws-mark { color:#0E141C; }
   .ws-name { font-weight:600; font-size:13px; letter-spacing:-.01em; }
   .ws-sub { font-size:11px; color:var(--ink-3); }
+  .ws-name, .ws-sub { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .kbd-btn {
     display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
@@ -112,8 +128,10 @@
   }
   .btn:hover { background:var(--surface-hi); border-color:var(--accent-line); }
   .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
-  :root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary { color:#0E1412; }
+  :root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary { color:#0E141C; }
   .btn-primary:hover { filter:brightness(1.08); }
+  .btn-ico { padding:5px 8px; color:var(--ink-3); }
+  .btn-ico svg { display:block; width:15px; height:15px; }
 
   .page { padding:26px 26px 64px; max-width:1180px; }
   h1 { margin:0; font-size:25px; line-height:1.15; letter-spacing:-.025em; font-weight:600; text-wrap:balance; }
@@ -206,7 +224,7 @@
   .kard .krow { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .hidden { display:none !important; }
 
-  .scrim { position:fixed; inset:0; background:rgba(10,22,18,.28); opacity:0; pointer-events:none; transition:opacity .18s; z-index:20; }
+  .scrim { position:fixed; inset:0; background:rgba(9,16,28,.34); opacity:0; pointer-events:none; transition:opacity .18s; z-index:20; }
   .scrim.on { opacity:1; pointer-events:auto; }
   .peek {
     position:fixed; top:0; right:0; height:100vh; width:min(496px,94vw);
@@ -275,6 +293,7 @@
   .pop .opt { display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px; border-radius:6px; font-size:13px; text-align:left; }
   .pop .opt:hover { background:var(--surface-hi); }
   .pop .opt .mk { margin-left:auto; color:var(--accent); }
+  .pop .optx .mk { margin-left:auto; align-self:center; color:var(--accent); }
   .pop.wide { min-width:312px; }
   .pop .optx { display:flex; gap:10px; width:100%; padding:9px 9px; border-radius:7px; text-align:left; align-items:flex-start; }
   .pop .optx:hover { background:var(--surface-hi); }
@@ -296,7 +315,7 @@
   .toast b { color:var(--ink); }
   .toast .cls { position:absolute; top:6px; right:8px; color:var(--ink-3); font-size:13px; line-height:1; }
 
-  .cmdk { position:fixed; inset:0; z-index:40; display:none; align-items:flex-start; justify-content:center; padding-top:12vh; background:rgba(10,22,18,.34); }
+  .cmdk { position:fixed; inset:0; z-index:40; display:none; align-items:flex-start; justify-content:center; padding-top:12vh; background:rgba(9,16,28,.42); }
   .cmdk.on { display:flex; }
   .cmdk-box { width:min(560px,92vw); background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-pop); overflow:hidden; }
   .cmdk input { width:100%; border:none; background:none; color:var(--ink); padding:14px 16px; font-size:15px; font-family:inherit; border-bottom:1px solid var(--line); outline:none; }
@@ -354,6 +373,24 @@
   }
   .drill button { color:inherit; font-size:13px; line-height:1; }
 
+  /* Migração — decisão dos ambíguos */
+  .opts { display:flex; flex-direction:column; gap:6px; }
+  .opt-row {
+    display:flex; align-items:flex-start; gap:10px; width:100%; padding:9px 11px;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
+    text-align:left; transition:border-color .12s, background .12s;
+  }
+  .opt-row:hover { border-color:var(--accent-line); background:var(--surface-hi); }
+  .opt-row.on { border-color:var(--accent); background:var(--accent-soft); }
+  .opt-row .cod { font-family:"IBM Plex Mono", monospace; font-size:12px; font-weight:600;
+    color:var(--accent); flex:none; width:34px; padding-top:1px; }
+  .opt-row .mk { margin-left:auto; color:var(--accent); flex:none; }
+  .trunc { display:block; max-width:320px; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; color:var(--ink-2); font-size:12.5px; }
+  .notebox.pre { white-space:pre-wrap; max-height:230px; overflow:auto; }
+  .notebox.empty { color:var(--ink-3); font-style:italic; }
+  .alertbox.acc { background:var(--accent-soft); color:var(--accent); }
+
   /* Páginas do legado */
   .legacy { max-width:720px; }
   .legacy h2 { margin:0 0 6px; font-size:20px; letter-spacing:-.02em; font-weight:600; }
@@ -373,13 +410,14 @@
 
 <div class="app">
   <aside class="side">
-    <div class="ws">
-      <div class="ws-mark">H+</div>
-      <div>
-        <div class="ws-name">HealthMais</div>
+    <button class="ws" id="btnEmp" type="button" aria-haspopup="menu">
+      <div class="ws-mark" id="wsMark">H+</div>
+      <div class="ws-txt">
+        <div class="ws-name" id="wsName">Grupo HealthMais</div>
         <div class="ws-sub">Competência 08/2026</div>
       </div>
-    </div>
+      <svg class="ws-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg>
+    </button>
 
     <button class="kbd-btn" id="openCmd"><span>Buscar</span><span class="kbd">⌘K</span></button>
 
@@ -398,6 +436,7 @@
     <div class="topbar">
       <div class="crumb"><span>Indicadores</span><span class="sep">/</span><b id="crumbNow">—</b></div>
       <div class="spacer"></div>
+      <button class="btn btn-ico" id="btnTema" type="button" aria-label="Tema"></button>
       <button class="btn" id="btnExport">Exportar</button>
       <button class="btn btn-primary" id="btnNovo">Novo registro</button>
     </div>
@@ -459,6 +498,58 @@
     </div>
 
     <div class="page hidden" id="pageLegacy"><div class="legacy" id="legacyBody"></div></div>
+
+    <div class="page hidden" id="pageMigracao">
+      <div>
+        <span class="h-code mono">MIGRAÇÃO · FASE 2</span>
+        <h1>Decisão dos eventos ambíguos</h1>
+        <p class="h-note">A recategorização pede distinções que o registro antigo não guardou.
+          Cada caso precisa de um destino antes de o loader rodar. A sugestão é apoio — quem decide é você.</p>
+        <div id="mgAviso"></div>
+      </div>
+
+      <div class="split" id="mgStats"></div>
+
+      <div class="filters">
+        <div class="fld">
+          <label for="mgSit">Situação</label>
+          <select id="mgSit">
+            <option value="pendentes">Só pendentes</option>
+            <option value="todos">Todos</option>
+            <option value="decididos">Só decididos</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="mgConf">Confiança</label>
+          <select id="mgConf">
+            <option value="">Todas</option>
+            <option value="alta">alta</option>
+            <option value="media">média</option>
+            <option value="baixa">baixa</option>
+            <option value="nenhuma">sem sugestão</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="mgCat">Categoria antiga</label>
+          <select id="mgCat"><option value="">Todas</option></select>
+        </div>
+        <span class="grow"></span>
+        <span class="period">Exibindo <b id="mgCount">0</b> de <b id="mgTotal">0</b> casos</span>
+        <button class="btn-ghost" id="mgAceitar">Aceitar sugestões altas</button>
+        <button class="btn-ghost" id="mgExport">Exportar CSV</button>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>Paciente</th><th>Data</th><th>Categoria antiga</th>
+            <th>Observação</th><th>Sugestão</th><th>Decisão</th>
+          </tr></thead>
+          <tbody id="mgRows"></tbody>
+        </table>
+      </div>
+      <div class="cmdk-empty hidden" id="mgVazio">Nada aqui com esse filtro.</div>
+    </div>
   </main>
 </div>
 
@@ -1158,7 +1249,36 @@ const BIMESTRES = [
   { v: "b5", l: `Set – Out ${ANO}`, i: `${ANO}-09-01`, f: `${ANO}-10-31` },
   { v: "b6", l: `Nov – Dez ${ANO}`, i: `${ANO}-11-01`, f: `${ANO}-12-31` },
 ];
-const F = { bim: "all", de: "", ate: "", op: "", mod: "" };
+// ═══ Empresas — escopo do painel ═══════════════════════════
+const EMPRESAS = [
+  { id: "todas",  sigla: "H+", nome: "Grupo HealthMais",       sub: "Consolidado · todas as unidades" },
+  { id: "matriz", sigla: "NI", nome: "HealthMais Nova Iguaçu", sub: "Matriz · CNPJ 56.028.702/0001-38" },
+  { id: "un2",    sigla: "U2", nome: "HealthMais Unidade II",  sub: "Filial · unidade de exemplo" },
+  { id: "un3",    sigla: "U3", nome: "HealthMais Unidade III", sub: "Filial · unidade de exemplo" },
+];
+const UNIDADES = EMPRESAS.filter(e => e.id !== "todas");
+const empresaPor = id => EMPRESAS.find(e => e.id === id) || EMPRESAS[0];
+
+// No modelo novo cada fato carrega empresa_id. Aqui a unidade sai do nome do
+// paciente, de forma estável, só para o seletor ter o que recortar: o mesmo
+// paciente cai sempre na mesma unidade, em todos os cards.
+const cacheEmp = new Map();
+function empresaDe(r) {
+  if (r.emp) return r.emp;
+  const chave = String(r.pac || r.id || "");
+  if (!cacheEmp.has(chave)) {
+    let h = 0;
+    for (let i = 0; i < chave.length; i++) h = (h * 31 + chave.charCodeAt(i)) >>> 0;
+    cacheEmp.set(chave, UNIDADES[h % UNIDADES.length].id);
+  }
+  return cacheEmp.get(chave);
+}
+
+const F = { emp: "todas", bim: "all", de: "", ate: "", op: "", mod: "" };
+try {
+  const salva = localStorage.getItem("empresa");
+  if (salva && EMPRESAS.some(e => e.id === salva)) F.emp = salva;
+} catch (e) {}
 const bimAtivo = () => BIMESTRES.find(b => b.v === F.bim) || BIMESTRES[0];
 const inicioF = () => F.de || bimAtivo().i;
 const fimF = () => F.ate || bimAtivo().f;
@@ -1169,6 +1289,7 @@ const rotuloPeriodo = () => (F.de || F.ate)
 function filtrar(codigo, linhas, ignorarDrill) {
   const c = CAMPOS[codigo], i = inicioF(), f = fimF();
   return linhas.filter(r => {
+    if (F.emp !== "todas" && empresaDe(r) !== F.emp) return false;
     const d = c.data(r);
     if (i && d && d < i) return false;
     if (f && d && d > f) return false;
@@ -1188,6 +1309,43 @@ $("#fDe").addEventListener("change", e => { F.de = e.target.value; irPara(atual)
 $("#fAte").addEventListener("change", e => { F.ate = e.target.value; irPara(atual); });
 $("#fOp").addEventListener("change", e => { F.op = e.target.value; irPara(atual); });
 $("#fMod").addEventListener("change", e => { F.mod = e.target.value; irPara(atual); });
+// O escopo por empresa não é um filtro do recorte: "Limpar" não o desfaz.
+const btnEmp = $("#btnEmp");
+function pintaEmpresa() {
+  const e = empresaPor(F.emp);
+  $("#wsMark").textContent = e.sigla;
+  $("#wsName").textContent = e.nome;
+  btnEmp.title = e.nome + " — " + e.sub + ". Clique para trocar de empresa.";
+}
+function trocaEmpresa(id) {
+  F.emp = id;
+  try { localStorage.setItem("empresa", id); } catch (e) {}
+  drill = null;
+  pintaEmpresa();
+  irPara(atual);
+}
+btnEmp.addEventListener("click", ev => {
+  fecharPop();
+  const r = ev.currentTarget.getBoundingClientRect();
+  const p = el("div", "pop wide");
+  p.id = "pop";
+  EMPRESAS.forEach(emp => {
+    const b = el("button", "optx");
+    b.append(el("span", "fmt", emp.sigla));
+    const w = el("span");
+    w.append(el("span", "t", emp.nome), el("span", "s", emp.sub));
+    b.append(w);
+    if (emp.id === F.emp) b.append(el("span", "mk", "✓"));
+    b.addEventListener("click", () => { fecharPop(); trocaEmpresa(emp.id); });
+    p.append(b);
+  });
+  document.body.append(p);
+  p.style.left = Math.max(8, Math.min(r.left, window.innerWidth - p.offsetWidth - 12)) + "px";
+  p.style.top = (r.bottom + 6) + "px";
+  setTimeout(() => document.addEventListener("click", foraDoPop), 0);
+});
+pintaEmpresa();
+
 $("#fClear").addEventListener("click", () => {
   F.bim = "all"; F.de = ""; F.ate = ""; F.op = ""; F.mod = ""; drill = null;
   selBim.value = "all"; $("#fDe").value = ""; $("#fAte").value = ""; $("#fOp").value = ""; $("#fMod").value = "";
@@ -1225,6 +1383,7 @@ function abrirPagina(chave) {
   [...navOps.children].forEach((b, i) => b.classList.toggle("on", Object.keys(PAGES)[i] === chave));
   $("#crumbNow").textContent = p.nome;
   $("#pageCard").classList.add("hidden");
+  $("#pageMigracao").classList.add("hidden");
   $("#pageLegacy").classList.remove("hidden");
   const box = $("#legacyBody");
   box.innerHTML = "";
@@ -1258,6 +1417,7 @@ function irPara(codigo, manterDrill) {
 
   $("#pageCard").classList.remove("hidden");
   $("#pageLegacy").classList.add("hidden");
+  $("#pageMigracao").classList.add("hidden");
   [...navBox.children].forEach((b, i) => b.classList.toggle("on", ORDEM[i] === codigo));
   [...navOps.children].forEach(b => b.classList.remove("on"));
   $("#crumbNow").textContent = codigo + " — " + card.nome;
@@ -1563,7 +1723,8 @@ function fechar() {
   peek.classList.remove("on");
   peek.setAttribute("aria-hidden", "true");
   scrim.classList.remove("on");
-  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.remove("sel"));
+  document.querySelectorAll("#rows tr, #mgRows tr").forEach(tr => tr.classList.remove("sel"));
+  if (typeof mgAtual !== "undefined") mgAtual = null;
 }
 $("#peekClose").addEventListener("click", fechar);
 scrim.addEventListener("click", fechar);
@@ -1604,7 +1765,8 @@ $("#btnExport").addEventListener("click", e => {
     b.addEventListener("click", () => {
       fecharPop();
       toast(titulo + " · " + fmt,
-        "Gerado no servidor a partir do recorte atual: " + escopo + ", período " + rotuloPeriodo() +
+        "Gerado no servidor a partir do recorte atual: " + escopo + ", " + empresaPor(F.emp).nome +
+        ", período " + rotuloPeriodo() +
         (F.op ? ", operadora " + F.op : "") + (F.mod ? ", modalidade " + F.mod : "") +
         ". Nesta prévia o download fica desativado pelo sandbox.");
     });
@@ -1613,7 +1775,8 @@ $("#btnExport").addEventListener("click", e => {
 
   const sc = el("div", "scope");
   sc.append(document.createTextNode("Recorte: "), el("b", null, escopo),
-    document.createTextNode(" · " + rotuloPeriodo() + " · " + (F.op || "todas as operadoras") + " · " + (F.mod || "AD e ID")));
+    document.createTextNode(" · " + empresaPor(F.emp).nome + " · " + rotuloPeriodo() +
+      " · " + (F.op || "todas as operadoras") + " · " + (F.mod || "AD e ID")));
   p.append(sc);
 
   document.body.append(p);
@@ -1692,5 +1855,321 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); itensCmd[cur].click(); }
 });
 
+// ═══ Tema: claro → escuro → automático ═════════════════════
+const TEMAS = ["claro", "escuro", "auto"];
+const NOME_TEMA = { claro: "claro", escuro: "escuro", auto: "automático" };
+const ICO_TEMA = {
+  claro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>',
+  escuro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1Z"/></svg>',
+  auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8Z" fill="currentColor" stroke="none"/></svg>',
+};
+const btnTema = $("#btnTema");
+let tema = "claro";
+try { tema = localStorage.getItem("tema") || "claro"; } catch (e) {}
+if (!TEMAS.includes(tema)) tema = "claro";
+
+function aplicaTema() {
+  const raiz = document.documentElement;
+  if (tema === "auto") raiz.removeAttribute("data-theme");
+  else raiz.setAttribute("data-theme", tema === "claro" ? "light" : "dark");
+  btnTema.innerHTML = ICO_TEMA[tema];
+  btnTema.title = "Tema: " + NOME_TEMA[tema] + " — clique para alternar";
+  btnTema.setAttribute("aria-label", "Tema: " + NOME_TEMA[tema]);
+}
+btnTema.addEventListener("click", () => {
+  tema = TEMAS[(TEMAS.indexOf(tema) + 1) % TEMAS.length];
+  try { localStorage.setItem("tema", tema); } catch (e) {}
+  aplicaTema();
+});
+aplicaTema();
+
+// ═══ Migração — decisão dos eventos ambíguos ══════════════════
+// Os casos reais saem de dados.json, gerado por migration/gerar_interface.py.
+// Esse arquivo carrega nome de paciente e observação clínica e NUNCA entra no
+// repositório: fica ao lado do painel quando servido em localhost. Sem ele, a
+// página cai no exemplo fictício abaixo — é o que mantém o protótipo publicável.
+const MG_EXEMPLO = [
+  { evento_id:"exemplo-01", paciente_id:"p1", paciente:"Marta L. Andrade", data:"2026-07-14",
+    indicador_antigo:"01 - Indicador de Fluxo Assistencial", subindicador_antigo:"1.1 - Alta Domiciliar",
+    observacoes_raw:"Paciente segue em acompanhamento com equipe reduzida.",
+    pista:"paciente segue ativo → cuidado continuou, sugere 1.3 (transição)",
+    sugestao:"1.3", sugestao_nome:"Alta por transição de nível de cuidado", confianca:"baixa",
+    motivo_sugestao:"paciente segue ativo após a alta",
+    opcoes:"1.2 Alta por objetivo terapêutico alcançado | 1.3 Alta por transição de nível de cuidado",
+    destino:"", destino_nome:"", nota:"'Alta Domiciliar' não diz se foi por objetivo alcançado (1.2) ou por transição (1.3)." },
+  { evento_id:"exemplo-02", paciente_id:"p2", paciente:"Sebastião P. Rocha", data:"2026-07-22",
+    indicador_antigo:"09 - Nº de ouvidorias", subindicador_antigo:"9.3 - Reclamações e Solicitações",
+    observacoes_raw:"Reclamação:\n- Suspensão da fisioterapia.",
+    pista:"", sugestao:"9.1", sugestao_nome:"Reclamação", confianca:"alta",
+    motivo_sugestao:"o próprio registro rotula o teor",
+    opcoes:"9.1 Reclamação | 9.2 Solicitação", destino:"", destino_nome:"",
+    nota:"'Reclamações e Solicitações' é extinta pelo PDF." },
+  { evento_id:"exemplo-03", paciente_id:"p3", paciente:"Alcides R. Bonfim", data:"2026-06-30",
+    indicador_antigo:"02 - Nº de Intercorrências", subindicador_antigo:"2.2 - Necessidade de Remoção APH",
+    observacoes_raw:"", pista:"internação (card 03) registrada em ±2 dias → sugere 2.4",
+    sugestao:"2.4", sugestao_nome:"Remoção com internação hospitalar", confianca:"baixa",
+    motivo_sugestao:"internação registrada no card 03 em ±2 dias",
+    opcoes:"2.3 Remoção APH com retorno em até 24h | 2.4 Remoção com internação hospitalar",
+    destino:"", destino_nome:"", nota:"2.3 e 2.4 são desfechos diferentes." },
+  { evento_id:"exemplo-04", paciente_id:"p4", paciente:"Therezinha M. Couto", data:"2026-05-19",
+    indicador_antigo:"08 - Nº de eventos adversos", subindicador_antigo:"8.3 - Lesão por pressão",
+    observacoes_raw:"", pista:"", sugestao:"", sugestao_nome:"", confianca:"nenhuma",
+    motivo_sugestao:"estágio não registrado",
+    opcoes:"6.1 LPP estágio 1 | 6.2 LPP estágio 2 | 6.3 LPP estágio 3 ou 4 | 6.4 LPP não classificável ou tissular profunda",
+    destino:"", destino_nome:"", nota:"Lesão por pressão muda de card (05 → 06) e passa a exigir estágio." },
+  { evento_id:"exemplo-05", paciente_id:"p5", paciente:"Otávio B. Cardim", data:"2026-04-08",
+    indicador_antigo:"04 - Nº de óbitos", subindicador_antigo:"4.2 - Mais de 48 horas de implantação",
+    observacoes_raw:"", pista:"sem data de admissão: o tempo até o óbito não é recuperável",
+    sugestao:"", sugestao_nome:"", confianca:"nenhuma",
+    motivo_sugestao:"expectativa não registrada no dado antigo",
+    opcoes:"3.1 Esperado, com plano paliativo formalizado | 3.2 Esperado, sem plano formalizado | 3.3 Não esperado",
+    destino:"1.4", destino_nome:"Saída por óbito",
+    nota:"O tempo vira campo, não categoria; a expectativa é desconhecida." },
+  { evento_id:"exemplo-06", paciente_id:"p6", paciente:"Nadir S. Portela", data:"2026-06-02",
+    indicador_antigo:"02 - Nº de Intercorrências", subindicador_antigo:"2.1 - Resolvidas em domicílio",
+    observacoes_raw:"Equipe de enfermagem conduziu no domicílio.",
+    pista:"", sugestao:"2.1", sugestao_nome:"Resolvida pela equipe no domicílio", confianca:"media",
+    motivo_sugestao:"texto menciona resolução pela equipe",
+    opcoes:"2.1 Resolvida pela equipe no domicílio | 2.2 Resolvida com suporte médico",
+    destino:"", destino_nome:"", nota:"O registro antigo não distingue equipe de suporte médico." },
+];
+
+const MG_CHAVE = "migracao-decisoes-v1";
+const MG_ROTULO = { alta:"alta", media:"média", baixa:"baixa", nenhuma:"sem sugestão" };
+const MG_BADGE = { alta:"b-ok", media:"b-1", baixa:"b-n", nenhuma:"b-flag" };
+let mgDados = [], mgDecisoes = {}, mgAtual = null, mgReal = false;
+try { mgDecisoes = JSON.parse(localStorage.getItem(MG_CHAVE) || "{}"); } catch (e) { mgDecisoes = {}; }
+const mgSalvar = () => { try { localStorage.setItem(MG_CHAVE, JSON.stringify(mgDecisoes)); } catch (e) {} };
+
+const mgOpcoes = c => {
+  const o = (c.opcoes || "").split(" | ").filter(Boolean).map(s => {
+    const i = s.indexOf(" ");
+    return i < 0 ? { cod:s, nome:"" } : { cod:s.slice(0, i), nome:s.slice(i + 1) };
+  });
+  if (!o.length && c.destino) o.push({ cod:c.destino, nome:c.destino_nome || "" });
+  return o;
+};
+const mgCaso = id => mgDados.find(c => c.evento_id === id);
+const mgCodigo = s => (String(s).match(/^\s*([\d.]+)/) || [, ""])[1];
+
+function mgVisiveis() {
+  const sit = $("#mgSit").value, conf = $("#mgConf").value, cat = $("#mgCat").value;
+  return mgDados.filter(c => {
+    if (cat && c.subindicador_antigo !== cat) return false;
+    if (conf && c.confianca !== conf) return false;
+    const tem = !!mgDecisoes[c.evento_id];
+    return sit === "todos" || (sit === "pendentes" ? !tem : tem);
+  });
+}
+
+function mgStats() {
+  const s = $("#mgStats");
+  s.innerHTML = "";
+  const n = Object.keys(mgDecisoes).filter(k => mgCaso(k)).length, t = mgDados.length;
+  const sem = mgDados.filter(c => c.confianca === "nenhuma").length;
+  const cel = (k, v, d, cls, meter) => {
+    const c = el("div", "cell" + (cls ? " " + cls : ""));
+    c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", d));
+    if (meter != null) { const m = el("div", "meter"), i = el("i"); i.style.width = meter + "%"; m.append(i); c.append(m); }
+    return c;
+  };
+  s.append(cel("Decididos", n, t ? Math.round(100 * n / t) + "% do total" : "—", "lead", t ? 100 * n / t : 0));
+  s.append(cel("Pendentes", t - n, "aguardando decisão", (t - n) ? "warn" : ""));
+  s.append(cel("Sem sugestão", sem, "o dado antigo não sustenta palpite"));
+  s.append(cel("Total", t, "eventos ambíguos"));
+}
+
+function mgRender() {
+  mgStats();
+  const vis = mgVisiveis(), tb = $("#mgRows");
+  tb.innerHTML = "";
+  $("#mgCount").textContent = String(vis.length);
+  $("#mgTotal").textContent = String(mgDados.length);
+  $("#mgVazio").classList.toggle("hidden", vis.length > 0);
+  vis.forEach(c => {
+    const tr = el("tr");
+    tr.dataset.id = c.evento_id;
+    if (mgAtual === c.evento_id) tr.classList.add("sel");
+    const td1 = el("td", "pat");
+    td1.append(document.createTextNode(c.paciente), el("span", "op", c.indicador_antigo));
+    tr.append(td1, el("td", "dim nowrap", dbr(c.data)));
+    const td3 = el("td");
+    td3.append(el("span", "code-tag mono", mgCodigo(c.subindicador_antigo)),
+               document.createTextNode(c.subindicador_antigo.replace(/^\s*[\d.]+\s*-\s*/, "")));
+    tr.append(td3);
+    const td4 = el("td");
+    td4.append(el("span", "trunc", c.observacoes_raw || "—"));
+    tr.append(td4);
+    const td5 = el("td");
+    td5.append(c.sugestao
+      ? badge(c.sugestao + " · " + MG_ROTULO[c.confianca], MG_BADGE[c.confianca], true)
+      : badge("sem sugestão", "b-flag", true));
+    tr.append(td5);
+    const td6 = el("td");
+    const d = mgDecisoes[c.evento_id];
+    td6.append(d ? badge(d, "b-acc") : el("span", "dim", "—"));
+    tr.append(td6);
+    tr.addEventListener("click", () => mgAbrir(c.evento_id));
+    tb.append(tr);
+  });
+}
+
+function mgAbrir(id) {
+  const c = mgCaso(id);
+  if (!c) return;
+  mgAtual = id;
+  $("#peekId").textContent = mgReal ? id.slice(0, 12) : "exemplo";
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, c.paciente));
+  cab.append(el("div", "sub", dbr(c.data) + " · " + c.subindicador_antigo));
+  body.append(cab);
+
+  const s1 = el("div");
+  s1.append(el("div", "sec-h", "Observação do registro"));
+  const nb = el("div", "notebox pre" + (c.observacoes_raw ? "" : " empty"),
+                c.observacoes_raw || "sem observação registrada");
+  nb.style.marginTop = "10px";
+  s1.append(nb);
+  body.append(s1);
+
+  const s2 = el("div");
+  s2.append(el("div", "sec-h", "Evidência"));
+  const box = el("div", "alertbox " + (c.sugestao ? "acc" : ""));
+  box.style.marginTop = "10px";
+  const txt = el("div");
+  txt.append(el("b", null, c.sugestao
+    ? "Sugerido " + c.sugestao + " — " + MG_ROTULO[c.confianca] + ". " : "Sem sugestão. "));
+  txt.append(document.createTextNode(c.motivo_sugestao || ""));
+  box.append(txt);
+  s2.append(box);
+  if (c.pista) { const p = el("div", "notebox", c.pista); p.style.marginTop = "8px"; s2.append(p); }
+  if (c.nota) { const p = el("div", "notebox", c.nota); p.style.marginTop = "8px"; s2.append(p); }
+  body.append(s2);
+
+  const s3 = el("div");
+  s3.append(el("div", "sec-h", "Para onde vai"));
+  const opts = el("div", "opts");
+  opts.style.marginTop = "10px";
+  const sel = mgDecisoes[id] || "";
+  mgOpcoes(c).forEach(o => {
+    const b = el("button", "opt-row" + (sel === o.cod ? " on" : ""));
+    b.type = "button";
+    b.append(el("span", "cod", o.cod));
+    const w = el("span");
+    w.append(el("span", null, o.nome));
+    if (o.cod === c.sugestao) {
+      const t = badge("sugerido", MG_BADGE[c.confianca]);
+      t.style.marginLeft = "8px";
+      w.append(t);
+    }
+    b.append(w);
+    if (sel === o.cod) b.append(el("span", "mk", "✓"));
+    b.addEventListener("click", () => { mgDecisoes[id] = o.cod; mgSalvar(); mgRender(); mgAbrir(id); });
+    opts.append(b);
+  });
+  s3.append(opts);
+  body.append(s3);
+
+  const irmaos = mgDados.filter(x => x.subindicador_antigo === c.subindicador_antigo);
+  const feitos = irmaos.filter(x => mgDecisoes[x.evento_id]).length;
+  const s4 = el("div");
+  s4.append(el("div", "sec-h", "Progresso desta categoria"));
+  const req = el("div", "req");
+  req.style.marginTop = "10px";
+  const bar = el("div", "bar"), bi = el("i");
+  bi.style.width = (100 * feitos / irmaos.length) + "%";
+  bar.append(bi);
+  const inner = el("div", "inner"), hd = el("div", "hd");
+  hd.append(el("b", null, c.subindicador_antigo), el("span", "n mono", feitos + "/" + irmaos.length));
+  inner.append(hd);
+  req.append(bar, inner);
+  s4.append(req);
+  body.append(s4);
+
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+  mgRender();
+}
+
+function mgMontarFiltros() {
+  const sel = $("#mgCat");
+  sel.innerHTML = '<option value="">Todas</option>';
+  [...new Set(mgDados.map(c => c.subindicador_antigo))].sort().forEach(v => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v + " (" + mgDados.filter(x => x.subindicador_antigo === v).length + ")";
+    sel.append(o);
+  });
+  const aviso = $("#mgAviso");
+  aviso.innerHTML = "";
+  aviso.append(el("span", "mirror", mgReal
+    ? "Dados reais · não sai desta máquina"
+    : "Exemplo fictício · sirva dados.json ao lado para os casos reais"));
+}
+
+function abrirMigracao() {
+  fechar();
+  document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
+  btnMigracao.classList.add("on");
+  $("#crumbNow").textContent = "Migração";
+  $("#pageCard").classList.add("hidden");
+  $("#pageLegacy").classList.add("hidden");
+  $("#pageMigracao").classList.remove("hidden");
+  mgRender();
+  window.scrollTo({ top: 0 });
+}
+
+const btnMigracao = el("button", "navitem");
+btnMigracao.type = "button";
+btnMigracao.append(el("span", "code", "·"), el("span", "nm", "Migração"));
+btnMigracao.append(el("span", "ct mono", "55"));
+btnMigracao.addEventListener("click", abrirMigracao);
+navOps.append(btnMigracao);
+
+$("#mgSit").addEventListener("change", mgRender);
+$("#mgConf").addEventListener("change", mgRender);
+$("#mgCat").addEventListener("change", mgRender);
+$("#mgAceitar").addEventListener("click", () => {
+  let n = 0;
+  mgDados.forEach(c => {
+    if (c.confianca === "alta" && c.sugestao && !mgDecisoes[c.evento_id]) { mgDecisoes[c.evento_id] = c.sugestao; n++; }
+  });
+  mgSalvar(); mgRender();
+  toast(n ? n + " decisão(ões) aceitas" : "Nada novo para aceitar",
+        n ? "Só as de confiança alta — onde o próprio registro rotula o teor." : "");
+});
+$("#mgExport").addEventListener("click", () => {
+  const cols = ["evento_id","paciente_id","paciente","data","indicador_antigo",
+                "subindicador_antigo","sugestao","confianca","DECISAO","observacoes_raw"];
+  const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  const linhas = [cols.join(",")];
+  mgDados.forEach(c => linhas.push(cols.map(k => q(k === "DECISAO" ? (mgDecisoes[c.evento_id] || "") : c[k])).join(",")));
+  const blob = new Blob(["\ufeff" + linhas.join("\r\n")], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "decisoes-fase2.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const pend = mgDados.length - Object.keys(mgDecisoes).filter(k => mgCaso(k)).length;
+  toast("CSV exportado", pend ? pend + " caso(s) saíram com DECISAO vazia." : "Todos os casos decididos.");
+});
+
+fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+  mgDados = d; mgReal = true;
+  btnMigracao.querySelector(".ct").textContent = String(d.length);
+  mgMontarFiltros();
+  if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+}).catch(() => {
+  mgDados = MG_EXEMPLO;
+  btnMigracao.querySelector(".ct").textContent = String(MG_EXEMPLO.length);
+  mgMontarFiltros();
+  if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+});
+
 irPara("01");
 </script>
+
+</body></html>
