@@ -556,13 +556,18 @@
     border-color:var(--accent-line); font-weight:500; }
   /* Legenda de codigos: o eixo leva o numero, que sozinho nao diz nada.
      Sem cor -- a cor pertence a legenda de operadora; aqui e so o de-para. */
+  .g-recorte { display:flex; align-items:center; gap:7px; margin-top:10px;
+    padding-top:9px; border-top:1px solid var(--line-soft);
+    font-size:11px; color:var(--ink-3); }
+  .g-recorte .ico { color:var(--accent); font-size:12px; }
   .g-codigos { display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr));
     gap:2px 14px; margin:10px 0 0; padding-top:10px; border-top:1px solid var(--line-soft); }
   .g-codigos span { font-size:11.5px; color:var(--ink-3); display:flex; gap:7px; }
   .g-codigos b { font-family:"IBM Plex Mono", monospace; color:var(--ink-2);
     font-weight:600; flex:none; }
   .g-codigos .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .g-legenda { display:flex; gap:16px; flex-wrap:wrap; margin:0 0 10px; }
+  .g-legenda { display:flex; gap:14px; flex-wrap:wrap; margin:0 0 10px; }
+  .carta .g-legenda { font-size:11px; margin:-2px 0 12px; }
   .g-legenda span { display:inline-flex; align-items:center; gap:6px;
     font-size:11.5px; color:var(--ink-2); }
   .g-legenda i { width:9px; height:9px; border-radius:2px; flex:none; }
@@ -3164,13 +3169,21 @@ document.addEventListener("keydown", e => {
 // que e tabela e nao depende de cor nenhuma.
 const gEsc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 
-function carta(titulo, legenda) {
+function carta(titulo, legenda, recorte) {
   const c = el("div", "carta");
   c.append(el("h3", null, titulo), el("p", "cap", legenda));
+  if (recorte) c._recorte = recorte;
   const tip = el("div", "g-tip");
   c.append(tip);
   c._tip = tip;
   return c;
+}
+
+/** Fecha a carta com o recorte a que os numeros dela se referem. */
+function rodapeRecorte(carta, texto) {
+  const r = el("div", "g-recorte");
+  r.append(el("span", "ico", "⌖"), el("span", null, texto));
+  carta.append(r);
 }
 
 function dica(carta, x, y, html) {
@@ -3682,6 +3695,16 @@ function dataDaLinha(l) {
   return "";
 }
 
+/** Recorte da pagina de indicador, na mesma linguagem do de Relatorios.
+ *  Reusa rotuloPeriodo, que ja resolve bimestre e intervalo. */
+function cardRecorte() {
+  const partes = [rotuloPeriodo()];
+  if (F.op) partes.push(F.op);
+  if (F.mod) partes.push("modalidade " + F.mod);
+  if (F.emp && F.emp !== "todas") partes.push(empresaPor(F.emp).nome);
+  return partes.join(" · ");
+}
+
 function cardGraficos(codigo) {
   const antigo = $("#cardCartas");
   if (antigo) antigo.remove();
@@ -3714,6 +3737,7 @@ function cardGraficos(codigo) {
     })), { aoClicar: (cat, sr) => cardLista(cat.completo, sr.nome,
         linhas.filter(l => (l.cod || "—") === cat.rotulo && l.op === sr.nome)) });
     legendaCodigos(c1, cats);
+    rodapeRecorte(c1, cardRecorte());
     cartas.append(c1);
   }
 
@@ -3726,6 +3750,7 @@ function cardGraficos(codigo) {
       ...sr, valores: meses.map(m => linhas.filter(l => dataDaLinha(l).slice(0, 7) === m && l.op === sr.nome).length),
     })), { largura: 130, aoClicar: (cat, sr) => cardLista("Registros de " + cat.rotulo, sr.nome,
         linhas.filter(l => dataDaLinha(l).slice(0, 7) === cat.completo && l.op === sr.nome)) });
+    rodapeRecorte(c2, cardRecorte());
     cartas.append(c2);
   }
 
@@ -3769,6 +3794,21 @@ let relFiltro = {};
 
 function relOperadoras() {
   return [...new Set((OP.eventos || []).map(e => e.operadora))].sort();
+}
+
+/** Descreve o recorte em uma linha. Vai no rodape de cada carta porque a
+ *  barra de filtro fica no topo: rolando a grade, o numero perde o contexto
+ *  de que periodo e de que operadora ele fala. */
+function relRecorte() {
+  const partes = [];
+  if (relFiltro.de || relFiltro.ate) {
+    partes.push((relFiltro.de ? dbr(relFiltro.de) : "…") + " – " + (relFiltro.ate ? dbr(relFiltro.ate) : "…"));
+  } else {
+    partes.push("todo o período");
+  }
+  if (relFiltro.operadora) partes.push(relFiltro.operadora);
+  if (relFiltro.card) partes.push("card " + relFiltro.card);
+  return partes.join(" · ");
 }
 
 function relEventos() {
@@ -3985,6 +4025,7 @@ function opRelatoriosNovo() {
       sr.nome + " · " + d.filter(e => chaveDe(e) === cat.rotulo && e.operadora === sr.nome).length + " no recorte",
       d.filter(e => chaveDe(e) === cat.rotulo && e.operadora === sr.nome)) });
   legendaCodigos(c1, cats);
+  rodapeRecorte(c1, relRecorte());
   cartas.append(c1);
 
   // ── Um card por indicador ──
@@ -3998,7 +4039,6 @@ function opRelatoriosNovo() {
     cabeca.append(el("h3", null, "Eventos por indicador, um card cada"));
     cabeca.append(el("p", "cap", "Eixo em subindicador · velas por operadora · "
                      + grupos.length + " indicadores no recorte"));
-    legenda(cabeca, series);
     cartas.append(cabeca);
   }
 
@@ -4016,6 +4056,12 @@ function opRelatoriosNovo() {
     });
     const c = carta(nome, doCard.length + (doCard.length === 1 ? " evento" : " eventos")
                     + " · " + subs.length + (subs.length === 1 ? " subindicador" : " subindicadores"));
+    // Cada card leva a propria legenda: numa grade que rola, uma legenda unica
+    // no topo sai da tela e a cor perde referencia justamente onde e usada.
+    // So as operadoras presentes neste card, para nao anunciar cor que nao
+    // aparece nele.
+    const presentes = series.filter(sr => doCard.some(e => e.operadora === sr.nome));
+    legenda(c, presentes.length ? presentes : series);
     graficoAgrupado(c, cats, series.map(sr => ({
       ...sr,
       valores: cats.map(x => doCard.filter(e => prefixoDe(e.subindicador) === x.rotulo
@@ -4029,6 +4075,7 @@ function opRelatoriosNovo() {
       },
     });
     legendaCodigos(c, cats);
+    rodapeRecorte(c, relRecorte());
     cartas.append(c);
   });
 
