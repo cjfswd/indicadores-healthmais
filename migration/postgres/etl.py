@@ -10,8 +10,9 @@ reportadas no fim da execucao.
   1. Migracao de inativacao. Espelha backend/migrate_inactivation.py. Paciente
      escondido por alta (01/1.1) ou obito (04) volta a ser visivel com
      inactive=true; exclusao manual continua excluida.
-  2. Categoria "Sem Operadora". Os pacientes sem operatorId no Mongo ganham uma
-     operadora sintetica, o que permite operator_id NOT NULL no schema.
+  2. Operadora dos sem vinculo. Paciente sem operatorId no Mongo e particular:
+     recebe a operadora "Particular", que ja existe. Nenhuma categoria sintetica
+     e criada, e operator_id pode ser NOT NULL no schema.
   3. social_assistance_reports. Nao existe collection exportada com esse nome:
      as linhas saem do replay dos eventos no event store.
 
@@ -28,10 +29,8 @@ from pathlib import Path
 
 COLLECTIONS = ["operators", "users", "indicators", "patients", "notifications", "events_store"]
 
-# Operadora sintetica para os pacientes sem vinculo. O id nao colide com
-# ObjectId real e e reconhecivel a olho nu num SELECT.
-SEM_OPERADORA_ID = "000000000000000000000001"
-SEM_OPERADORA_NOME = "Sem Operadora"
+# Paciente sem operatorId e particular: cai na operadora que ja existe.
+OPERADORA_PADRAO = "Particular"
 
 # Mesmas regras de backend/routers/proxy.py::_inactivation_reason.
 REGRAS_INATIVACAO = [
@@ -101,15 +100,20 @@ def materializar_sar(eventos: list[dict]) -> dict:
 def transformar(src: Path):
     docs = {c: ler(src, c) for c in COLLECTIONS}
     linhas = {}
-    stats = {"inativados": 0, "excluidos_mantidos": 0, "sem_operadora": 0, "motivos": {}}
+    stats = {"inativados": 0, "excluidos_mantidos": 0, "particular": 0, "motivos": {}}
 
-    operadoras = [
+    linhas["operators"] = [
         (oid(o["_id"]), o["name"], ts(o.get("createdAt")), ts(o.get("updatedAt")),
          ts(o.get("deletedAt")))
         for o in docs["operators"]
     ]
-    operadoras.append((SEM_OPERADORA_ID, SEM_OPERADORA_NOME, None, None, None))
-    linhas["operators"] = operadoras
+
+    # Sem operadora = particular. Se a operadora sumir do dump, para: inventar
+    # um id aqui esconderia o problema atras de uma FK que resolve.
+    padrao = next((oid(o["_id"]) for o in docs["operators"]
+                   if o.get("name") == OPERADORA_PADRAO), None)
+    if padrao is None:
+        raise SystemExit("operadora '%s' nao existe no dump" % OPERADORA_PADRAO)
 
     linhas["users"] = [
         (oid(u["_id"]), u["name"], u["email"], u.get("avatar"),
@@ -179,8 +183,8 @@ def transformar(src: Path):
 
         operadora = p.get("operatorId")
         if not operadora:
-            operadora = SEM_OPERADORA_ID
-            stats["sem_operadora"] += 1
+            operadora = padrao
+            stats["particular"] += 1
 
         pacientes.append((
             pid, p["name"], data(p.get("birthDate")), data(p.get("admissionDate")),
@@ -279,7 +283,7 @@ def validar(linhas: dict, stats: dict, schema: str) -> None:
     print("transformacoes aplicadas:")
     print("  inativados (alta/obito):      %d  %s" % (stats["inativados"], stats["motivos"]))
     print("  seguem excluidos (manual):    %d" % stats["excluidos_mantidos"])
-    print("  atribuidos a Sem Operadora:   %d" % stats["sem_operadora"])
+    print("  sem operadora -> Particular:  %d" % stats["particular"])
 
     ativos = con.execute(
         "SELECT count(*) FROM patients WHERE deleted_at IS NULL AND inactive = 0").fetchone()[0]
