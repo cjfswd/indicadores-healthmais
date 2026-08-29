@@ -392,7 +392,8 @@
   .alertbox.acc { background:var(--accent-soft); color:var(--accent); }
 
   /* Páginas do legado */
-  .legacy { max-width:720px; }
+  .legacy { max-width:720px; margin-top:34px; }
+  .legacy .sec-h { margin-bottom:12px; }
   .legacy h2 { margin:0 0 6px; font-size:20px; letter-spacing:-.02em; font-weight:600; }
   .legacy .lead { color:var(--ink-2); font-size:13.5px; margin:0 0 20px; }
   .lgrid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
@@ -497,7 +498,21 @@
       </section>
     </div>
 
-    <div class="page hidden" id="pageLegacy"><div class="legacy" id="legacyBody"></div></div>
+    <div class="page hidden" id="pageLegacy">
+      <div>
+        <span class="h-code mono" id="opCode">OPERAÇÃO</span>
+        <h1 id="opTitulo">—</h1>
+        <p class="h-note" id="opLead"></p>
+        <div id="opAviso"></div>
+      </div>
+      <div class="split" id="opStats"></div>
+      <div class="filters hidden" id="opFiltros"></div>
+      <div class="tablewrap" id="opTabela">
+        <table><thead><tr id="opHead"></tr></thead><tbody id="opRows"></tbody></table>
+      </div>
+      <div class="cmdk-empty hidden" id="opVazio">Nada aqui com esse filtro.</div>
+      <div class="legacy" id="legacyBody"></div>
+    </div>
 
     <div class="page hidden" id="pageMigracao">
       <div>
@@ -2158,8 +2173,11 @@ $("#mgExport").addEventListener("click", () => {
 });
 
 fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
-  mgDados = d; mgReal = true;
-  btnMigracao.querySelector(".ct").textContent = String(d.length);
+  // Formato antigo: um array só de ambíguos. Novo: objeto com uma chave por página.
+  if (!Array.isArray(d)) opAplicarDados(d);
+  mgDados = Array.isArray(d) ? d : (d.migracao || []);
+  mgReal = true;
+  btnMigracao.querySelector(".ct").textContent = String(mgDados.length);
   mgMontarFiltros();
   if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
 }).catch(() => {
@@ -2168,6 +2186,443 @@ fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
   mgMontarFiltros();
   if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
 });
+
+// ═══ Operação — telas sobre o dump ════════════════════════════
+// Cada item do menu deixa de ser só descricao: ganha KPIs, filtros e tabela
+// sobre o dado real. A grade Mantido/Muda/Novo continua, agora como rodape,
+// porque e ela que explica o que muda no modelo novo.
+const OP = {};   // preenchido pelo dados.json
+let opAtual = null, opFiltro = {};
+
+const opBadge = {
+  ativo:"b-ok", inativo:"b-1", excluido:"b-n",
+  alta:"b-acc", obito:"b-3",
+  CREATE:"b-ok", UPDATE:"b-acc", SOFT_DELETE:"b-3", REACTIVATE:"b-1",
+  pendente:"b-1", vinculado:"b-ok", descartado:"b-n",
+};
+const opTexto = v => v == null || v === "" ? "—" : String(v);
+const opTrunc = (v, cls) => el("span", "trunc" + (cls ? " " + cls : ""), opTexto(v));
+
+// Cada tela: fonte no dados.json, KPIs, filtros e colunas.
+const TELAS = {
+  eventos: {
+    fonte: () => OP.eventos,
+    stats: d => [
+      ["Registros", d.length, "no dump"],
+      ["Com anexo", d.filter(r => r.anexo).length, "arquivo vinculado"],
+      ["Sem observação", d.filter(r => !r.observacoes).length, "texto livre vazio", d.filter(r => !r.observacoes).length ? "warn" : ""],
+      ["Período", (d.length ? d[d.length-1].data.slice(0,7) + " a " + d[0].data.slice(0,7) : "—"), "ocorrência"],
+    ],
+    filtros: [
+      ["card", "Card", d => [...new Set(d.map(r => r.card))].sort()],
+      ["operadora", "Operadora", d => [...new Set(d.map(r => r.operadora))].sort()],
+    ],
+    busca: r => r.paciente + " " + r.subindicador + " " + r.observacoes,
+    cols: [
+      ["Data", r => el("span", "dim nowrap", dbr(r.data))],
+      ["Paciente", r => { const t = el("span"); t.append(document.createTextNode(r.paciente), el("span","op",r.operadora)); return t; }, "pat"],
+      ["Categoria", r => { const t = el("span"); t.append(el("span","code-tag mono",r.card), document.createTextNode(r.subindicador.replace(/^\s*[\d.]+\s*-\s*/,""))); return t; }],
+      ["Observação", r => opTrunc(r.observacoes)],
+      ["Anexo", r => r.anexo ? badge("sim","b-acc") : el("span","dim","—")],
+    ],
+  },
+  pacientes: {
+    fonte: () => OP.pacientes,
+    stats: d => [
+      ["Ativos", d.filter(r => r.situacao==="ativo").length, "em acompanhamento", "lead"],
+      ["Inativos", d.filter(r => r.situacao==="inativo").length, "alta ou óbito"],
+      ["Excluídos", d.filter(r => r.situacao==="excluido").length, "exclusão manual"],
+      ["Sem admissão", d.filter(r => !r.admissao).length, "campo obrigatório no modelo novo", d.filter(r => !r.admissao).length ? "warn" : ""],
+    ],
+    filtros: [
+      ["situacao", "Situação", () => ["ativo","inativo","excluido"]],
+      ["operadora", "Operadora", d => [...new Set(d.map(r => r.operadora))].sort()],
+    ],
+    busca: r => r.nome + " " + r.observacoes,
+    cols: [
+      ["Paciente", r => document.createTextNode(r.nome), "pat"],
+      ["Operadora", r => el("span","dim",r.operadora)],
+      ["Situação", r => badge(r.situacao + (r.motivo ? " · " + r.motivo : ""), opBadge[r.situacao], true)],
+      ["Admissão", r => el("span","dim nowrap", r.admissao ? dbr(r.admissao) : "—")],
+      ["Nascimento", r => el("span","dim nowrap", r.nascimento ? dbr(r.nascimento) : "—")],
+      ["Eventos", r => el("span","mono", String(r.eventos))],
+    ],
+  },
+  inativos: {
+    // Fiel ao dump: hoje sao 1 inativo e 61 excluidos. A coluna "Migracao"
+    // mostra quais dos excluidos voltam como inativos quando a migracao rodar
+    // -- e o que concilia esta tela com a de Migracao.
+    fonte: () => OP.pacientes.filter(r => r.situacao !== "ativo"),
+    stats: d => [
+      ["Inativos hoje", d.filter(r => r.situacao==="inativo").length, "com motivo registrado", "lead"],
+      ["Excluídos", d.filter(r => r.situacao==="excluido").length, "escondidos pela regra antiga"],
+      ["Recuperáveis", d.filter(r => r.recuperavel).length, "voltam como inativos na migração"],
+      ["Some de vez", d.filter(r => r.situacao==="excluido" && !r.recuperavel).length, "exclusão manual, sem alta nem óbito", "warn"],
+    ],
+    filtros: [
+      ["situacao", "Situação", () => ["inativo","excluido"]],
+      ["recuperavel", "Recuperável", () => ["alta","obito"]],
+    ],
+    busca: r => r.nome,
+    cols: [
+      ["Paciente", r => document.createTextNode(r.nome), "pat"],
+      ["Situação hoje", r => r.motivo
+        ? badge(r.situacao + " · " + r.motivo, opBadge[r.motivo] || "b-1", true)
+        : badge(r.situacao, opBadge[r.situacao], true)],
+      ["Migração", r => r.recuperavel
+        ? badge("volta como " + r.recuperavel, "b-acc", true)
+        : (r.situacao === "excluido" ? el("span","dim","segue excluído") : el("span","dim","—"))],
+      ["Operadora", r => el("span","dim",r.operadora)],
+      ["Quando", r => el("span","dim nowrap", r.inativado ? dbr(r.inativado) : (r.excluido ? dbr(r.excluido) : "—"))],
+      ["Eventos", r => el("span","mono", String(r.eventos))],
+    ],
+  },
+  triagem: {
+    fonte: () => OP.triagem,
+    stats: d => [
+      ["Registros", d.length, "do formulário público"],
+      ["Vinculados", d.filter(r => r.vinculado).length, "já ligados a um paciente", "lead"],
+      ["Pendentes", d.filter(r => !r.vinculado).length, "fora de todo indicador", d.filter(r => !r.vinculado).length ? "warn" : ""],
+    ],
+    filtros: [["status", "Status", d => [...new Set(d.map(r => r.status))].sort()]],
+    busca: r => r.nome_bruto + " " + r.relator + " " + r.observacoes,
+    cols: [
+      ["Nome informado", r => document.createTextNode(r.nome_bruto || "—"), "pat"],
+      ["Data", r => el("span","dim nowrap", r.data ? dbr(r.data) : "—")],
+      ["Categoria", r => opTrunc(r.subindicador || r.indicador)],
+      ["Relator", r => el("span","dim", r.relator || "—")],
+      ["Status", r => badge(r.status || "—", opBadge[r.status] || "b-n", true)],
+      ["Vínculo", r => r.vinculado ? badge("vinculado","b-ok") : badge("pendente","b-flag")],
+    ],
+  },
+  auditoria: {
+    fonte: () => OP.auditoria,
+    stats: d => [
+      ["Entradas", d.length, "no event store"],
+      ["CREATE", d.filter(r => r.tipo==="CREATE").length, "criações"],
+      ["UPDATE", d.filter(r => r.tipo==="UPDATE").length, "alterações"],
+      ["SOFT_DELETE", d.filter(r => r.tipo==="SOFT_DELETE").length, "exclusões lógicas"],
+    ],
+    filtros: [
+      ["stream", "Stream", d => [...new Set(d.map(r => r.stream))].sort()],
+      ["tipo", "Tipo", d => [...new Set(d.map(r => r.tipo))].sort()],
+    ],
+    busca: r => r.ator + " " + r.stream + " " + r.campos.join(" "),
+    cols: [
+      ["Quando", r => el("span","dim nowrap", r.quando ? dbr(r.quando.slice(0,10)) : "—")],
+      ["Stream", r => el("span","mono", r.stream)],
+      ["Tipo", r => badge(r.tipo, opBadge[r.tipo] || "b-n", true)],
+      ["v", r => el("span","mono dim", String(r.versao))],
+      ["Ator", r => el("span","dim", r.ator || "—")],
+      ["Campos", r => opTrunc((r.operadores.length ? r.operadores.join(" ") + " · " : "") + r.campos.join(", "))],
+    ],
+  },
+  usuarios: {
+    fonte: () => OP.usuarios,
+    stats: d => [
+      ["Contas", d.length, "com acesso"],
+      ["Domínios", new Set(d.map(r => r.dominio)).size, "de e-mail"],
+      ["Sem registro", d.filter(r => !r.registros).length, "nunca gravaram nada"],
+    ],
+    filtros: [],
+    busca: r => r.nome + " " + r.email,
+    cols: [
+      ["Nome", r => document.createTextNode(r.nome), "pat"],
+      ["E-mail", r => el("span","dim", r.email)],
+      ["Criado", r => el("span","dim nowrap", r.criado ? dbr(r.criado) : "—")],
+      ["Registros gravados", r => el("span","mono", String(r.registros))],
+    ],
+  },
+  notificacoes: {
+    fonte: () => OP.notificacoes,
+    stats: d => [
+      ["Notificações", d.length, "geradas"],
+      ["Lidas", d.filter(r => r.lida).length, "marcadas como lidas", "lead"],
+      ["Não lidas", d.filter(r => !r.lida).length, "pendentes"],
+      ["Removidas", d.filter(r => r.removida).length, "excluídas logicamente"],
+    ],
+    filtros: [["tipo", "Tipo", d => [...new Set(d.map(r => r.tipo))].sort()]],
+    busca: r => r.titulo + " " + r.mensagem,
+    cols: [
+      ["Quando", r => el("span","dim nowrap", r.quando ? dbr(r.quando) : "—")],
+      ["Título", r => document.createTextNode(r.titulo || "—"), "pat"],
+      ["Mensagem", r => opTrunc(r.mensagem)],
+      ["Tipo", r => el("span","mono dim", r.tipo || "—")],
+      ["Lida", r => r.lida ? badge("lida","b-ok") : badge("não lida","b-1")],
+    ],
+  },
+};
+
+function opValores(tela, dados, chave, fn) {
+  return typeof fn === "function" ? fn(dados) : [];
+}
+
+function opFiltrar(chave) {
+  const t = TELAS[chave];
+  let d = t.fonte() || [];
+  (t.filtros || []).forEach(([campo]) => {
+    const v = opFiltro[campo];
+    if (v) d = d.filter(r => String(r[campo]) === v);
+  });
+  const q = (opFiltro.q || "").trim().toLowerCase();
+  if (q && t.busca) d = d.filter(r => t.busca(r).toLowerCase().includes(q));
+  return d;
+}
+
+function opMontarFiltros(chave, base) {
+  const t = TELAS[chave], box = $("#opFiltros");
+  box.innerHTML = "";
+  const temFiltro = (t.filtros || []).length || t.busca;
+  box.classList.toggle("hidden", !temFiltro);
+  if (!temFiltro) return;
+  (t.filtros || []).forEach(([campo, rotulo, valores]) => {
+    const f = el("div", "fld");
+    const lb = el("label", null, rotulo);
+    const sel = document.createElement("select");
+    sel.innerHTML = '<option value="">Todas</option>';
+    opValores(t, base, campo, valores).forEach(v => {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = v;
+      if (opFiltro[campo] === v) o.selected = true;
+      sel.append(o);
+    });
+    sel.addEventListener("change", () => { opFiltro[campo] = sel.value; opRender(chave); });
+    f.append(lb, sel);
+    box.append(f);
+  });
+  if (t.busca) {
+    const f = el("div", "fld grow");
+    f.append(el("label", null, "Busca"));
+    const inp = document.createElement("input");
+    inp.type = "search";
+    inp.placeholder = "paciente, texto…";
+    inp.value = opFiltro.q || "";
+    inp.addEventListener("input", () => { opFiltro.q = inp.value; opRender(chave); });
+    f.append(inp);
+    box.append(f);
+  }
+  const span = el("span", "period");
+  span.append(document.createTextNode("Exibindo "), el("b", null, "0"), document.createTextNode(" registros"));
+  span.id = "opCount";
+  box.append(span);
+  const limpar = el("button", "btn-ghost", "Limpar");
+  limpar.addEventListener("click", () => { opFiltro = {}; opRender(chave); });
+  box.append(limpar);
+}
+
+function opRender(chave) {
+  const t = TELAS[chave];
+  if (!t) return;
+  const base = t.fonte() || [];
+  const d = opFiltrar(chave);
+
+  const s = $("#opStats");
+  s.innerHTML = "";
+  (t.stats ? t.stats(base) : []).forEach(([k, v, sub, cls]) => {
+    const c = el("div", "cell" + (cls ? " " + cls : ""));
+    c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", sub || ""));
+    s.append(c);
+  });
+
+  opMontarFiltros(chave, base);
+  const cnt = $("#opCount");
+  if (cnt) cnt.querySelector("b").textContent = String(d.length);
+
+  const head = $("#opHead");
+  head.innerHTML = "";
+  t.cols.forEach(([rot]) => head.append(el("th", null, rot)));
+
+  const tb = $("#opRows");
+  tb.innerHTML = "";
+  d.slice(0, 400).forEach(r => {
+    const tr = el("tr");
+    tr.style.cursor = "default";
+    t.cols.forEach(([, fn, cls]) => {
+      const td = el("td", cls || null);
+      td.append(fn(r));
+      tr.append(td);
+    });
+    tb.append(tr);
+  });
+  $("#opVazio").classList.toggle("hidden", d.length > 0);
+  $("#opTabela").classList.toggle("hidden", d.length === 0);
+  if (d.length > 400) {
+    const tr = el("tr");
+    const td = el("td", "dim");
+    td.colSpan = t.cols.length;
+    td.textContent = "Mostrando 400 de " + d.length + " — use os filtros para estreitar.";
+    tr.append(td); tb.append(tr);
+  }
+}
+
+// ─── Telas que não são tabela ──────────────────────────────────────
+function opRelatorios() {
+  const r = OP.relatorios || { meses: [], linhas: [] };
+  const s = $("#opStats");
+  s.innerHTML = "";
+  [["Eventos", r.linhas.filter(l => l.nivel==="indicador").reduce((a,l)=>a+l.total,0), "no pivô", "lead"],
+   ["Meses", r.meses.length, "com ocorrência"],
+   ["Indicadores", r.linhas.filter(l => l.nivel==="indicador").length, "com registro"]
+  ].forEach(([k,v,sub,cls]) => {
+    const c = el("div","cell"+(cls?" "+cls:""));
+    c.append(el("div","k",k), el("div","v",String(v)), el("div","d",sub));
+    s.append(c);
+  });
+  $("#opFiltros").classList.add("hidden");
+  const head = $("#opHead");
+  head.innerHTML = "";
+  head.append(el("th", null, "Indicador"));
+  r.meses.forEach(m => head.append(el("th", "c", m.slice(5) + "/" + m.slice(2,4))));
+  head.append(el("th", "c", "Total"));
+  const tb = $("#opRows");
+  tb.innerHTML = "";
+  r.linhas.forEach(l => {
+    const tr = el("tr");
+    if (l.nivel === "indicador") tr.classList.add("parent");
+    tr.style.cursor = "default";
+    const td = el("td", "ind");
+    if (l.nivel === "subindicador") td.append(el("span", "sc mono", "└"));
+    td.append(document.createTextNode(l.nome));
+    tr.append(td);
+    r.meses.forEach(m => {
+      const v = l.meses[m] || 0;
+      tr.append(el("td", "mth" + (v ? "" : " z"), v ? String(v) : "·"));
+    });
+    tr.append(el("td", "tot", String(l.total)));
+    tb.append(tr);
+  });
+  $("#opRows").parentElement.classList.add("pivot");
+  $("#opVazio").classList.add("hidden");
+  $("#opTabela").classList.remove("hidden");
+}
+
+function opCertificados() {
+  const c = OP.certificados || {};
+  const s = $("#opStats");
+  s.innerHTML = "";
+  [["Emitidos", c.emitidos ?? 0, "no dump de produção", "warn"],
+   ["Emissores possíveis", c.possiveis_emissores ?? 0, "contas com acesso"]
+  ].forEach(([k,v,sub,cls]) => {
+    const cel = el("div","cell"+(cls?" "+cls:""));
+    cel.append(el("div","k",k), el("div","v",String(v)), el("div","d",sub));
+    s.append(cel);
+  });
+  $("#opFiltros").classList.add("hidden");
+  $("#opHead").innerHTML = "";
+  $("#opRows").innerHTML = "";
+  $("#opTabela").classList.add("hidden");
+  const v = $("#opVazio");
+  v.classList.remove("hidden");
+  v.textContent = c.fonte || "Sem registro de emissão.";
+}
+
+function opFechamento() {
+  const f = OP.fechamento || { itens: [], bloqueios: 0, avisos: 0 };
+  const s = $("#opStats");
+  s.innerHTML = "";
+  [["Competência", f.competencia || "—", "em aberto"],
+   ["Bloqueios", f.bloqueios, "impedem o fechamento", f.bloqueios ? "warn" : "lead"],
+   ["Avisos", f.avisos, "não impedem, mas pesam"]
+  ].forEach(([k,v,sub,cls]) => {
+    const c = el("div","cell"+(cls?" "+cls:""));
+    c.append(el("div","k",k), el("div","v",String(v)), el("div","d",sub));
+    s.append(c);
+  });
+  $("#opFiltros").classList.add("hidden");
+  const head = $("#opHead");
+  head.innerHTML = "";
+  ["Regra", "Ocorrências", "Efeito", "Por quê"].forEach(h => head.append(el("th", null, h)));
+  const tb = $("#opRows");
+  tb.innerHTML = "";
+  f.itens.forEach(i => {
+    const tr = el("tr");
+    tr.style.cursor = "default";
+    tr.append(el("td", "pat", i.regra));
+    tr.append(el("td", "mono", String(i.qtd)));
+    const td = el("td");
+    td.append(i.qtd === 0 ? badge("ok", "b-ok", true)
+              : i.bloqueia ? badge("bloqueia", "b-3", true) : badge("aviso", "b-1", true));
+    tr.append(td);
+    tr.append(el("td", "dim", i.detalhe));
+    tb.append(tr);
+  });
+  $("#opVazio").classList.add("hidden");
+  $("#opTabela").classList.remove("hidden");
+}
+
+const ESPECIAIS = { relatorios: opRelatorios, certificados: opCertificados, fechamento: opFechamento };
+
+// ─── Substitui a navegação de Operação ─────────────────────────────
+function abrirPaginaOp(chave) {
+  const p = PAGES[chave];
+  fechar();
+  document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
+  [...navOps.children].forEach((b, i) => b.classList.toggle("on", Object.keys(PAGES)[i] === chave));
+  $("#crumbNow").textContent = p.nome;
+  $("#pageCard").classList.add("hidden");
+  $("#pageMigracao").classList.add("hidden");
+  $("#pageLegacy").classList.remove("hidden");
+
+  opAtual = chave;
+  opFiltro = {};
+  $("#opTitulo").textContent = p.nome;
+  $("#opLead").textContent = p.lead;
+  $("#opCode").textContent = "OPERAÇÃO";
+  $("#opRows").parentElement.classList.remove("pivot");
+
+  const aviso = $("#opAviso");
+  aviso.innerHTML = "";
+  aviso.append(el("span", "mirror", OP.__real
+    ? "Dados reais · dump de " + (OP.fonte || "produção")
+    : "Sem dados.json ao lado · página sem dado"));
+
+  if (ESPECIAIS[chave]) ESPECIAIS[chave]();
+  else if (TELAS[chave]) opRender(chave);
+  else {
+    $("#opStats").innerHTML = "";
+    $("#opFiltros").classList.add("hidden");
+    $("#opTabela").classList.add("hidden");
+    $("#opVazio").classList.remove("hidden");
+    $("#opVazio").textContent = "Esta página ainda não tem tela.";
+  }
+
+  // Rodape: o que muda no modelo novo continua valendo.
+  const box = $("#legacyBody");
+  box.innerHTML = "";
+  box.append(el("div", "sec-h", "O que muda no modelo novo"));
+  const g = el("div", "lgrid");
+  p.itens.forEach(([k, v]) => {
+    const row = el("div", "lrow");
+    row.append(el("span", "lk", k), el("span", "lv", v));
+    g.append(row);
+  });
+  box.append(g);
+  window.scrollTo({ top: 0 });
+}
+
+[...navOps.children].forEach((b, i) => {
+  const chave = Object.keys(PAGES)[i];
+  if (!chave) return;
+  const novo = b.cloneNode(true);
+  b.replaceWith(novo);
+  novo.addEventListener("click", () => abrirPaginaOp(chave));
+});
+
+// ─── Carga ─────────────────────────────────────────────────────────
+function opAplicarDados(d) {
+  Object.assign(OP, d);
+  OP.__real = true;
+  const ct = { eventos:"eventos", pacientes:"pacientes", auditoria:"auditoria",
+               notificacoes:"notificacoes", usuarios:"usuarios", triagem:"triagem" };
+  [...navOps.children].forEach((b, i) => {
+    const chave = Object.keys(PAGES)[i];
+    const span = b.querySelector(".ct");
+    if (!span) return;
+    if (chave === "inativos") span.textContent = String((d.pacientes||[]).filter(r => r.situacao!=="ativo").length);
+    else if (ct[chave]) span.textContent = String((d[ct[chave]]||[]).length);
+  });
+  if (opAtual) abrirPaginaOp(opAtual);
+}
 
 irPara("01");
 </script>
