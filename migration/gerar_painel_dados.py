@@ -107,6 +107,20 @@ def pg_pacientes(pacientes, operadoras, store):
     return saida
 
 
+def pg_operadoras(operadoras, pacientes):
+    """A pagina de operadoras precisa do id, nao so do nome."""
+    por_id = {}
+    for p in pacientes:
+        oid_ = p.get("operatorId")
+        por_id[oid_] = por_id.get(oid_, 0) + 1
+    return [{
+        "id": oid(o["_id"]),
+        "nome": o.get("name", ""),
+        "criado": dia(o.get("createdAt")),
+        "pacientes": por_id.get(oid(o["_id"]), 0),
+    } for o in operadoras]
+
+
 def pg_eventos(pacientes, operadoras):
     op = {oid(o["_id"]): o["name"] for o in operadoras}
     saida = []
@@ -321,6 +335,7 @@ def main() -> int:
             "indicador_antigo", "observacoes_raw", "pista", "sugestao", "sugestao_nome",
             "confianca", "motivo_sugestao", "opcoes", "destino", "destino_nome", "nota",
         )} for l in ambiguos],
+        "operadoras": pg_operadoras(dados["operators"], pacientes_raw),
         "pacientes": pacientes,
         "eventos": eventos,
         "auditoria": pg_auditoria(dados["events_store"]),
@@ -342,8 +357,8 @@ def main() -> int:
                        encoding="utf-8")
 
     print("gravado: %s (%.0f KB)" % (destino, destino.stat().st_size / 1024))
-    for k in ("migracao", "pacientes", "eventos", "auditoria", "notificacoes",
-              "usuarios", "triagem"):
+    for k in ("migracao", "operadoras", "pacientes", "eventos", "auditoria",
+              "notificacoes", "usuarios", "triagem"):
         print("  %-14s %5d" % (k, len(saida[k])))
     print("  %-14s %5d linhas / %d meses" % ("relatorios",
           len(saida["relatorios"]["linhas"]), len(saida["relatorios"]["meses"])))

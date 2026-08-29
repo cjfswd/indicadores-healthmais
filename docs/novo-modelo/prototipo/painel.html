@@ -377,6 +377,42 @@
   }
   .drill button { color:inherit; font-size:13px; line-height:1; }
 
+  /* Combobox: mesmo desenho do shadcn -- trigger com chevron, popover com
+     campo de busca, lista filtrada, estado vazio e check no escolhido. */
+  .cbx { position:relative; }
+  .cbx-trigger { display:flex; align-items:center; gap:8px; width:100%;
+    padding:7px 9px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface-2); font-size:13px; color:var(--ink); text-align:left; }
+  .cbx-trigger:hover { border-color:var(--accent-line); }
+  .cbx-trigger[aria-expanded="true"] { border-color:var(--accent); }
+  .cbx-trigger .val { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cbx-trigger .val.vazio { color:var(--ink-3); }
+  .cbx-trigger .chev { flex:none; width:14px; height:14px; color:var(--ink-3); }
+  .cbx-pop { position:absolute; z-index:35; left:0; right:0; top:calc(100% + 4px);
+    background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    box-shadow:var(--shadow-pop); overflow:hidden; display:none; }
+  .cbx-pop.on { display:block; }
+  .cbx-pop input { width:100%; border:none; border-bottom:1px solid var(--line);
+    background:none; color:var(--ink); font:inherit; font-size:13px; padding:9px 11px; outline:none; }
+  .cbx-pop input::placeholder { color:var(--ink-3); }
+  .cbx-lista { max-height:230px; overflow-y:auto; padding:4px; }
+  .cbx-item { display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
+    border-radius:6px; font-size:13px; text-align:left; }
+  .cbx-item:hover, .cbx-item.cur { background:var(--surface-hi); }
+  .cbx-item.cur { color:var(--accent); }
+  .cbx-item .mk { margin-left:auto; color:var(--accent); flex:none; }
+  .cbx-item .sub { font-size:11.5px; color:var(--ink-3); }
+  .cbx-vazio { padding:18px 12px; text-align:center; color:var(--ink-3); font-size:12.5px; }
+
+  .acoes-linha { display:flex; gap:4px; justify-content:flex-end; }
+  .acao { padding:3px 8px; border-radius:6px; font-size:11.5px; color:var(--ink-3);
+    border:1px solid transparent; }
+  .acao:hover { background:var(--surface-hi); color:var(--ink); border-color:var(--line); }
+  .acao.perigo:hover { background:var(--flag-soft); color:var(--flag); border-color:var(--flag); }
+  .filters .btn-novo { margin-left:auto; }
+  .aviso-memoria { display:flex; gap:8px; padding:9px 11px; border-radius:8px;
+    background:var(--sev-1-soft); color:var(--sev-1); font-size:12px; margin-top:12px; }
+
   /* Formulário de novo registro */
   .form-novo { display:flex; flex-direction:column; gap:13px; }
   .form-novo .fld label { font-size:10px; letter-spacing:.08em; text-transform:uppercase;
@@ -398,6 +434,21 @@
   .anexo .nome { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .anexo .tam { margin-left:auto; font-family:"IBM Plex Mono", monospace; font-size:11.5px; flex:none; }
   .anexo button { color:inherit; font-size:15px; line-height:1; flex:none; }
+
+  /* Celula que abre alguma coisa. Discreta em repouso: numa tabela cheia,
+     dez colunas sublinhadas viram ruido -- a affordance aparece no hover. */
+  .cel-link { cursor:pointer; border-radius:5px; padding:1px 4px; margin:-1px -4px;
+    transition:background .1s, color .1s; }
+  .cel-link:hover { background:var(--accent-soft); color:var(--accent); }
+  .cel-link:hover .op, .cel-link:hover .dim { color:inherit; opacity:.75; }
+  .cel-link:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .pac-resumo { display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line); border-radius:9px;
+    overflow:hidden; margin-top:10px; }
+  .pac-resumo div { background:var(--surface-2); padding:9px 11px; }
+  .pac-resumo .k { font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .pac-resumo .v { font-size:16px; font-weight:600; letter-spacing:-.02em; margin-top:2px; }
 
   /* Migração — decisão dos ambíguos */
   .opts { display:flex; flex-direction:column; gap:6px; }
@@ -1754,6 +1805,7 @@ const PAGES = {
   auditoria: { nome: "Auditoria", ct: "624", lead: "Histórico de quem criou, alterou ou removeu cada registro, com valores anteriores.", itens: [["Mantido", "Trilha completa por registro, com autor e data."], ["Muda", "Sai do event store manual em Mongo e passa a trigger de auditoria no Postgres — mesma informação, sem depender de a aplicação lembrar de gravar."], ["Novo", "Diferença campo a campo entre versões, e não só o payload inteiro."]] },
   usuarios: { nome: "Usuários e acesso", ct: "9", lead: "Contas, perfis e login com token assinado.", itens: [["Mantido", "Login, perfis e controle de acesso por página."], ["Muda", "Autorização passa a ser verificada também na API, por recurso — hoje a checagem é predominantemente de tela."], ["Novo", "Perfil somente-leitura para auditoria da operadora."]] },
   notificacoes: { nome: "Notificações", ct: "6", lead: "Avisos de registro novo e pendências, com marcação de lido.", itens: [["Mantido", "Sino com contador, marcação de lido e link para o registro."], ["Muda", "Deixa de ser só “novo evento”: as regras do documento viram alertas — óbito em 48h, antimicrobiano com 10 dias, SLA da ouvidoria, triagem de 7 dias."], ["Novo", "Alerta com destinatário definido por regra, como a revisão de caso que vai à diretoria médica."]] },
+  operadoras: { nome: "Operadoras", ct: "3", lead: "Cadastro das operadoras e do vínculo de cada paciente.", itens: [["Mantido", "Nome da operadora e vínculo com o paciente."], ["Muda", "Paciente sem operadora deixa de existir: sem vínculo significa particular, e a operadora Particular já existe."], ["Novo", "Contrato passa a ser entidade própria, com vigência — hoje a operadora é só um nome no paciente."]] },
   fechamento: { nome: "Fechar competência", ct: "", lead: "Encerramento do mês: valida pendências, congela os números e libera a comparação entre períodos.", itens: [["Novo", "Não existe hoje. O fechamento recusa competência com caso em triagem, análise causal vencida ou campo obrigatório faltando."], ["Muda", "Depois de fechada, a competência vira leitura: correção exige registro de retificação com autor e motivo."]] },
 };
 
@@ -2122,6 +2174,286 @@ function fechar() {
 }
 $("#peekClose").addEventListener("click", fechar);
 scrim.addEventListener("click", fechar);
+// ═══ CRUD de pacientes e operadoras ═══════════════════════════
+// Grava so na memoria da aba: e prototipo, e nao ha backend do outro lado.
+// Recarregar volta ao dump. O aviso na tela diz isso -- silenciar seria pior,
+// porque a tabela muda de verdade e parece que gravou.
+const novoId = () => "tmp" + Math.random().toString(16).slice(2, 12).padEnd(21, "0");
+
+function avisoMemoria(pai) {
+  const a = el("div", "aviso-memoria");
+  a.append(el("span", null, "⚠"), el("span", null,
+    "Alterações ficam só nesta aba. Recarregar volta ao dump de produção."));
+  pai.append(a);
+}
+
+function campoForm(f, rotulo, no, obrig) {
+  const d = el("div", "fld");
+  const l = el("label");
+  l.append(document.createTextNode(rotulo));
+  if (obrig) l.append(el("span", "obrig", " *"));
+  d.append(l, no);
+  f.append(d);
+  return no;
+}
+
+function pacienteForm(id) {
+  const existente = id ? (OP.pacientes || []).find(p => p.id === id) : null;
+  const e = existente ? { ...existente } : {
+    id: "", nome: "", operadora: "", situacao: "ativo", motivo: "",
+    nascimento: "", admissao: "", observacoes: "", eventos: 0, recuperavel: "",
+  };
+
+  $("#peekId").textContent = existente ? id.slice(0, 12) : "novo";
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, existente ? "Editar paciente" : "Novo paciente"));
+  cab.append(el("div", "sub", "Campos com * são obrigatórios."));
+  body.append(cab);
+
+  const f = el("div", "form-novo");
+  const txt = (chave, ph, tipo) => {
+    const i = document.createElement(tipo === "area" ? "textarea" : "input");
+    if (tipo && tipo !== "area") i.type = tipo;
+    if (ph) i.placeholder = ph;
+    i.value = e[chave] || "";
+    i.addEventListener("input", () => { e[chave] = i.value; });
+    return i;
+  };
+  campoForm(f, "Nome", txt("nome", "Nome completo"), true);
+  const ops = (OP.operadoras || []).map(o => ({ valor: o.nome, rotulo: o.nome }));
+  campoForm(f, "Operadora", combobox(ops, e.operadora, v => { e.operadora = v; },
+                                     "Sem vínculo = Particular"), true);
+  campoForm(f, "Data de nascimento", txt("nascimento", "", "date"));
+  campoForm(f, "Data de admissão", txt("admissao", "", "date"));
+  campoForm(f, "Situação", combobox(
+    [{ valor: "ativo", rotulo: "Ativo" }, { valor: "inativo", rotulo: "Inativo" },
+     { valor: "excluido", rotulo: "Excluído" }],
+    e.situacao, v => { e.situacao = v; }, "Situação"), true);
+  campoForm(f, "Observações", txt("observacoes", "", "area"));
+  body.append(f);
+
+  const acoes = el("div");
+  acoes.style.cssText = "display:flex;gap:8px;margin-top:4px";
+  const salvar = el("button", "btn btn-primary", existente ? "Salvar" : "Cadastrar");
+  salvar.addEventListener("click", () => {
+    const falta = [];
+    if (!e.nome.trim()) falta.push("nome");
+    if (!e.operadora) falta.push("operadora");
+    if (!e.situacao) falta.push("situação");
+    if (falta.length) { toast("Faltam campos obrigatórios", falta.join(", ") + "."); return; }
+    OP.pacientes = OP.pacientes || [];
+    if (existente) {
+      Object.assign(existente, e);
+      toast("Paciente atualizado", e.nome);
+    } else {
+      e.id = novoId();
+      OP.pacientes.push(e);
+      OP.pacientes.sort((a, b) => a.nome.localeCompare(b.nome));
+      toast("Paciente cadastrado", e.nome + " · " + e.operadora);
+    }
+    fechar();
+    if (opAtual) abrirPaginaOp(opAtual);
+  });
+  const cancelar = el("button", "btn", "Cancelar");
+  cancelar.addEventListener("click", fechar);
+  acoes.append(salvar, cancelar);
+  body.append(acoes);
+  avisoMemoria(body);
+
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
+
+function pacienteExcluir(p) {
+  const evs = (OP.eventos || []).filter(x => x.paciente_id === p.id).length;
+  const aviso = evs
+    ? "\n\n" + p.nome + " tem " + evs + " evento(s). No modelo novo a exclusão é lógica: o histórico fica."
+    : "";
+  if (!confirm("Excluir " + p.nome + "?" + aviso)) return;
+  OP.pacientes = (OP.pacientes || []).filter(x => x.id !== p.id);
+  toast("Paciente excluído", p.nome + (evs ? " · " + evs + " evento(s) preservados" : ""));
+  if (opAtual) abrirPaginaOp(opAtual);
+}
+
+function operadoraForm(id) {
+  const existente = id ? (OP.operadoras || []).find(o => o.id === id) : null;
+  const e = existente ? { ...existente } : { id: "", nome: "", criado: null, pacientes: 0 };
+
+  $("#peekId").textContent = existente ? id.slice(0, 12) : "nova";
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, existente ? "Editar operadora" : "Nova operadora"));
+  cab.append(el("div", "sub", existente ? e.pacientes + " paciente(s) vinculado(s)" : "Campos com * são obrigatórios."));
+  body.append(cab);
+
+  const f = el("div", "form-novo");
+  const i = document.createElement("input");
+  i.type = "text";
+  i.placeholder = "Nome da operadora";
+  i.value = e.nome || "";
+  i.addEventListener("input", () => { e.nome = i.value; });
+  campoForm(f, "Nome", i, true);
+  body.append(f);
+
+  const acoes = el("div");
+  acoes.style.cssText = "display:flex;gap:8px;margin-top:4px";
+  const salvar = el("button", "btn btn-primary", existente ? "Salvar" : "Cadastrar");
+  salvar.addEventListener("click", () => {
+    const nome = (e.nome || "").trim();
+    if (!nome) { toast("Faltam campos obrigatórios", "nome."); return; }
+    const repetida = (OP.operadoras || []).some(o => o.nome === nome && o.id !== e.id);
+    if (repetida) { toast("Nome repetido", "Já existe uma operadora chamada " + nome + "."); return; }
+    OP.operadoras = OP.operadoras || [];
+    if (existente) {
+      const antigo = existente.nome;
+      existente.nome = nome;
+      // Renomear operadora tem que arrastar o vinculo: senao os pacientes
+      // apontariam para um nome que nao existe mais.
+      (OP.pacientes || []).forEach(p => { if (p.operadora === antigo) p.operadora = nome; });
+      (OP.eventos || []).forEach(x => { if (x.operadora === antigo) x.operadora = nome; });
+      toast("Operadora atualizada", antigo + " → " + nome);
+    } else {
+      e.id = novoId();
+      e.nome = nome;
+      OP.operadoras.push(e);
+      toast("Operadora cadastrada", nome);
+    }
+    fechar();
+    if (opAtual) abrirPaginaOp(opAtual);
+  });
+  const cancelar = el("button", "btn", "Cancelar");
+  cancelar.addEventListener("click", fechar);
+  acoes.append(salvar, cancelar);
+  body.append(acoes);
+  avisoMemoria(body);
+
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
+
+function operadoraExcluir(o) {
+  const vinculados = (OP.pacientes || []).filter(p => p.operadora === o.nome).length;
+  if (vinculados) {
+    toast("Operadora em uso", o.nome + " tem " + vinculados
+          + " paciente(s). Mova-os antes de excluir.");
+    return;
+  }
+  if (!confirm("Excluir a operadora " + o.nome + "?")) return;
+  OP.operadoras = (OP.operadoras || []).filter(x => x.id !== o.id);
+  toast("Operadora excluída", o.nome);
+  if (opAtual) abrirPaginaOp(opAtual);
+}
+
+// ═══ Combobox ═════════════════════════════════════════════════
+// Select com muitas opcoes vira rolagem cega: com 80 pacientes, achar um nome
+// exige percorrer a lista inteira. Este e o padrao do shadcn -- Popover com
+// Command dentro -- em HTML puro, porque o prototipo nao tem React.
+const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>';
+
+/** opcoes: [{valor, rotulo, sub}] · devolve o elemento pronto. */
+function combobox(opcoes, valor, aoEscolher, vazio) {
+  const raiz = el("div", "cbx");
+  const trigger = el("button", "cbx-trigger");
+  trigger.type = "button";
+  trigger.setAttribute("role", "combobox");
+  trigger.setAttribute("aria-expanded", "false");
+  const rotuloVal = el("span", "val");
+  trigger.append(rotuloVal);
+  trigger.insertAdjacentHTML("beforeend", CHEV);
+
+  const pop = el("div", "cbx-pop");
+  const busca = document.createElement("input");
+  busca.type = "text";
+  busca.placeholder = "Buscar…";
+  const lista = el("div", "cbx-lista");
+  pop.append(busca, lista);
+  raiz.append(trigger, pop);
+
+  let atualVal = valor || "";
+  let cur = 0, filtradas = [];
+
+  const pinta = () => {
+    const o = opcoes.find(x => x.valor === atualVal);
+    rotuloVal.textContent = o ? o.rotulo : (vazio || "Selecione…");
+    rotuloVal.classList.toggle("vazio", !o);
+  };
+
+  const desenha = () => {
+    const q = busca.value.trim().toLowerCase();
+    filtradas = opcoes.filter(o =>
+      (o.rotulo + " " + (o.sub || "")).toLowerCase().includes(q));
+    cur = Math.max(0, filtradas.findIndex(o => o.valor === atualVal));
+    lista.innerHTML = "";
+    if (!filtradas.length) {
+      lista.append(el("div", "cbx-vazio", "Nada encontrado."));
+      return;
+    }
+    filtradas.forEach((o, i) => {
+      const b = el("button", "cbx-item" + (i === cur ? " cur" : ""));
+      b.type = "button";
+      const w = el("span");
+      w.append(document.createTextNode(o.rotulo));
+      if (o.sub) w.append(el("span", "sub", " · " + o.sub));
+      b.append(w);
+      // Escolher o que ja esta escolhido limpa, como no shadcn.
+      if (o.valor === atualVal) b.append(el("span", "mk", "✓"));
+      b.addEventListener("click", ev => {
+        ev.stopPropagation();
+        atualVal = o.valor === atualVal ? "" : o.valor;
+        pinta();
+        fechaPop();
+        aoEscolher(atualVal);
+      });
+      lista.append(b);
+    });
+  };
+
+  const abrePop = () => {
+    pop.classList.add("on");
+    trigger.setAttribute("aria-expanded", "true");
+    busca.value = "";
+    desenha();
+    busca.focus();
+    setTimeout(() => document.addEventListener("click", foraCbx), 0);
+  };
+  const fechaPop = () => {
+    pop.classList.remove("on");
+    trigger.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", foraCbx);
+  };
+  const foraCbx = ev => { if (!raiz.contains(ev.target)) fechaPop(); };
+
+  trigger.addEventListener("click", ev => {
+    ev.stopPropagation();
+    pop.classList.contains("on") ? fechaPop() : abrePop();
+  });
+  busca.addEventListener("input", desenha);
+  busca.addEventListener("keydown", ev => {
+    if (ev.key === "Escape") { ev.stopPropagation(); fechaPop(); trigger.focus(); }
+    else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      cur = Math.max(0, Math.min(filtradas.length - 1, cur + (ev.key === "ArrowDown" ? 1 : -1)));
+      [...lista.children].forEach((b, i) => b.classList.toggle("cur", i === cur));
+      lista.children[cur] && lista.children[cur].scrollIntoView({ block: "nearest" });
+    } else if (ev.key === "Enter" && filtradas[cur]) {
+      ev.preventDefault();
+      atualVal = filtradas[cur].valor;
+      pinta();
+      fechaPop();
+      aoEscolher(atualVal);
+    }
+  });
+
+  pinta();
+  raiz.valor = () => atualVal;
+  return raiz;
+}
+
 // ═══ Novo registro ════════════════════════════════════════════
 // As categorias saem de CARDS[x].sub -- o catalogo da recategorizacao que o
 // painel ja carrega -- em vez de uma lista paralela que sairia de sincronia.
@@ -2129,7 +2461,8 @@ scrim.addEventListener("click", fechar);
 function abrirNovoRegistro() {
   const card0 = (typeof atual === "string" && CARDS[atual]) ? atual : ORDEM[0];
   const estado = { card: card0, sub: Object.keys(CARDS[card0].sub || {})[0] || "",
-                   paciente: "", data: "", obs: "", anexo: null, anexoErro: "" };
+                   paciente: "", data: "", obs: "", responsavel: "",
+                   anexo: null, anexoErro: "" };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
   const tamanho = b => b < 1024 ? b + " B"
@@ -2156,63 +2489,34 @@ function abrirNovoRegistro() {
       return d;
     };
 
-    const selCard = document.createElement("select");
-    ORDEM.forEach(c => {
-      const o = document.createElement("option");
-      o.value = c;
-      o.textContent = c + " — " + CARDS[c].nome;
-      if (c === estado.card) o.selected = true;
-      selCard.append(o);
-    });
-    selCard.addEventListener("change", () => {
-      estado.card = selCard.value;
-      estado.sub = Object.keys(CARDS[estado.card].sub || {})[0] || "";
-      desenha();
-    });
-    campo("Card", selCard, true);
+    campo("Card", combobox(
+      ORDEM.map(c => ({ valor: c, rotulo: c + " — " + CARDS[c].nome })),
+      estado.card,
+      v => { estado.card = v; estado.sub = Object.keys(CARDS[v] ? CARDS[v].sub || {} : {})[0] || ""; desenha(); },
+      "Escolha o card"), true);
 
-    const subs = CARDS[estado.card].sub || {};
-    const selSub = document.createElement("select");
-    Object.entries(subs).forEach(([k, v]) => {
-      const o = document.createElement("option");
-      o.value = k;
-      o.textContent = k + " " + v;
-      if (k === estado.sub) o.selected = true;
-      selSub.append(o);
-    });
-    if (!Object.keys(subs).length) {
-      const o = document.createElement("option");
-      o.textContent = "— este card não tem subcategoria —";
-      selSub.append(o);
-      selSub.disabled = true;
-    }
-    selSub.addEventListener("change", () => { estado.sub = selSub.value; });
-    campo("Subcategoria", selSub, true);
+    const subs = CARDS[estado.card] ? (CARDS[estado.card].sub || {}) : {};
+    campo("Subcategoria", combobox(
+      Object.entries(subs).map(([k, v]) => ({ valor: k, rotulo: k + " " + v })),
+      estado.sub,
+      v => { estado.sub = v; },
+      Object.keys(subs).length ? "Escolha a subcategoria" : "este card não tem subcategoria"), true);
 
     // Pacientes reais quando o dados.json esta ao lado; texto livre sem ele.
+    // 80 pacientes num select viram rolagem cega; aqui e busca por nome.
     const pacientes = (OP.pacientes || []).filter(x => x.situacao === "ativo");
     let noPac;
     if (pacientes.length) {
-      noPac = document.createElement("select");
-      const vazio = document.createElement("option");
-      vazio.value = "";
-      vazio.textContent = "Selecione…";
-      noPac.append(vazio);
-      pacientes.forEach(x => {
-        const o = document.createElement("option");
-        o.value = x.id;
-        o.textContent = x.nome + " · " + x.operadora;
-        if (x.id === estado.paciente) o.selected = true;
-        noPac.append(o);
-      });
+      noPac = combobox(
+        pacientes.map(x => ({ valor: x.id, rotulo: x.nome, sub: x.operadora })),
+        estado.paciente, v => { estado.paciente = v; }, "Buscar paciente…");
     } else {
       noPac = document.createElement("input");
       noPac.type = "text";
       noPac.placeholder = "Nome do paciente";
       noPac.value = estado.paciente;
+      noPac.addEventListener("input", () => { estado.paciente = noPac.value; });
     }
-    noPac.addEventListener("change", () => { estado.paciente = noPac.value; });
-    noPac.addEventListener("input", () => { estado.paciente = noPac.value; });
     campo("Paciente", noPac, true);
     if (pacientes.length) {
       const d = el("div", "dica", pacientes.length + " pacientes ativos · inativos não recebem registro novo");
@@ -2234,6 +2538,27 @@ function abrirNovoRegistro() {
       "Obrigatória. É o texto livre que decide o caso quando a categoria não basta — "
       + "126 dos 206 eventos do dump vieram sem ele, e é por isso que 14 ambíguos "
       + "ficaram sem como decidir."));
+
+    // ── Responsável ──
+    // O event store guarda o ator de cada gravacao; hoje ele vem do JWT, mas o
+    // registro pode ser digitado por quem nao atendeu. Este campo separa quem
+    // lancou de quem estava com o paciente.
+    const equipe = (OP.usuarios || []);
+    let noResp;
+    if (equipe.length) {
+      noResp = combobox(
+        equipe.map(u => ({ valor: u.email, rotulo: u.nome, sub: u.email })),
+        estado.responsavel, v => { estado.responsavel = v; }, "Buscar profissional…");
+    } else {
+      noResp = document.createElement("input");
+      noResp.type = "text";
+      noResp.placeholder = "Nome do profissional";
+      noResp.value = estado.responsavel;
+      noResp.addEventListener("input", () => { estado.responsavel = noResp.value; });
+    }
+    campo("Profissional responsável", noResp, true);
+    f.append(el("div", "dica",
+      "Quem inseriu o registro. Fica no event store como ator da gravação."));
 
     // ── Anexo ──
     const cx = el("div", "fld");
@@ -2293,6 +2618,7 @@ function abrirNovoRegistro() {
       if (!estado.data) faltando.push("data");
       if (!estado.sub) faltando.push("subcategoria");
       if (!estado.obs.trim()) faltando.push("observações");
+      if (!estado.responsavel) faltando.push("profissional responsável");
       if (faltando.length) {
         toast("Faltam campos obrigatórios", faltando.join(", ") + ".");
         return;
@@ -2307,6 +2633,7 @@ function abrirNovoRegistro() {
       toast("Registro montado",
             estado.card + "/" + estado.sub + " · " + nome + " · " + dbr(estado.data)
             + (estado.anexo ? " · anexo " + estado.anexo.nome : "")
+            + " · por " + ((equipe.find(u => u.email === estado.responsavel) || {}).nome || estado.responsavel)
             + " — o protótipo não grava.");
     });
     const cancelar = el("button", "btn", "Cancelar");
@@ -2878,8 +3205,9 @@ const TELAS = {
     busca: r => r.paciente + " " + r.subindicador + " " + r.observacoes,
     cols: [
       ["Data", r => el("span", "dim nowrap", dbr(r.data))],
-      ["Paciente", r => { const t = el("span"); t.append(document.createTextNode(r.paciente), el("span","op",r.operadora)); return t; }, "pat"],
-      ["Categoria", r => badgeCategoria(r.subindicador || r.indicador, "b-acc")],
+      ["Paciente", r => { const t = el("span"); t.append(document.createTextNode(r.paciente), el("span","op",r.operadora)); return celLink(t, () => pacienteDetalhe(r.paciente_id), "Abrir a ficha do paciente"); }, "pat"],
+      ["Categoria", r => celLink(badgeCategoria(r.subindicador || r.indicador, "b-acc"),
+          () => categoriaDetalhe(r.subindicador), "Ver todos os eventos desta categoria")],
       ["Observação", r => opTrunc(r.observacoes)],
       ["Anexo", r => r.anexo ? badge("sim","b-acc") : el("span","dim","—")],
     ],
@@ -2898,13 +3226,49 @@ const TELAS = {
     ],
     busca: r => r.nome + " " + r.observacoes,
     cols: [
-      ["Paciente", r => document.createTextNode(r.nome), "pat"],
-      ["Operadora", r => el("span","dim",r.operadora)],
+      ["Paciente", r => celLink(document.createTextNode(r.nome), () => pacienteDetalhe(r.id), "Abrir a ficha"), "pat"],
+      ["Operadora", r => celLink(el("span","dim",r.operadora), () => operadoraDetalhe(r.operadora), "Ver o recorte desta operadora")],
       ["Situação", r => badge(r.situacao + (r.motivo ? " · " + r.motivo : ""), opBadge[r.situacao], true)],
       ["Admissão", r => el("span","dim nowrap", r.admissao ? dbr(r.admissao) : "—")],
       ["Nascimento", r => el("span","dim nowrap", r.nascimento ? dbr(r.nascimento) : "—")],
       ["Eventos", r => el("span","mono", String(r.eventos))],
+      ["", r => {
+        const w = el("span", "acoes-linha");
+        const ed = el("button", "acao", "Editar");
+        ed.addEventListener("click", ev => { ev.stopPropagation(); pacienteForm(r.id); });
+        const ex = el("button", "acao perigo", "Excluir");
+        ex.addEventListener("click", ev => { ev.stopPropagation(); pacienteExcluir(r); });
+        w.append(ed, ex);
+        return w;
+      }],
     ],
+    novo: ["Novo paciente", () => pacienteForm(null)],
+  },
+  operadoras: {
+    fonte: () => OP.operadoras || [],
+    stats: d => [
+      ["Operadoras", d.length, "cadastradas", "lead"],
+      ["Com paciente", d.filter(r => r.pacientes).length, "em uso"],
+      ["Sem paciente", d.filter(r => !r.pacientes).length, "podem ser excluídas"],
+    ],
+    filtros: [],
+    busca: r => r.nome,
+    cols: [
+      ["Operadora", r => celLink(document.createTextNode(r.nome),
+          () => operadoraDetalhe(r.nome), "Ver o recorte desta operadora"), "pat"],
+      ["Pacientes", r => el("span","mono", String(r.pacientes))],
+      ["Criada", r => el("span","dim nowrap", r.criado ? dbr(r.criado) : "—")],
+      ["", r => {
+        const w = el("span", "acoes-linha");
+        const ed = el("button", "acao", "Editar");
+        ed.addEventListener("click", ev => { ev.stopPropagation(); operadoraForm(r.id); });
+        const ex = el("button", "acao perigo", "Excluir");
+        ex.addEventListener("click", ev => { ev.stopPropagation(); operadoraExcluir(r); });
+        w.append(ed, ex);
+        return w;
+      }],
+    ],
+    novo: ["Nova operadora", () => operadoraForm(null)],
   },
   inativos: {
     // Fiel ao dump: hoje sao 1 inativo e 61 excluidos. A coluna "Migracao"
@@ -2923,7 +3287,7 @@ const TELAS = {
     ],
     busca: r => r.nome,
     cols: [
-      ["Paciente", r => document.createTextNode(r.nome), "pat"],
+      ["Paciente", r => celLink(document.createTextNode(r.nome), () => pacienteDetalhe(r.id), "Abrir a ficha"), "pat"],
       ["Situação hoje", r => r.motivo
         ? badge(r.situacao + " · " + r.motivo, opBadge[r.motivo] || "b-1", true)
         : badge(r.situacao, opBadge[r.situacao], true)],
@@ -2947,7 +3311,8 @@ const TELAS = {
     cols: [
       ["Nome informado", r => document.createTextNode(r.nome_bruto || "—"), "pat"],
       ["Data", r => el("span","dim nowrap", r.data ? dbr(r.data) : "—")],
-      ["Categoria", r => badgeCategoria(r.subindicador || r.indicador, "b-acc")],
+      ["Categoria", r => celLink(badgeCategoria(r.subindicador || r.indicador, "b-acc"),
+          () => categoriaDetalhe(r.subindicador || r.indicador), "Ver os eventos desta categoria")],
       ["Relator", r => el("span","dim", r.relator || "—")],
       ["Status", r => badge(r.status || "—", opBadge[r.status] || "b-n", true)],
       ["Vínculo", r => r.vinculado ? badge("vinculado","b-ok") : badge("pendente","b-flag")],
@@ -2971,7 +3336,7 @@ const TELAS = {
       ["Stream", r => el("span","mono", r.stream)],
       ["Tipo", r => badge(r.tipo, opBadge[r.tipo] || "b-n", true)],
       ["v", r => el("span","mono dim", String(r.versao))],
-      ["Ator", r => el("span","dim", r.ator || "—")],
+      ["Ator", r => r.ator ? celLink(el("span","dim", r.ator), () => atorDetalhe(r.ator), "Tudo que esta pessoa gravou") : el("span","dim","—")],
       ["Campos", r => opTrunc((r.operadores.length ? r.operadores.join(" ") + " · " : "") + r.campos.join(", "))],
     ],
   },
@@ -2988,7 +3353,9 @@ const TELAS = {
       ["Nome", r => document.createTextNode(r.nome), "pat"],
       ["E-mail", r => el("span","dim", r.email)],
       ["Criado", r => el("span","dim nowrap", r.criado ? dbr(r.criado) : "—")],
-      ["Registros gravados", r => el("span","mono", String(r.registros))],
+      ["Registros gravados", r => r.registros
+          ? celLink(el("span","mono", String(r.registros)), () => atorDetalhe(r.email), "Ver o que esta pessoa gravou")
+          : el("span","mono dim", "0")],
     ],
   },
   notificacoes: {
@@ -3010,6 +3377,146 @@ const TELAS = {
     ],
   },
 };
+
+/** Embrulha o conteudo de uma celula num alvo clicavel. */
+function celLink(no, aoClicar, titulo) {
+  const b = el("span", "cel-link");
+  b.setAttribute("role", "button");
+  b.tabIndex = 0;
+  if (titulo) b.title = titulo;
+  b.append(no);
+  const disparar = ev => { ev.stopPropagation(); aoClicar(); };
+  b.addEventListener("click", disparar);
+  b.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); disparar(ev); }
+  });
+  return b;
+}
+
+/** Ficha do paciente: situacao, datas e a lista de eventos dele, cada um
+ *  abrindo o proprio detalhe. E o destino natural de todo nome em tabela. */
+function pacienteDetalhe(pid, voltar) {
+  const p = (OP.pacientes || []).find(x => x.id === pid);
+  const evs = (OP.eventos || []).filter(e => e.paciente_id === pid);
+  if (!p && !evs.length) { toast("Sem ficha", "Este paciente não está no dados.json."); return; }
+  const nome = p ? p.nome : (evs[0] || {}).paciente || "—";
+
+  $("#peekId").textContent = (pid || "").slice(0, 12);
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  if (voltar) {
+    const v = el("button", "voltar");
+    v.type = "button";
+    v.append(document.createTextNode("← voltar"));
+    v.addEventListener("click", voltar);
+    body.append(v);
+  }
+  const cab = el("div");
+  cab.append(el("h2", null, nome));
+  cab.append(el("div", "sub", p ? (p.operadora + " · " + p.situacao + (p.motivo ? " · " + p.motivo : ""))
+                                : "paciente fora do cadastro atual"));
+  body.append(cab);
+
+  if (p) {
+    const g = el("div", "pac-resumo");
+    [["Eventos", String(p.eventos)],
+     ["Admissão", p.admissao ? dbr(p.admissao) : "—"],
+     ["Nascimento", p.nascimento ? dbr(p.nascimento) : "—"],
+     ["Situação", p.situacao]].forEach(([k, v]) => {
+      const d = el("div");
+      d.append(el("div", "k", k), el("div", "v", v));
+      g.append(d);
+    });
+    body.append(g);
+    if (p.recuperavel) {
+      const a = el("div", "alertbox acc");
+      a.style.marginTop = "10px";
+      a.textContent = "A migração de inativação traz este paciente de volta como inativo, motivo " + p.recuperavel + ".";
+      body.append(a);
+    }
+    if (p.observacoes) {
+      const s = el("div");
+      s.append(el("div", "sec-h", "Observações"));
+      const nb = el("div", "notebox", p.observacoes);
+      nb.style.marginTop = "10px";
+      s.append(nb);
+      body.append(s);
+    }
+  }
+
+  const s2 = el("div");
+  s2.append(el("div", "sec-h", evs.length + (evs.length === 1 ? " evento" : " eventos")));
+  const lista = el("div", "lista-ev");
+  lista.style.marginTop = "6px";
+  evs.slice().sort((a, b) => (b.data || "").localeCompare(a.data || "")).forEach(ev => {
+    const b = el("button");
+    b.type = "button";
+    b.append(el("span", "d", ev.data ? dbr(ev.data) : "—"));
+    const w = el("span");
+    w.append(badgeCategoria(ev.subindicador, "b-n"));
+    if (ev.observacoes) w.append(el("span", "o", ev.observacoes.slice(0, 70)));
+    b.append(w);
+    b.addEventListener("click", () => relDetalheEvento(ev, () => pacienteDetalhe(pid, voltar)));
+    lista.append(b);
+  });
+  if (!evs.length) lista.append(el("div", "dica", "Nenhum evento registrado."));
+  s2.append(lista);
+  body.append(s2);
+
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
+
+/** Todos os eventos de uma categoria, de qualquer paciente. */
+function categoriaDetalhe(sub) {
+  const evs = (OP.eventos || []).filter(e => e.subindicador === sub);
+  relListaEventos(sub, evs.length + (evs.length === 1 ? " evento" : " eventos") + " no dump", evs);
+}
+
+/** Recorte de uma operadora: quantos pacientes e eventos, e a lista deles. */
+function operadoraDetalhe(op) {
+  const evs = (OP.eventos || []).filter(e => e.operadora === op);
+  const pacs = (OP.pacientes || []).filter(p => p.operadora === op);
+  relListaEventos(op, pacs.length + " pacientes · " + evs.length + " eventos", evs);
+}
+
+/** Tudo que uma pessoa gravou, pelo ator do event store. */
+function atorDetalhe(ator) {
+  const ent = (OP.auditoria || []).filter(a => a.ator === ator);
+  $("#peekId").textContent = ent.length + " registros";
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, ator || "sem ator"));
+  cab.append(el("div", "sub", ent.length + " entradas no event store"));
+  body.append(cab);
+  const porTipo = {};
+  ent.forEach(a => { porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1; });
+  const g = el("div", "pac-resumo");
+  Object.entries(porTipo).forEach(([k, v]) => {
+    const d = el("div");
+    d.append(el("div", "k", k), el("div", "v", String(v)));
+    g.append(d);
+  });
+  body.append(g);
+  const lista = el("div", "lista-ev");
+  lista.style.marginTop = "14px";
+  ent.slice(0, 60).forEach(a => {
+    const b = el("button");
+    b.type = "button";
+    b.append(el("span", "d", a.quando ? dbr(a.quando.slice(0, 10)) : "—"));
+    const w = el("span");
+    w.append(el("span", "p", a.stream + " · " + a.tipo));
+    w.append(el("span", "o", (a.campos || []).join(", ") || "—"));
+    b.append(w);
+    lista.append(b);
+  });
+  body.append(lista);
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
 
 function opValores(tela, dados, chave, fn) {
   return typeof fn === "function" ? fn(dados) : [];
@@ -3066,6 +3573,11 @@ function opMontarFiltros(chave, base) {
   const limpar = el("button", "btn-ghost", "Limpar");
   limpar.addEventListener("click", () => { opFiltro = {}; opRender(chave); });
   box.append(limpar);
+  if (t.novo) {
+    const b = el("button", "btn btn-primary btn-novo", t.novo[0]);
+    b.addEventListener("click", t.novo[1]);
+    box.append(b);
+  }
 }
 
 function opRender(chave) {
@@ -3276,7 +3788,8 @@ function opAplicarDados(d) {
   Object.assign(OP, d);
   OP.__real = true;
   const ct = { eventos:"eventos", pacientes:"pacientes", auditoria:"auditoria",
-               notificacoes:"notificacoes", usuarios:"usuarios", triagem:"triagem" };
+               notificacoes:"notificacoes", usuarios:"usuarios", triagem:"triagem",
+               operadoras:"operadoras" };
   [...navOps.children].forEach((b, i) => {
     const chave = Object.keys(PAGES)[i];
     const span = b.querySelector(".ct");
