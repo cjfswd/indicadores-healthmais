@@ -526,11 +526,29 @@
      No claro o aqua fica em 2.74:1 contra a superficie -- abaixo de 3:1 --,
      o que obriga rotulo visivel: por isso a legenda tem texto e o pivo fica
      logo abaixo. */
-  :root { --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  /* Oito slots. Os tres primeiros validam em todos os pares; os oito validam
+     na lista adjacente, que e a de barras -- e barra agrupada e o unico lugar
+     onde passo de tres. No claro tres deles ficam abaixo de 3:1 contra a
+     superficie, o que obriga rotulo visivel: a legenda de codigos cumpre. */
+  :root {
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+    --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
   }
-  :root[data-theme="dark"] { --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+      --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  }
+  .g-toggle { display:flex; gap:2px; margin:0 0 12px; }
+  .g-toggle button { font-size:11.5px; color:var(--ink-3); padding:3px 10px;
+    border:1px solid var(--line); border-radius:20px; }
+  .g-toggle button.on { background:var(--accent-soft); color:var(--accent);
+    border-color:var(--accent-line); font-weight:500; }
   /* Legenda de codigos: o eixo leva o numero, que sozinho nao diz nada.
      Sem cor -- a cor pertence a legenda de operadora; aqui e so o de-para. */
   .g-codigos { display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr));
@@ -3270,8 +3288,9 @@ function graficoAgrupado(carta, categorias, series, opcoes) {
     const cat = categorias[vl.i], s = series[vl.j];
     alvo.addEventListener("mousemove", ev => {
       const r = carta.getBoundingClientRect();
+      const rot = cfg.nomeSerie ? cfg.nomeSerie(cat, s) : s.nome;
       dica(carta, ev.clientX - r.left, ev.clientY - r.top,
-           `${gEsc(cat.completo || cat.rotulo)}<br><span style="color:var(${s.cor})">■</span> ${gEsc(s.nome)}: <b>${s.valores[vl.i]}</b><br><span style="opacity:.7">clique para ver os eventos</span>`);
+           `${gEsc(cat.completo || cat.rotulo)}<br><span style="color:var(${s.cor})">■</span> ${gEsc(rot)}: <b>${s.valores[vl.i]}</b><br><span style="opacity:.7">clique para ver os eventos</span>`);
     });
     alvo.addEventListener("mouseleave", () => semDica(carta));
     alvo.addEventListener("click", () => {
@@ -3286,7 +3305,11 @@ function graficoAgrupado(carta, categorias, series, opcoes) {
  *  numero so se le passando o mouse. */
 function legendaCodigos(carta, itens) {
   const l = el("div", "g-codigos");
-  itens.forEach(it => {
+  // As velas vao por volume, mas a legenda e tabela de consulta: ordem do
+  // codigo, senao procurar "05" vira varredura. Numerica, para 10 nao cair
+  // entre 01 e 02.
+  const chave = t => String(t).split(".").map(x => String(x).padStart(4, "0")).join(".");
+  itens.slice().sort((a, b) => chave(a.rotulo).localeCompare(chave(b.rotulo))).forEach(it => {
     const sp = el("span");
     sp.append(el("b", null, it.rotulo), el("span", "nm", it.legenda || it.completo || ""));
     sp.title = (it.rotulo + " " + (it.legenda || it.completo || "")).trim();
@@ -3732,9 +3755,10 @@ function cardLista(titulo, operadora, linhas) {
 // ═══ Relatórios: filtros, gráficos e pivô ═════════════════════
 // Tudo sai de OP.eventos, nao do pivo pre-calculado: com filtro proprio a
 // pagina precisa recontar, e recontar no cliente evita ter duas verdades.
-const CORES = ["--s1", "--s2", "--s3"];
+const CORES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"];
 const prefixoDe = t => (String(t).match(/^\s*([\d.]+)/) || [, "?"])[1];
 let relFiltro = {};
+let relSerie = "op";   // "op" | "sub" -- corte das velas no card por nome
 
 function relOperadoras() {
   return [...new Set((OP.eventos || []).map(e => e.operadora))].sort();
@@ -3955,6 +3979,65 @@ function opRelatoriosNovo() {
       d.filter(e => chaveDe(e) === cat.rotulo && e.operadora === sr.nome)) });
   legendaCodigos(c1, cats);
   cartas.append(c1);
+
+  // ── Por nome do indicador, com a serie alternavel ──
+  // O eixo continua no codigo porque o nome nao cabe sob coluna vertical; o
+  // nome vive na legenda abaixo e no tooltip. A serie alterna entre operadora
+  // e subindicador: sao os dois cortes que a pagina precisa, e um grafico com
+  // as duas dimensoes ao mesmo tempo teria 30 velas ilegiveis.
+  const cNome = carta("Eventos por nome do indicador",
+                      "Velas por " + (relSerie === "op" ? "operadora" : "subindicador")
+                      + " · " + d.length + " eventos no recorte");
+  const alt = el("div", "g-toggle");
+  [["op", "Operadora"], ["sub", "Subindicador"]].forEach(([k, r]) => {
+    const b = el("button", relSerie === k ? "on" : "", r);
+    b.type = "button";
+    b.addEventListener("click", () => { relSerie = k; opRelatoriosNovo(); });
+    alt.append(b);
+  });
+  cNome.append(alt);
+
+  const indCats = [...new Set(d.map(e => e.card))].sort().map(c => {
+    const ex = d.find(e => e.card === c) || {};
+    return { rotulo: c, completo: ex.indicador || c,
+             legenda: (ex.indicador || "").replace(/^\s*[\d.]+\s*[-\u2014]\s*/, ""),
+             total: d.filter(e => e.card === c).length };
+  }).sort((a, b) => b.total - a.total);
+
+  let serieNome;
+  if (relSerie === "op") {
+    serieNome = ops.map((o, i) => ({
+      nome: o, cor: CORES[i % CORES.length],
+      valores: indCats.map(x => d.filter(e => e.card === x.rotulo && e.operadora === o).length),
+      casa: e => e.operadora === o,
+    }));
+  } else {
+    // A ordinal do subindicador (.1, .2, ...) e o unico corte comum a todos os
+    // indicadores -- "1.1" e "9.1" sao ambos o primeiro. O nome real de cada um
+    // aparece no tooltip, que sabe de qual indicador se trata.
+    const ordinais = [...new Set(d.map(e => (prefixoDe(e.subindicador).split(".")[1] || "?")))]
+      .sort().slice(0, 8);
+    serieNome = ordinais.map((o, i) => ({
+      nome: "." + o, cor: CORES[i % CORES.length],
+      valores: indCats.map(x => d.filter(e => e.card === x.rotulo
+        && (prefixoDe(e.subindicador).split(".")[1] || "?") === o).length),
+      casa: e => (prefixoDe(e.subindicador).split(".")[1] || "?") === o,
+    }));
+  }
+  legenda(cNome, serieNome);
+  graficoAgrupado(cNome, indCats, serieNome, {
+    aoClicar: (cat, sr) => {
+      const sel = d.filter(e => e.card === cat.rotulo && sr.casa(e));
+      relListaEventos(cat.completo, sr.nome + " · " + sel.length + " no recorte", sel);
+    },
+    nomeSerie: (cat, sr) => {
+      if (relSerie === "op") return sr.nome;
+      const ex = d.find(e => e.card === cat.rotulo && sr.casa(e));
+      return ex ? ex.subindicador : sr.nome;
+    },
+  });
+  legendaCodigos(cNome, indCats);
+  cartas.append(cNome);
 
   // ── Mensal, agrupado por operadora ──
   const meses = [...new Set(d.map(e => e.data.slice(0, 7)))].sort();
