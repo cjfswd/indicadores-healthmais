@@ -10,7 +10,7 @@ reportadas ao fim da execução:
 | Transformação | Efeito medido |
 | --- | --- |
 | Migração de inativação | 11 pacientes voltam visíveis como inativos (9 alta, 2 óbito); 50 seguem excluídos por exclusão manual |
-| Categoria `Sem Operadora` | 3 pacientes sem `operatorId` ganham operadora sintética, o que permite `operator_id NOT NULL` |
+| Operadora dos sem vínculo | 3 pacientes sem `operatorId` recebem `Particular`, que já existe — o que permite `operator_id NOT NULL` |
 | `social_assistance_reports` | 3 relatórios materializados pelo replay do event store |
 
 Situação final dos 142 pacientes: **80 ativos, 12 inativos, 50 excluídos**.
@@ -67,14 +67,16 @@ correspondente no fim da carga.
 | Sem `bytea` | `file` é nulo nos 142 pacientes. Se anexo voltar, entra como `bytea` ou referência externa. |
 | Datas anuláveis | `birthDate` preenchido em 3 de 142, `admissionDate` em 9. String vazia vira `NULL`, não epoch. |
 
-## Sobre a categoria de operadora
+## Sobre a operadora
 
-`Particular` **já existia** como operadora no Mongo (2 pacientes) — não foi
-criada aqui. A única sintética é `Sem Operadora`, com id
-`000000000000000000000001`, escolhido para não colidir com ObjectId real e ser
-reconhecível a olho nu num `SELECT`.
+Paciente sem `operatorId` é particular. Os 3 casos recebem a operadora
+`Particular`, que já existia no Mongo com 2 pacientes — **nenhuma categoria
+sintética é criada**.
 
-Distribuição após a carga: Camperj 101, Unimed 36, Sem Operadora 3, Particular 2.
+Se `Particular` sumir do dump, o import para com erro em vez de inventar um id:
+uma FK que resolve sozinha esconderia o problema.
+
+Distribuição após a carga: Camperj 101, Unimed 36, Particular 5.
 
 ## Pendências
 

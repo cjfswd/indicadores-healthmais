@@ -23,6 +23,9 @@ from fase1_inventario import classificar, ler_pacientes, prefixo  # noqa: E402
 
 COLECOES = ["operators", "users", "indicators", "notifications", "events_store"]
 
+# Paciente sem operatorId e particular.
+OPERADORA_PADRAO = "Particular"
+
 
 def ler(src: Path, nome: str) -> list:
     arq = src / (nome + ".json")
@@ -86,7 +89,7 @@ def pg_pacientes(pacientes, operadoras, store):
         saida.append({
             "id": oid(p["_id"]),
             "nome": p.get("name", ""),
-            "operadora": op.get(p.get("operatorId"), "Sem operadora"),
+            "operadora": op.get(p.get("operatorId"), OPERADORA_PADRAO),
             "situacao": situacao,
             "motivo": p.get("inactivationReason") or "",
             "nascimento": (p.get("birthDate") or "").strip(),
@@ -115,7 +118,7 @@ def pg_eventos(pacientes, operadoras):
                 "id": ev.get("_id", ""),
                 "paciente_id": oid(p["_id"]),
                 "paciente": p.get("name", ""),
-                "operadora": op.get(p.get("operatorId"), "Sem operadora"),
+                "operadora": op.get(p.get("operatorId"), OPERADORA_PADRAO),
                 "data": (ev.get("occurrenceDate") or "").strip(),
                 "card": prefixo(ind),
                 "indicador": ind,
@@ -254,7 +257,7 @@ def pg_fechamento(pacientes, eventos, triagem, ambiguos, decisoes_pendentes):
     """Pendências reais que barrariam o fechamento da competência."""
     sem_nascimento = sum(1 for p in pacientes if not p["nascimento"])
     sem_admissao = sum(1 for p in pacientes if not p["admissao"])
-    sem_operadora = sum(1 for p in pacientes if p["operadora"] == "Sem operadora")
+    sem_operadora = sum(1 for p in pacientes if not p["operadora"])
     sem_obs = sum(1 for e in eventos if not e["observacoes"])
     triagem_aberta = sum(1 for t in triagem if not t["vinculado"])
     # Usa `recuperavel`, nao `motivo`: dos 61 excluidos, 11 voltam pela migracao.
@@ -274,7 +277,7 @@ def pg_fechamento(pacientes, eventos, triagem, ambiguos, decisoes_pendentes):
          "detalhe": "Sem ela não há episódio de cuidado: é a data que o abre."},
         {"regra": "Pacientes sem operadora", "qtd": sem_operadora,
          "bloqueia": True,
-         "detalhe": "operator_id vira NOT NULL; hoje caem na categoria sintética."},
+         "detalhe": "Resolvido: sem vínculo significa particular, e a operadora já existe."},
         {"regra": "Registros do formulário público sem vínculo", "qtd": triagem_aberta,
          "bloqueia": True,
          "detalhe": "Enquanto pendente, o registro não entra em indicador nenhum."},

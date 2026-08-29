@@ -65,8 +65,8 @@ CREATE TABLE patients (
     birth_date          date,
     admission_date      date,
     observations        text,
-    -- NOT NULL: os 3 pacientes sem operadora no Mongo caem na categoria
-    -- sintetica "Sem Operadora", criada pelo import.
+    -- NOT NULL: paciente sem operatorId no Mongo e particular, e a operadora
+    -- "Particular" ja existe. Nenhuma categoria sintetica e criada.
     operator_id         char(24) NOT NULL REFERENCES operators(id),
     inactive            boolean NOT NULL DEFAULT false,
     inactivated_at      timestamptz,
