@@ -37,3 +37,7 @@ docker-compose.override.yml
 
 # Real Secrets (Copy/Paste only)
 REAL_COOLIFY_ENV.txt
+
+# O painel le dados.json quando servido em localhost; ele carrega
+# nome de paciente e observacao clinica e nunca entra no repositorio.
+docs/novo-modelo/prototipo/dados.json
