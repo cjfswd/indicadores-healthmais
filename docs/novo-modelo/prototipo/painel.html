@@ -531,6 +531,14 @@
     :root:not([data-theme="light"]) { --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
   }
   :root[data-theme="dark"] { --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  /* Legenda de codigos: o eixo leva o numero, que sozinho nao diz nada.
+     Sem cor -- a cor pertence a legenda de operadora; aqui e so o de-para. */
+  .g-codigos { display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr));
+    gap:2px 14px; margin:10px 0 0; padding-top:10px; border-top:1px solid var(--line-soft); }
+  .g-codigos span { font-size:11.5px; color:var(--ink-3); display:flex; gap:7px; }
+  .g-codigos b { font-family:"IBM Plex Mono", monospace; color:var(--ink-2);
+    font-weight:600; flex:none; }
+  .g-codigos .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .g-legenda { display:flex; gap:16px; flex-wrap:wrap; margin:0 0 10px; }
   .g-legenda span { display:inline-flex; align-items:center; gap:6px;
     font-size:11.5px; color:var(--ink-2); }
@@ -1674,6 +1682,7 @@ function abrirPagina(chave) {
   document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
   [...navOps.children].forEach((b, i) => b.classList.toggle("on", Object.keys(PAGES)[i] === chave));
   $("#crumbNow").textContent = p.nome;
+  const cc = $("#cardCartas"); if (cc) cc.remove();
   $("#pageCard").classList.add("hidden");
   $("#pageMigracao").classList.add("hidden");
   $("#pageLegacy").classList.remove("hidden");
@@ -1718,6 +1727,8 @@ function irPara(codigo, manterDrill) {
   $("#hNote").textContent = card.nota;
   $("#fLabel").textContent = rotuloPeriodo();
   $("#fCount").textContent = String(linhasAtual.length);
+
+  cardGraficos(codigo);
 
   const mirror = $("#hMirror");
   mirror.innerHTML = "";
@@ -3270,6 +3281,20 @@ function graficoAgrupado(carta, categorias, series, opcoes) {
   });
 }
 
+/** De-para dos codigos do eixo. Serve para indicador e subindicador: o eixo
+ *  leva o numero porque o nome nao cabe sob coluna vertical, e sem isto o
+ *  numero so se le passando o mouse. */
+function legendaCodigos(carta, itens) {
+  const l = el("div", "g-codigos");
+  itens.forEach(it => {
+    const sp = el("span");
+    sp.append(el("b", null, it.rotulo), el("span", "nm", it.legenda || it.completo || ""));
+    sp.title = (it.rotulo + " " + (it.legenda || it.completo || "")).trim();
+    l.append(sp);
+  });
+  carta.append(l);
+}
+
 function legenda(carta, series) {
   const l = el("div", "g-legenda");
   series.forEach(s => {
@@ -3610,10 +3635,105 @@ function certRedesenha(wrap, s) {
     ? "Imprimir " + lote.length + " certificados" : "Imprimir / Salvar PDF";
 }
 
+// ═══ Gráficos da página de indicador ══════════════════════════
+// Desenhados a partir de linhasAtual, que ja vem filtrada. Como todo filtro
+// da pagina chama irPara(atual), os graficos se refazem junto -- nao ha
+// caminho em que o grafico mostre um recorte e a tabela outro.
+const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Cada card guarda a data num campo proprio (adm, data, saida...). Em vez de
+ *  uma tabela de-para que envelhece, pega o primeiro valor com cara de data. */
+function dataDaLinha(l) {
+  for (const k of ["data", "adm", "aberta", "quando", "saida"]) {
+    if (DATA_RE.test(l[k] || "")) return l[k];
+  }
+  for (const v of Object.values(l)) if (DATA_RE.test(v || "")) return v;
+  return "";
+}
+
+function cardGraficos(codigo) {
+  const antigo = $("#cardCartas");
+  if (antigo) antigo.remove();
+  const linhas = linhasAtual || [];
+  if (!linhas.length) return;
+
+  const card = CARDS[codigo];
+  const ops = [...new Set(linhas.map(l => l.op).filter(Boolean))].sort();
+  if (!ops.length) return;
+  const series = ops.map((o, i) => ({ nome: o, cor: CORES[i % CORES.length], valores: [] }));
+
+  const cartas = el("div", "cartas");
+  cartas.id = "cardCartas";
+
+  // ── Por subcategoria ──
+  const subs = card.sub || {};
+  const chaves = [...new Set(linhas.map(l => l.cod || "—"))].sort();
+  if (chaves.length > 1 || chaves[0] !== "—") {
+    const cats = chaves.map(c => ({
+      rotulo: c,
+      completo: c === "—" ? "Sem subcategoria" : (c + " " + (subs[c] || "")),
+      legenda: c === "—" ? "sem subcategoria registrada" : (subs[c] || ""),
+      total: linhas.filter(l => (l.cod || "—") === c).length,
+    })).sort((a, b) => b.total - a.total);
+    const c1 = carta("Por subcategoria",
+                     "Agrupado por operadora · " + linhas.length + " registros no recorte");
+    legenda(c1, series);
+    graficoAgrupado(c1, cats, series.map(sr => ({
+      ...sr, valores: cats.map(x => linhas.filter(l => (l.cod || "—") === x.rotulo && l.op === sr.nome).length),
+    })), { aoClicar: (cat, sr) => cardLista(cat.completo, sr.nome,
+        linhas.filter(l => (l.cod || "—") === cat.rotulo && l.op === sr.nome)) });
+    legendaCodigos(c1, cats);
+    cartas.append(c1);
+  }
+
+  // ── Mensal ──
+  const meses = [...new Set(linhas.map(l => dataDaLinha(l).slice(0, 7)).filter(Boolean))].sort();
+  if (meses.length > 1) {
+    const c2 = carta("Evolução mensal", "Agrupado por operadora · " + meses.length + " meses");
+    legenda(c2, series);
+    graficoAgrupado(c2, meses.map(m => ({ rotulo: rotuloMes(m), completo: m })), series.map(sr => ({
+      ...sr, valores: meses.map(m => linhas.filter(l => dataDaLinha(l).slice(0, 7) === m && l.op === sr.nome).length),
+    })), { largura: 60, aoClicar: (cat, sr) => cardLista("Registros de " + cat.rotulo, sr.nome,
+        linhas.filter(l => dataDaLinha(l).slice(0, 7) === cat.completo && l.op === sr.nome)) });
+    cartas.append(c2);
+  }
+
+  if (cartas.children.length) $("#views").parentElement.insertBefore(cartas, $("#views"));
+}
+
+/** Clique numa vela do card: lista as linhas daquele recorte e reusa o peek
+ *  que a propria pagina ja abre ao clicar numa linha da tabela. */
+function cardLista(titulo, operadora, linhas) {
+  $("#peekId").textContent = linhas.length + (linhas.length === 1 ? " registro" : " registros");
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, titulo));
+  cab.append(el("div", "sub", operadora + " · " + linhas.length + " no recorte"));
+  body.append(cab);
+  const lista = el("div", "lista-ev");
+  linhas.forEach(l => {
+    const b = el("button");
+    b.type = "button";
+    b.append(el("span", "d", (dataDaLinha(l) ? dbr(dataDaLinha(l)) : "—")));
+    const w = el("span");
+    w.append(el("span", "p", l.pac || l.id || "—"));
+    w.append(el("span", "o", (l.id || "") + (l.cod ? " · " + l.cod : "")));
+    b.append(w);
+    b.addEventListener("click", () => abrir(l.id));
+    lista.append(b);
+  });
+  body.append(lista);
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
+
 // ═══ Relatórios: filtros, gráficos e pivô ═════════════════════
 // Tudo sai de OP.eventos, nao do pivo pre-calculado: com filtro proprio a
 // pagina precisa recontar, e recontar no cliente evita ter duas verdades.
 const CORES = ["--s1", "--s2", "--s3"];
+const prefixoDe = t => (String(t).match(/^\s*([\d.]+)/) || [, "?"])[1];
 let relFiltro = {};
 
 function relOperadoras() {
@@ -3804,20 +3924,36 @@ function opRelatoriosNovo() {
   cartas.id = "relCartas";
 
   // ── Por indicador, agrupado por operadora ──
-  const cards = [...new Set(d.map(e => e.card))].sort();
-  const porCard = cards.map(c => ({
-    rotulo: c,
-    completo: (d.find(e => e.card === c) || {}).indicador || c,
-    total: d.filter(e => e.card === c).length,
-  })).sort((a, b) => b.total - a.total);
-  const c1 = carta("Eventos por indicador",
-                   "Agrupado por operadora · ordenado por volume");
+  // O nome inteiro nao cabe sob coluna vertical -- viraria rotulo girado ou
+  // colisao. O eixo leva o codigo, e a legenda abaixo faz o de-para.
+  // Com um card filtrado o grafico desce um nivel e mostra os subindicadores
+  // dele, que e onde a distincao do modelo novo mora.
+  const porSub = !!relFiltro.card;
+  const chaveDe = e => porSub ? prefixoDe(e.subindicador) : e.card;
+  const nomeDe = e => porSub ? e.subindicador : e.indicador;
+
+  const cats = [...new Set(d.map(chaveDe))].sort().map(c => {
+    const ex = d.find(e => chaveDe(e) === c);
+    const nome = ex ? nomeDe(ex) : c;
+    return {
+      rotulo: c,
+      completo: nome,
+      legenda: nome.replace(/^\s*[\d.]+\s*[-—]\s*/, ""),
+      total: d.filter(e => chaveDe(e) === c).length,
+    };
+  }).sort((a, b) => b.total - a.total);
+
+  const c1 = carta(porSub ? "Eventos por subindicador" : "Eventos por indicador",
+                   "Agrupado por operadora · ordenado por volume"
+                   + (porSub ? "" : " · filtre um card para abrir os subindicadores"));
   legenda(c1, series);
-  graficoAgrupado(c1, porCard, series.map(sr => ({
-    ...sr, valores: porCard.map(x => d.filter(e => e.card === x.rotulo && e.operadora === sr.nome).length),
+  graficoAgrupado(c1, cats, series.map(sr => ({
+    ...sr, valores: cats.map(x => d.filter(e => chaveDe(e) === x.rotulo && e.operadora === sr.nome).length),
   })), { aoClicar: (cat, sr) => relListaEventos(
-      cat.completo || cat.rotulo, sr.nome + " · " + d.filter(e => e.card === cat.rotulo && e.operadora === sr.nome).length + " no recorte",
-      d.filter(e => e.card === cat.rotulo && e.operadora === sr.nome)) });
+      cat.completo || cat.rotulo,
+      sr.nome + " · " + d.filter(e => chaveDe(e) === cat.rotulo && e.operadora === sr.nome).length + " no recorte",
+      d.filter(e => chaveDe(e) === cat.rotulo && e.operadora === sr.nome)) });
+  legendaCodigos(c1, cats);
   cartas.append(c1);
 
   // ── Mensal, agrupado por operadora ──
@@ -3839,7 +3975,9 @@ function opRelatoriosNovo() {
   head.append(el("th", "c", "Total"));
   const tb = $("#opRows");
   tb.innerHTML = "";
-  cards.forEach(c => {
+  // O pivo continua por card, mesmo quando o grafico esta em subindicador:
+  // ele ja mostra os dois niveis nas proprias linhas.
+  [...new Set(d.map(e => e.card))].sort().forEach(c => {
     const nome = (d.find(e => e.card === c) || {}).indicador || c;
     const linha = (rot, filtro, pai) => {
       const tr = el("tr");
