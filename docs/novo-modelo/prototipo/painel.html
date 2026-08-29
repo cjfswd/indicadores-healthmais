@@ -407,7 +407,10 @@
     border-top:1px solid var(--line); padding-top:14px; }
   .login .dom b { color:var(--ink-2); font-weight:500; font-family:"IBM Plex Mono", monospace; }
 
-  /* Certificados */
+  /* Certificados — a folha reproduz CertificateSheet/CertificateBackSheet:
+     297x210mm (A4 paisagem, como o @page do gerador), fundo, Georgia e o
+     nome em cursiva. A escala e so para caber na tela; as medidas sao as
+     de impressao. */
   .cert-wrap { display:grid; grid-template-columns:300px minmax(0,1fr); gap:22px; margin-top:22px; }
   @media (max-width:900px) { .cert-wrap { grid-template-columns:1fr; } }
   .cert-form { display:flex; flex-direction:column; gap:12px; }
@@ -416,23 +419,85 @@
     font:inherit; font-size:12.5px; color:var(--ink); background:var(--surface);
     border:1px solid var(--line); border-radius:6px; padding:6px 8px; width:100%; }
   .cert-form textarea { min-height:64px; resize:vertical; }
-  .cert-paper { background:var(--surface); border:1px solid var(--line); border-radius:9px;
-    padding:38px 40px; display:flex; flex-direction:column; align-items:center;
-    text-align:center; min-height:400px; justify-content:center; gap:14px; }
-  .cert-paper .marca { font-family:"IBM Plex Mono", monospace; font-size:11px;
-    letter-spacing:.22em; color:var(--accent); text-transform:uppercase; }
-  .cert-paper .tipo { font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3); }
-  .cert-paper .nome { font-size:26px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
-  .cert-paper .corpo { font-size:13px; color:var(--ink-2); max-width:46ch; line-height:1.6; }
-  .cert-paper .risca { width:56px; height:1px; background:var(--line); }
-  .cert-paper .assinaturas { display:flex; gap:34px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
-  .cert-paper .ass { display:flex; flex-direction:column; gap:3px; min-width:150px; }
-  .cert-paper .ass .rubrica { height:17px; font-style:italic; display:flex;
-    align-items:flex-end; justify-content:center; margin-bottom:2px; }
-  .cert-paper .ass .risco { height:1px; background:var(--ink-3); margin-bottom:5px; }
-  .cert-paper .ass .n { font-size:12.5px; font-weight:500; }
-  .cert-paper .ass .c { font-size:11px; color:var(--ink-3); }
   .cert-lote { font-size:11.5px; color:var(--ink-3); margin-top:2px; }
+  .cert-abas { display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+  .cert-medidas { font-size:11px; color:var(--ink-3); margin-top:8px;
+    font-family:"IBM Plex Mono", monospace; }
+
+  /* min-width:0 nos itens: sem isso a folha de 297mm (1123px) empurra a coluna
+     do grid e nada e escalado -- o conteudo de tamanho fixo vence o 1fr. */
+  .cert-wrap > * { min-width:0; }
+  .folha-caixa { width:100%; overflow:hidden; border:1px solid var(--line);
+    border-radius:9px; background:#fff; box-shadow:var(--shadow-pop); }
+  .folha {
+    width:297mm; height:210mm; box-sizing:border-box;
+    background-color:#ffffff; background-size:100% 100%; background-repeat:no-repeat;
+    color:#1f3a63; font-family:Georgia,"Times New Roman",serif;
+    transform-origin:top left; overflow:hidden;
+  }
+  .folha .inner { width:100%; height:100%; padding:15mm 30mm 19mm;
+    display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .folha .logo { height:37mm; object-fit:contain; margin-bottom:-7mm; }
+  .folha .head { margin-top:1mm; }
+  .folha .t { font-size:30pt; line-height:1.15; font-weight:bold;
+    letter-spacing:5mm; margin-right:-5mm; color:#1f3a63; }
+  .folha .st { font-size:12pt; line-height:1.2; letter-spacing:2.4mm;
+    margin-right:-2.4mm; color:#5a6f8f; }
+  .folha .body { margin-top:auto; margin-bottom:auto; padding-top:6mm; }
+  .folha .lead { font-size:13pt; color:#33507d; }
+  .folha .nome {
+    font-family:"Monotype Corsiva","Brush Script MT","Segoe Script","Lucida Handwriting",cursive;
+    font-size:31pt; line-height:.85; color:#1f3a63;
+    border-bottom:.4mm solid rgba(31,58,99,.45); display:inline-block;
+    padding:0 12mm 2.5mm; margin:2mm 0 1mm; }
+  .folha .txt { font-size:13pt; line-height:1.5; color:#33507d; }
+  .folha .curso { font-size:15.5pt; font-weight:bold; max-width:230mm;
+    margin:3mm auto 3.5mm; line-height:1.4; color:#1f3a63; }
+  .folha .assins { margin-top:auto; padding-top:6mm; width:100%; display:flex;
+    justify-content:space-evenly; align-items:flex-start; gap:12mm; }
+  .folha .assins.uma { justify-content:center; }
+  .folha .sign { flex:0 1 88mm; }
+  .folha .slot { height:15mm; display:flex; align-items:flex-end;
+    justify-content:center; margin-bottom:-2mm; overflow:visible; }
+  .folha .slot img { max-height:22mm; max-width:72mm; object-fit:contain; }
+  .folha .linha { border-top:.35mm solid #1f3a63; margin-bottom:2mm; }
+  .folha .sn { font-size:12pt; font-weight:bold; color:#1f3a63; }
+  .folha .sr { font-size:10pt; color:#33507d; line-height:1.2; }
+
+  .folha .back-inner { width:100%; height:100%; padding:26mm 34mm 22mm;
+    display:flex; flex-direction:column; text-align:left; }
+  .folha .back-head { text-align:center; }
+  .folha .back-t { font-size:19pt; font-weight:bold; letter-spacing:1.6mm;
+    margin-right:-1.6mm; text-transform:uppercase; color:#1f3a63; }
+  .folha .back-c { font-size:12.5pt; line-height:1.4; color:#5a6f8f; margin:3mm auto 0;
+    max-width:200mm; }
+  /* Centra verticalmente para lista curta nao deixar vazio, e o overflow impede
+     tabela longa de empurrar o rodape sobre a moldura. */
+  .folha .back-content { flex:1; display:flex; flex-direction:column;
+    justify-content:center; min-height:0; overflow:hidden; padding:5mm 0; }
+  .folha .back-tables { display:flex; justify-content:center; gap:12mm; width:100%; }
+  /* min-width:0 e table-layout:fixed: sem os dois, o flex nao encolhe a tabela
+     abaixo da largura do conteudo, as duas estouram a area util (229mm) e o
+     justify-content:center joga metade do excesso para fora, onde o
+     overflow:hidden corta a tabela da esquerda inteira. */
+  .folha table.prog { flex:1 1 0; min-width:0; max-width:200mm;
+    table-layout:fixed; border-collapse:collapse; text-align:left; }
+  .folha table.prog td:last-child, .folha table.prog th:last-child {
+    overflow-wrap:break-word; }
+  .folha table.prog th, .folha table.prog td {
+    border:.3mm solid rgba(31,58,99,.35); padding:1.6mm 4mm; vertical-align:top; }
+  .folha table.prog thead th { background:rgba(31,58,99,.08); font-size:12.5pt;
+    font-weight:bold; letter-spacing:.4mm; text-transform:uppercase; color:#1f3a63; }
+  .folha table.prog td { font-size:11.5pt; color:#33507d; }
+  .folha table.prog .num { width:14mm; color:#5a6f8f; }
+  .folha .back-meta { display:flex; gap:14mm; font-size:10pt; color:#33507d; margin-top:5mm; }
+  .folha .back-meta b { color:#1f3a63; }
+  .folha .emit { margin-top:auto; padding-top:5mm; display:flex; align-items:center; gap:6mm;
+    border-top:.3mm solid rgba(31,58,99,.25); }
+  .folha .emit img { height:16mm; object-fit:contain; }
+  .folha .emit .dados { font-size:8.5pt; line-height:1.5; color:#33507d; text-align:left; }
+  .folha .emit .dados b { display:block; font-size:9.5pt; color:#1f3a63; }
+  .folha .vazio { font-size:11pt; color:#5a6f8f; font-style:italic; }
 
   /* Gráficos */
   .cartas { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
@@ -2951,90 +3016,144 @@ function certTopicos() {
 
 const certTemRep = () => !!(CERT.repName || CERT.repRole || CERT.repRole2);
 
-function certFrente() {
-  const p = el("div", "cert-paper");
-  p.append(el("div", "marca", "HealthMais Atendimento Domiciliar"));
-  const cab = el("div");
-  cab.append(el("div", "tipo", "Certificado"));
-  const sub = el("div", "tipo");
-  sub.textContent = "de capacitação";
-  cab.append(sub);
-  p.append(cab);
-  p.append(el("div", "corpo", "Certificamos que"));
-  p.append(el("div", "nome", certParticipante() || "____________________________"));
-  p.append(el("div", "corpo", "concluiu com aproveitamento a capacitação"));
-  const curso = el("div", "corpo");
-  curso.style.fontWeight = "500";
-  curso.style.color = "var(--ink)";
-  curso.textContent = CERT.title || "—";
-  p.append(curso);
-  const linha = el("div", "corpo");
-  linha.append(document.createTextNode("com carga horária de "));
-  linha.append(el("b", null, CERT.hours || "—"));
-  linha.append(document.createTextNode(", realizada em "));
-  linha.append(el("b", null, certData(CERT.date)));
-  linha.append(document.createTextNode("."));
-  p.append(linha);
+// As imagens vivem em frontend/public/certificates/. Caminho relativo em vez de
+// copia: o certificate-bg.png tem 1 MB e ja esta versionado uma vez. Funciona
+// servido pela raiz do repo e tambem abrindo o arquivo direto do disco.
+const CERT_ASSETS = "../../../frontend/public/certificates/";
+const certImg = n => CERT_ASSETS + n;
 
-  const ass = el("div", "assinaturas");
-  const bloco = (nome, papeis, rubrica) => {
-    const a = el("div", "ass");
-    // Slot de altura fixa mesmo vazio: o CertificateSheet usa .cert-sign-slot
-    // para as tres linhas ficarem na mesma altura. Sem ele, so a assinatura com
-    // rubrica desce, e as tres desalinham.
-    const r = el("div", "c rubrica");
-    r.textContent = rubrica || "";
-    a.append(r);
-    a.append(el("div", "risco"));
-    if (nome) a.append(el("div", "n", nome));
-    papeis.filter(Boolean).forEach(x => a.append(el("div", "c", x)));
-    return a;
+function folhaBase(classeInner) {
+  const f = el("div", "folha");
+  f.style.backgroundImage = "url('" + certImg("certificate-bg.png") + "')";
+  const inner = el("div", classeInner);
+  f.append(inner);
+  return [f, inner];
+}
+
+function certFrente() {
+  const [f, inner] = folhaBase("inner");
+  const logo = document.createElement("img");
+  logo.className = "logo";
+  logo.src = certImg("healthmais-logo.png");
+  logo.alt = "HealthMais Atendimento Domiciliar";
+  inner.append(logo);
+
+  const head = el("div", "head");
+  head.append(el("div", "t", "CERTIFICADO"), el("div", "st", "DE CAPACITAÇÃO"));
+  inner.append(head);
+
+  const body = el("div", "body");
+  body.append(el("div", "lead", "Certificamos que"));
+  body.append(el("div", "nome", certParticipante() || "____________________________"));
+  body.append(el("div", "txt", "concluiu com aproveitamento a capacitação"));
+  body.append(el("div", "curso", CERT.title || ""));
+  const l = el("div", "txt");
+  l.append(document.createTextNode("com carga horária de "), el("strong", null, CERT.hours || "—"),
+           document.createTextNode(", realizada em "), el("strong", null, certData(CERT.date)),
+           document.createTextNode("."));
+  body.append(l);
+  inner.append(body);
+
+  const blocos = [];
+  const sign = (rubrica, nome, papeis) => {
+    const s = el("div", "sign");
+    const slot = el("div", "slot");
+    if (rubrica) {
+      const i = document.createElement("img");
+      i.src = rubrica;
+      i.alt = "";
+      slot.append(i);
+    }
+    s.append(slot, el("div", "linha"));
+    if (nome) s.append(el("div", "sn", nome));
+    papeis.filter(Boolean).forEach(p => s.append(el("div", "sr", p)));
+    return s;
   };
-  ass.append(bloco(CERT.instructorName, [CERT.instructorRole, CERT.instructorRole2],
-                   CERT.instructorSignature ? "assinatura aplicada" : ""));
+  blocos.push(sign(CERT.instructorSignature ? certImg(CERT.instructorSignature.split("/").pop()) : "",
+                   CERT.instructorName, [CERT.instructorRole, CERT.instructorRole2]));
   if (certTemRep()) {
-    ass.append(bloco(CERT.repName, [CERT.repRole, CERT.repRole2],
-                     CERT.repSignature ? CERT_ASSINATURA : ""));
+    blocos.push(sign(CERT.repSignature ? certImg(CERT.repSignature.split("/").pop()) : "",
+                     CERT.repName, [CERT.repRole, CERT.repRole2]));
   }
-  // A 3a e do aluno: assina a mao, com o nome impresso abaixo.
-  if (CERT.studentLabel) ass.append(bloco(certParticipante(), [CERT.studentLabel], ""));
-  p.append(ass);
-  return p;
+  // A 3a e do aluno: assina a mao, entao o slot fica vazio e so o nome sai impresso.
+  if (CERT.studentLabel) blocos.push(sign("", certParticipante(), [CERT.studentLabel]));
+
+  const a = el("div", "assins" + (blocos.length === 1 ? " uma" : ""));
+  blocos.forEach(b => a.append(b));
+  inner.append(a);
+  return f;
 }
 
 function certVerso() {
-  const p = el("div", "cert-paper verso");
-  p.append(el("div", "back-h", "Conteúdo Programático"));
-  if (CERT.title) p.append(el("div", "back-c", CERT.title));
+  const [f, inner] = folhaBase("back-inner");
+  const head = el("div", "back-head");
+  head.append(el("div", "back-t", "Conteúdo Programático"));
+  if (CERT.title) head.append(el("div", "back-c", CERT.title));
+  inner.append(head);
+
+  const area = el("div", "back-content");
   const itens = certTopicos();
   if (itens.length) {
-    const t = document.createElement("table");
-    t.className = "prog";
-    t.innerHTML = "<thead><tr><th class='num'>Nº</th><th>Tópico</th></tr></thead>";
-    const tb = document.createElement("tbody");
-    itens.forEach((x, i) => {
-      const tr = el("tr");
-      tr.append(el("td", "num", String(i + 1)), el("td", null, x));
-      tb.append(tr);
+    // A folha tem altura fixa: acima de 8 topicos vira duas tabelas lado a
+    // lado, como o componente faz, para aproveitar a largura do A4 paisagem.
+    const linhas = itens.map((texto, i) => ({ n: i + 1, texto }));
+    const grupos = linhas.length <= 8 ? [linhas]
+      : [linhas.slice(0, Math.ceil(linhas.length / 2)),
+         linhas.slice(Math.ceil(linhas.length / 2))];
+    const box = el("div", "back-tables");
+    grupos.forEach(g => {
+      const t = document.createElement("table");
+      t.className = "prog";
+      t.innerHTML = "<thead><tr><th class='num'>Nº</th><th>Tópico</th></tr></thead>";
+      const tb = document.createElement("tbody");
+      g.forEach(x => {
+        const tr = el("tr");
+        tr.append(el("td", "num", String(x.n)), el("td", null, x.texto));
+        tb.append(tr);
+      });
+      t.append(tb);
+      box.append(t);
     });
-    t.append(tb);
-    p.append(t);
+    area.append(box);
   } else {
-    p.append(el("div", "cert-vazio", "Sem conteúdo programático."));
+    area.append(el("div", "vazio", "—"));
   }
+  inner.append(area);
+
   const meta = el("div", "back-meta");
   if (CERT.hours) { const s = el("span"); s.append(document.createTextNode("Carga horária: "), el("b", null, CERT.hours)); meta.append(s); }
   const part = certParticipante();
   if (part) { const s = el("span"); s.append(document.createTextNode("Participante: "), el("b", null, part)); meta.append(s); }
-  p.append(meta);
+  inner.append(meta);
 
-  const e = el("div", "emitente");
-  e.append(el("b", null, CERT_EMITENTE.nome));
+  const emit = el("div", "emit");
+  const logo = document.createElement("img");
+  logo.src = certImg("healthmais-logo.png");
+  logo.alt = "";
+  const dados = el("div", "dados");
+  dados.append(el("b", null, CERT_EMITENTE.nome));
   [`CNPJ ${CERT_EMITENTE.cnpj}`, CERT_EMITENTE.endereco,
    `${CERT_EMITENTE.email} · ${CERT_EMITENTE.telefone}`, CERT_EMITENTE.site]
-    .forEach(l => e.append(el("div", null, l)));
-  p.append(e);
-  return p;
+    .forEach(x => dados.append(el("div", null, x)));
+  emit.append(logo, dados);
+  inner.append(emit);
+  return f;
+}
+
+/** A folha tem medida de impressao; a caixa so a encolhe para caber na coluna. */
+function certEncaixa(caixa) {
+  const folha = caixa.firstChild;
+  if (!folha) return;
+  // O fundo tem 1 MB; se ainda estiver baixando, refaz a conta quando chegar.
+  folha.querySelectorAll("img").forEach(i => {
+    if (!i.complete) i.addEventListener("load", () => certEncaixa(caixa), { once: true });
+  });
+  folha.style.transform = "scale(1)";
+  const largura = folha.offsetWidth, altura = folha.offsetHeight;
+  if (!largura) return;
+  const k = Math.min(1, caixa.clientWidth / largura);
+  folha.style.transform = "scale(" + k + ")";
+  caixa.style.height = Math.round(altura * k) + "px";
 }
 
 let certAba = "frente";
@@ -3120,10 +3239,22 @@ function opCertificadosNovo() {
     b.addEventListener("click", () => { certAba = k; certRedesenha(wrap, s); });
     abas.append(b);
   });
-  painel.append(abas, certAba === "frente" ? certFrente() : certVerso());
+  const caixa = el("div", "folha-caixa");
+  caixa.append(certAba === "frente" ? certFrente() : certVerso());
+  const medidas = el("div", "cert-medidas", "297 × 210 mm · A4 paisagem");
+  painel.append(abas, caixa, medidas);
 
   wrap.append(form, painel);
+  if (!window.__certResize) {
+    window.__certResize = true;
+    addEventListener("resize", () => {
+      const c = document.querySelector(".folha-caixa");
+      if (c) certEncaixa(c);
+    });
+  }
   $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
+  // So agora a caixa tem largura: escalar antes daria clientWidth 0.
+  certEncaixa(caixa);
 }
 
 function certRedesenha(wrap, s) {
@@ -3136,7 +3267,10 @@ function certRedesenha(wrap, s) {
     b.addEventListener("click", () => { certAba = k; certRedesenha(wrap, s); });
     abas.append(b);
   });
-  painel.append(abas, certAba === "frente" ? certFrente() : certVerso());
+  const caixa = el("div", "folha-caixa");
+  caixa.append(certAba === "frente" ? certFrente() : certVerso());
+  painel.append(abas, caixa, el("div", "cert-medidas", "297 × 210 mm · A4 paisagem"));
+  certEncaixa(caixa);
   const lote = certLote();
   s.children[1].querySelector(".v").textContent = String((lote.length || 1) * 2);
   s.children[2].querySelector(".v").textContent = String(lote.length || 1);

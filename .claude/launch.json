@@ -20,7 +20,7 @@
         "http.server",
         "5174",
         "--directory",
-        "docs/novo-modelo/prototipo"
+        "."
       ],
       "port": 5174
     }
