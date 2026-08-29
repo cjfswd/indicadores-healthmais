@@ -138,6 +138,53 @@ O `Recategorizacao-dos-indicadores.pdf` é vetorizado — não tem texto extraí
 `catalogo_novo.py` é a única forma legível por máquina do documento; se o PDF mudar,
 esse arquivo muda junto.
 
+## Fase 3 — a área de migração vive no banco
+
+A Fase 2 não é planilha. Os 206 eventos entram em `migracao_evento` já
+classificados, os usuários decidem os 55 ambíguos pela tela, e o loader move o
+que estiver decidido.
+
+```bash
+python carregar_migracao.py --src <dir-do-export> --out /tmp/carga_migracao.sql
+psql "$DATABASE_URL" -f postgres/schema_migracao.sql -f /tmp/carga_migracao.sql
+```
+
+Três coisas que a planilha não dava:
+
+**A decisão tem dono e data.** `decidido_por` e `decidido_em` são obrigatórios
+junto com a decisão — um `CHECK` recusa decisão anônima. Planilha não registra
+quem escreveu o quê.
+
+**O loader é idempotente por construção.** `legacy_id` é único por lote e a
+carga usa `ON CONFLICT DO UPDATE`, atualizando só o que veio do inventário.
+Reimportar o mesmo dump depois de as pessoas decidirem não apaga o trabalho
+delas — verificado: 206 → 206 eventos, 14 decisões preservadas.
+
+**A trilha fica ao lado do dado.** Um trigger grava cada importação, decisão e
+aplicação em `migracao_log`, com valor anterior e novo em `jsonb`. Não depende
+de a aplicação lembrar de registrar: um `UPDATE` manual no `psql` também entra.
+A história de um evento sai em uma consulta:
+
+```
+importado   loader                              09 - Nº de ouvidorias / 9.3 - Reclamações e Solicitações
+decidido    enfermagem@healthmaiscuidados.com   aceitou a sugestão
+aplicado    loader
+```
+
+O log distingue quem **aceitou a sugestão** de quem **divergiu** dela — é o que
+permite medir depois se o classificador ajudou ou atrapalhou.
+
+Duas views servem a tela e o loader: `migracao_pendente` traz o que falta
+decidir com o destino efetivo já resolvido, e `migracao_resumo` conta por
+classe, decididos, aplicados e divergências.
+
+### O que ainda falta na Fase 3
+
+O `destino_tabela` aponta para as tabelas do modelo novo — `episodio_cuidado`,
+`intercorrencia`, `manifestacao` — que **ainda não existem**. O DDL delas
+depende das três decisões em aberto no README do novo-modelo. Enquanto isso,
+a área de migração já recebe o dump, guarda a decisão e registra a trilha.
+
 ## Próximo passo
 
 A Fase 2 é a revisão humana de `ambiguos.csv`. Depois dela, a Fase 3 (loader idempotente)
