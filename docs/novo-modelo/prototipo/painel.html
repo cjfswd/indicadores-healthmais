@@ -402,6 +402,10 @@
   .cbx-item.cur { color:var(--accent); }
   .cbx-item .mk { margin-left:auto; color:var(--accent); flex:none; }
   .cbx-item .sub { font-size:11.5px; color:var(--ink-3); }
+  .cbx-criar { color:var(--accent); border-top:1px solid var(--line); margin-top:4px;
+    padding-top:8px; border-radius:0 0 6px 6px; }
+  .cbx-criar .mais { font-weight:700; }
+  .cbx-criar b { font-weight:600; }
   .cbx-vazio { padding:18px 12px; text-align:center; color:var(--ink-3); font-size:12.5px; }
 
   .acoes-linha { display:flex; gap:4px; justify-content:flex-end; }
@@ -2355,8 +2359,11 @@ function operadoraExcluir(o) {
 // Command dentro -- em HTML puro, porque o prototipo nao tem React.
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>';
 
-/** opcoes: [{valor, rotulo, sub}] · devolve o elemento pronto. */
-function combobox(opcoes, valor, aoEscolher, vazio) {
+/** opcoes: [{valor, rotulo, sub}] · devolve o elemento pronto.
+ *  criar: funcao opcional (texto) => valor. Com ela, digitar um nome que nao
+ *  existe oferece cria-lo ali mesmo, em vez de obrigar a sair para outro
+ *  cadastro so para poder terminar este. */
+function combobox(opcoes, valor, aoEscolher, vazio, criar) {
   const raiz = el("div", "cbx");
   const trigger = el("button", "cbx-trigger");
   trigger.type = "button";
@@ -2389,7 +2396,9 @@ function combobox(opcoes, valor, aoEscolher, vazio) {
       (o.rotulo + " " + (o.sub || "")).toLowerCase().includes(q));
     cur = Math.max(0, filtradas.findIndex(o => o.valor === atualVal));
     lista.innerHTML = "";
-    if (!filtradas.length) {
+    const texto = busca.value.trim();
+    const exato = opcoes.some(o => o.rotulo.toLowerCase() === texto.toLowerCase());
+    if (!filtradas.length && !(criar && texto)) {
       lista.append(el("div", "cbx-vazio", "Nada encontrado."));
       return;
     }
@@ -2411,6 +2420,27 @@ function combobox(opcoes, valor, aoEscolher, vazio) {
       });
       lista.append(b);
     });
+
+    if (criar && texto && !exato) {
+      const b = el("button", "cbx-item cbx-criar");
+      b.type = "button";
+      const w = el("span");
+      w.append(el("span", "mais", "+"), document.createTextNode(" Criar "));
+      w.append(el("b", null, "“" + texto + "”"));
+      b.append(w);
+      b.addEventListener("click", ev => {
+        ev.stopPropagation();
+        const v = criar(texto);
+        if (!v) return;
+        opcoes.push({ valor: v, rotulo: texto });
+        opcoes.sort((x, y) => x.rotulo.localeCompare(y.rotulo));
+        atualVal = v;
+        pinta();
+        fechaPop();
+        aoEscolher(v);
+      });
+      lista.append(b);
+    }
   };
 
   const abrePop = () => {
@@ -2440,12 +2470,19 @@ function combobox(opcoes, valor, aoEscolher, vazio) {
       cur = Math.max(0, Math.min(filtradas.length - 1, cur + (ev.key === "ArrowDown" ? 1 : -1)));
       [...lista.children].forEach((b, i) => b.classList.toggle("cur", i === cur));
       lista.children[cur] && lista.children[cur].scrollIntoView({ block: "nearest" });
-    } else if (ev.key === "Enter" && filtradas[cur]) {
+    } else if (ev.key === "Enter") {
       ev.preventDefault();
-      atualVal = filtradas[cur].valor;
-      pinta();
-      fechaPop();
-      aoEscolher(atualVal);
+      const criarBtn = lista.querySelector(".cbx-criar");
+      // Sem nada filtrado, Enter cria -- que e o que a pessoa quis ao digitar
+      // um nome que a lista nao tem.
+      if (filtradas[cur] && !(criarBtn && !filtradas.length)) {
+        atualVal = filtradas[cur].valor;
+        pinta();
+        fechaPop();
+        aoEscolher(atualVal);
+      } else if (criarBtn) {
+        criarBtn.click();
+      }
     }
   });
 
@@ -2540,25 +2577,30 @@ function abrirNovoRegistro() {
       + "ficaram sem como decidir."));
 
     // ── Responsável ──
+    // Lista propria, semeada com a equipe do sistema. Quem atende nem sempre
+    // tem conta: o nome digitado entra no cadastro e passa a aparecer na lista
+    // -- sem isso, o registro travaria esperando alguem criar o usuario antes.
     // O event store guarda o ator de cada gravacao; hoje ele vem do JWT, mas o
     // registro pode ser digitado por quem nao atendeu. Este campo separa quem
     // lancou de quem estava com o paciente.
-    const equipe = (OP.usuarios || []);
-    let noResp;
-    if (equipe.length) {
-      noResp = combobox(
-        equipe.map(u => ({ valor: u.email, rotulo: u.nome, sub: u.email })),
-        estado.responsavel, v => { estado.responsavel = v; }, "Buscar profissional…");
-    } else {
-      noResp = document.createElement("input");
-      noResp.type = "text";
-      noResp.placeholder = "Nome do profissional";
-      noResp.value = estado.responsavel;
-      noResp.addEventListener("input", () => { estado.responsavel = noResp.value; });
+    if (!OP.profissionais) {
+      OP.profissionais = (OP.usuarios || []).map(u => ({ nome: u.nome, email: u.email }));
     }
+    const noResp = combobox(
+      OP.profissionais.map(x => ({ valor: x.nome, rotulo: x.nome, sub: x.email || "cadastrado aqui" })),
+      estado.responsavel,
+      v => { estado.responsavel = v; },
+      "Buscar ou digitar o nome…",
+      texto => {
+        OP.profissionais.push({ nome: texto, email: "" });
+        OP.profissionais.sort((a, b) => a.nome.localeCompare(b.nome));
+        toast("Profissional cadastrado", texto + " — passa a aparecer na lista.");
+        return texto;
+      });
     campo("Profissional responsável", noResp, true);
     f.append(el("div", "dica",
-      "Quem inseriu o registro. Fica no event store como ator da gravação."));
+      "Quem inseriu o registro, gravado como ator no event store. "
+      + "Se o nome não estiver na lista, digite e crie ali mesmo."));
 
     // ── Anexo ──
     const cx = el("div", "fld");
@@ -2633,7 +2675,7 @@ function abrirNovoRegistro() {
       toast("Registro montado",
             estado.card + "/" + estado.sub + " · " + nome + " · " + dbr(estado.data)
             + (estado.anexo ? " · anexo " + estado.anexo.nome : "")
-            + " · por " + ((equipe.find(u => u.email === estado.responsavel) || {}).nome || estado.responsavel)
+            + " · por " + estado.responsavel
             + " — o protótipo não grava.");
     });
     const cancelar = el("button", "btn", "Cancelar");
