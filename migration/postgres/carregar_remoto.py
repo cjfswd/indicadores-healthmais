@@ -32,6 +32,40 @@ def mascarar(uri: str) -> str:
     return urlunsplit(p)
 
 
+def explicar_falha(erro: Exception, uri: str) -> int:
+    """Traduz o erro de conexao para a causa provavel.
+
+    O psycopg levanta com `with_traceback(None)`, entao um traceback cru perde
+    justamente a linha que importa. Cada uma destas causas pede uma acao
+    diferente, e confundi-las custa tempo.
+    """
+    msg = str(erro).strip()
+    p = urlsplit(uri)
+    print(f"\nNAO CONECTOU em {p.hostname}:{p.port or 5432}")
+    print(f"  {msg.splitlines()[0] if msg else type(erro).__name__}")
+
+    baixo = msg.lower()
+    if "timeout" in baixo or "timed out" in baixo:
+        print("\n  A porta nao respondeu. Provavelmente:")
+        print("   - a porta publica nao esta ligada no Coolify; ou")
+        print("   - o Coolify publicou em OUTRA porta (raramente e a 5432).")
+        print("     Use o numero que a interface mostra.")
+    elif "authentication" in baixo or "senha" in baixo or "password" in baixo:
+        print("\n  A porta respondeu, mas a senha foi recusada.")
+        print("   Nao copie a senha: no terminal do container, use")
+        print('   echo "$POSTGRES_PASSWORD" e confira o tamanho.')
+    elif "pg_hba" in baixo:
+        print("\n  O servidor respondeu e RECUSOU a origem.")
+        print("   O Postgres aceita a conexao so de dentro da rede dele.")
+        print("   Publicar a porta nao muda o pg_hba.conf.")
+    elif "does not exist" in baixo:
+        print("\n  Conectou, mas o banco do fim da URI nao existe.")
+    elif "refused" in baixo or "recusou" in baixo:
+        print("\n  Conexao recusada: ha rede ate a maquina, mas nada ouvindo")
+        print("   nessa porta. Confira o numero da porta publica.")
+    return 1
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:]]
     uri = os.getenv("POSTGRES_URI", "").strip()
@@ -52,10 +86,15 @@ def main() -> int:
     print(f"destino : {mascarar(uri)}  (schema {schema})")
     print(f"carga   : {arquivo}  ({len(sql):,} bytes)".replace(",", "."))
 
+    try:
+        conexao = psycopg.connect(uri, connect_timeout=15, autocommit=True)
+    except psycopg.OperationalError as e:
+        return explicar_falha(e, uri)
+
     # autocommit para o BEGIN/COMMIT de dentro do data.sql ser o que manda.
     # Sem isto o psycopg abre a propria transacao, o BEGIN do arquivo vira
     # aviso de transacao aninhada e fica ambiguo quem controla o rollback.
-    with psycopg.connect(uri, connect_timeout=15, autocommit=True) as conn:
+    with conexao as conn:
         with conn.cursor() as cur:
             cur.execute(f"SET search_path TO {schema}")
             cur.execute("SELECT to_regclass('patients') IS NOT NULL")
