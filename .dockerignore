@@ -1,0 +1,39 @@
+# O contexto de build do frontend passou a ser a raiz do repositorio, para a
+# imagem poder copiar o painel de docs/. Sem esta lista o Docker mandaria o
+# repositorio inteiro para o daemon -- .venv e node_modules incluidos.
+
+.git/
+.github/
+.claude/
+
+# Dependencias e saidas de build
+node_modules/
+**/node_modules/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+dist/
+frontend/dist/
+build/
+
+# Dado de paciente: nunca entra em imagem nenhuma.
+**/dados.json
+**/data.sql
+export-*/
+*.csv
+*.xlsx
+
+# Segredos e ambiente
+.env
+.env.*
+REAL_COOLIFY_ENV.txt
+
+# Nada disto e usado no build
+backend/
+migration/
+docs/novo-modelo/exportacoes/
+docs/novo-modelo/saidas/
+docs/novo-modelo/documento-base/
+*.md
+*.log
