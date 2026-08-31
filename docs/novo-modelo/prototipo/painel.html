@@ -159,6 +159,10 @@
     font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
     font-family:"IBM Plex Mono", monospace;
   }
+  /* A fonte ao vivo falhou: o dado pode estar velho. Cor de alerta, nao de
+     erro -- a tela continua util, so nao esta ao vivo. */
+  .mirror.falha { border-color:var(--sev-2); color:var(--sev-2); margin-left:8px;
+    text-transform:none; letter-spacing:.02em; font-size:11px; }
 
   .split {
     margin:22px 0 0; display:grid; gap:1px; grid-template-columns:repeat(auto-fit, minmax(168px,1fr));
@@ -3228,15 +3232,62 @@ $("#mgExport").addEventListener("click", () => {
 // lado. A API roda as mesmas consultas do consultas_painel.sql que geram esse
 // arquivo, entao a tela nao distingue as duas fontes -- e por isso a troca
 // nao precisa mexer em nenhuma pagina.
-function buscarDados() {
+// De onde os dados vieram e, se deu errado, por que. Cair calado nos dados de
+// exemplo e o pior desfecho possivel: numero de exemplo tem a mesma cara de
+// numero real, e quem olha decide em cima dele.
+const FONTE = { origem: null, aviso: null, detalhe: "" };
+
+const MOTIVOS = {
+  401: ["Sessão expirada. Entre de novo.", "sessao"],
+  403: ["Sua conta não tem acesso a estes dados.", "acesso"],
+  503: ["O servidor está sem Postgres configurado (POSTGRES_URI).", "config"],
+};
+
+async function buscarDados() {
   const s = (typeof lerSessao === "function") ? lerSessao() : null;
-  const doArquivo = () => fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject());
-  if (!s || !s.token) return doArquivo();
-  return fetch(AUTH.api + "/painel/dados", { headers: { Authorization: "Bearer " + s.token } })
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
-    // Cair no arquivo e proposital: durante a migracao o Postgres pode nao
-    // estar configurado (503) e a tela continua util com o que ha ao lado.
-    .catch(() => doArquivo());
+
+  const doArquivo = async (avisoSeFaltar) => {
+    const r = await fetch("dados.json");
+    if (!r.ok) {
+      FONTE.origem = "exemplo";
+      FONTE.aviso = avisoSeFaltar || "Sem fonte de dados: a tela mostra exemplos.";
+      throw new Error("sem dados.json");
+    }
+    FONTE.origem = FONTE.origem || "arquivo";
+    return r.json();
+  };
+
+  if (!s || !s.token) return doArquivo("Entre para ver os dados reais.");
+
+  let resposta;
+  try {
+    resposta = await fetch(AUTH.api + "/painel/dados",
+                           { headers: { Authorization: "Bearer " + s.token } });
+  } catch (e) {
+    FONTE.origem = "arquivo";
+    FONTE.aviso = "Não foi possível falar com o servidor.";
+    return doArquivo(FONTE.aviso);
+  }
+
+  if (resposta.ok) {
+    FONTE.origem = "api";
+    return resposta.json();
+  }
+
+  const [texto, tipo] = MOTIVOS[resposta.status] ||
+        ["O servidor respondeu " + resposta.status + ".", "erro"];
+  FONTE.origem = "arquivo";
+  FONTE.aviso = texto;
+  FONTE.detalhe = tipo;
+
+  // Token vencido ou revogado: manter a sessao gravada faria o painel tentar
+  // de novo a cada carga e mostrar exemplo para alguem que se ve logado.
+  if (resposta.status === 401) {
+    try { localStorage.removeItem(AUTH.chave); } catch (e) {}
+    if (typeof mostrarLogin === "function") mostrarLogin();
+    if (typeof avisar === "function") avisar(texto, "erro");
+  }
+  return doArquivo(texto);
 }
 
 // Adiado de proposito: AUTH e um `const` declarado no bloco de login, mais
@@ -3250,12 +3301,26 @@ Promise.resolve().then(buscarDados).then(d => {
   btnMigracao.querySelector(".ct").textContent = String(mgDados.length);
   mgMontarFiltros();
   if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+  // Deu certo, mas nao pela API: vale dizer, porque o dado pode estar velho.
+  if (FONTE.aviso) contarFalhaDeFonte();
 }).catch(() => {
   mgDados = MG_EXEMPLO;
   btnMigracao.querySelector(".ct").textContent = String(MG_EXEMPLO.length);
   mgMontarFiltros();
   if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+  contarFalhaDeFonte();
 });
+
+function contarFalhaDeFonte() {
+  if (!FONTE.aviso) return;
+  // O 401 ja abriu a tela de login com a mensagem la dentro; um toast por
+  // cima seria a mesma informacao duas vezes.
+  if (FONTE.detalhe === "sessao") return;
+  if (typeof toast === "function") {
+    toast(FONTE.origem === "exemplo" ? "Mostrando exemplos" : "Fonte de dados",
+          FONTE.aviso);
+  }
+}
 
 // ═══ Operação — telas sobre o dump ════════════════════════════
 // Cada item do menu deixa de ser só descricao: ganha KPIs, filtros e tabela
@@ -3827,9 +3892,16 @@ var abrirPaginaOp = function (chave) {
 
   const aviso = $("#opAviso");
   aviso.innerHTML = "";
+  // O aviso diz a origem, e quando ha falha diz a falha -- nao "sem dado".
+  // Saber que a sessao venceu e acionavel; "pagina sem dado" nao e.
   aviso.append(el("span", "mirror", OP.__real
-    ? "Dados reais · dump de " + (OP.fonte || "produção")
-    : "Sem dados.json ao lado · página sem dado"));
+    ? "Dados reais · " + (FONTE.origem === "api" ? "Postgres, ao vivo"
+                                                 : (OP.fonte || "arquivo"))
+    : (FONTE.aviso || "Sem dados.json ao lado · página sem dado")));
+  // Dado real vindo do arquivo porque a fonte ao vivo falhou continua sendo
+  // dado real -- mas pode estar velho, e omitir o motivo faz a tela parecer
+  // saudavel. O toast some; este aviso fica.
+  if (OP.__real && FONTE.aviso) aviso.append(el("span", "mirror falha", FONTE.aviso));
 
   if (ESPECIAIS[chave]) ESPECIAIS[chave]();
   else if (TELAS[chave]) opRender(chave);
