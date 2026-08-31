@@ -60,9 +60,20 @@ def main() -> int:
             cur.execute(f"SET search_path TO {schema}")
             cur.execute("SELECT to_regclass('patients') IS NOT NULL")
             if not cur.fetchone()[0]:
-                print(f"\nO schema '{schema}' nao tem as tabelas. "
-                      "Rode a Parte 3 (001_base.sql) antes desta carga.")
-                return 1
+                # Aplica a migracao aqui mesmo: ela e idempotente e
+                # transacional, e assim uma unica janela de porta aberta
+                # resolve schema e carga. O arquivo esta ao lado deste script.
+                mig = Path(__file__).parent / "migracoes" / "001_base.sql"
+                if not mig.is_file():
+                    print(f"\nO schema '{schema}' esta vazio e nao achei {mig}.")
+                    return 1
+                print(f"schema '{schema}' vazio -- aplicando 001_base.sql")
+                # `\set` e comando do psql, nao SQL: o servidor recusa.
+                ddl = "\n".join(l for l in mig.read_text(encoding="utf-8").splitlines()
+                                if not l.lstrip().startswith("\\set"))
+                cur.execute(ddl)
+                cur.execute(f"SET search_path TO {schema}")
+                print("  migracao aplicada")
             cur.execute("SELECT count(*) FROM patients")
             ja_tem = cur.fetchone()[0]
             if ja_tem:
