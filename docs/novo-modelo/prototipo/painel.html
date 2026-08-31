@@ -18,6 +18,10 @@
 <meta name="google-client-id" content="">
 <meta name="allowed-domain" content="healthmaiscuidados.com">
 <meta name="api-base" content="">
+<!-- Caminho dos assets do certificado. O valor abaixo serve o arquivo aberto
+     do repositorio; na imagem do frontend ele vira /certificates/, porque o
+     Vite copia frontend/public/ para a raiz servida. -->
+<meta name="cert-assets" content="../../../frontend/public/certificates/">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4269,7 +4273,8 @@ const certTemRep = () => !!(CERT.repName || CERT.repRole || CERT.repRole2);
 // As imagens vivem em frontend/public/certificates/. Caminho relativo em vez de
 // copia: o certificate-bg.png tem 1 MB e ja esta versionado uma vez. Funciona
 // servido pela raiz do repo e tambem abrindo o arquivo direto do disco.
-const CERT_ASSETS = "../../../frontend/public/certificates/";
+// Vem da meta para o build da imagem poder trocar sem editar o script.
+const CERT_ASSETS = metaTag("cert-assets") || "../../../frontend/public/certificates/";
 const certImg = n => CERT_ASSETS + n;
 
 function folhaBase(classeInner) {

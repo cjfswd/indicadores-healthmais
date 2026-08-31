@@ -23,7 +23,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      # Raiz, e nao ./frontend: a imagem copia tambem o painel, que vive em
+      # docs/. O .dockerignore da raiz limita o que vai para o daemon.
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     expose:
