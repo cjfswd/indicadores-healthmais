@@ -13,9 +13,20 @@
 
 BEGIN;
 
+-- Registro digitado hoje e registro que veio do Mongo nao podem ter a mesma
+-- exigencia: 126 dos 206 eventos do dump nao tem observacao, e 133 dos 142
+-- pacientes nao tem data de admissao. Marcar a origem permite ser estrito com
+-- o dado novo sem falsificar o velho -- e o mesmo recurso que
+-- docs/novo-modelo/README.md propoe.
+CREATE TYPE origem_registro AS ENUM ('sistema', 'legado');
+
+
 CREATE TABLE operators (
     id          char(24) PRIMARY KEY,
-    name        text NOT NULL,
+    -- UNIQUE porque a tela ja recusa nome repetido. Sem isto a regra valeria
+    -- so para quem usa o formulario, e um INSERT pelo psql criaria a segunda
+    -- "Unimed" sem reclamar.
+    name        text NOT NULL UNIQUE,
     created_at  timestamptz,
     updated_at  timestamptz,
     deleted_at  timestamptz
@@ -28,6 +39,20 @@ CREATE TABLE users (
     avatar      text,
     created_at  timestamptz,
     deleted_at  timestamptz
+);
+
+-- Quem atendeu ou lancou o registro. Nao e a mesma coisa que `users`: usuario
+-- e conta de acesso, e quem atende nem sempre tem uma. O formulario cria o
+-- nome na hora, entao a tabela precisa existir antes do evento apontar para
+-- ela.
+CREATE TABLE profissionais (
+    id        bigserial PRIMARY KEY,
+    nome      text NOT NULL UNIQUE,
+    email     text,
+    -- Quem foi criado pelo formulario nao tem conta; quem veio da equipe tem.
+    user_id   char(24) REFERENCES users(id),
+    ativo     boolean NOT NULL DEFAULT true,
+    criado_em timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE indicators (
@@ -65,17 +90,38 @@ CREATE TABLE patients (
     birth_date          date,
     admission_date      date,
     observations        text,
-    -- NOT NULL: os 3 pacientes sem operadora no Mongo caem na categoria
-    -- sintetica "Sem Operadora", criada pelo import.
+    -- NOT NULL: paciente sem operatorId no Mongo e particular, e a operadora
+    -- "Particular" ja existe. Nenhuma categoria sintetica e criada.
     operator_id         char(24) NOT NULL REFERENCES operators(id),
     inactive            boolean NOT NULL DEFAULT false,
     inactivated_at      timestamptz,
     inactivation_reason text,
     updated_by          text,
+    origem_registro     origem_registro NOT NULL DEFAULT 'sistema',
     created_at          timestamptz,
     updated_at          timestamptz,
-    deleted_at          timestamptz
+    deleted_at          timestamptz,
+
+    -- A tela fala "ativo | inativo | excluido"; o banco guarda duas flags.
+    -- Em vez de uma camada de traducao, ou de uma coluna que alguem preenche
+    -- e pode divergir das flags, o proprio banco deriva. Uma fonte de verdade
+    -- so, e a aplicacao le em portugues sem converter nada.
+    -- text, nao enum: converter text para enum e STABLE, e coluna gerada exige
+    -- IMMUTABLE -- o Postgres recusa com "generation expression is not
+    -- immutable". Os tres valores ja sao garantidos pela propria expressao,
+    -- entao o enum nao acrescentaria garantia, so a dor de alterar tipo.
+    situacao text GENERATED ALWAYS AS (
+        CASE WHEN deleted_at IS NOT NULL THEN 'excluido'
+             WHEN inactive THEN 'inativo'
+             ELSE 'ativo' END) STORED,
+
+    -- Data de admissao e obrigatoria no registro novo: sem ela nao ha
+    -- episodio de cuidado. 133 dos 142 do dump nao tem, e entram como legado.
+    CONSTRAINT admissao_no_registro_novo CHECK (
+        origem_registro = 'legado' OR admission_date IS NOT NULL)
 );
+
+CREATE INDEX idx_patients_situacao ON patients (situacao);
 
 CREATE TABLE patient_events (
     id              text PRIMARY KEY,
@@ -85,9 +131,44 @@ CREATE TABLE patient_events (
     occurrence_date date NOT NULL,
     observations    text,
     assistance_type text,
+    -- Quem lancou. O ator do event store vem do login; este e o profissional
+    -- responsavel, que pode ser outra pessoa.
+    profissional_id bigint REFERENCES profissionais(id),
+    origem_registro origem_registro NOT NULL DEFAULT 'sistema',
     position        int NOT NULL,
-    UNIQUE (patient_id, position)
+    UNIQUE (patient_id, position),
+
+    -- A tela exige observacao e responsavel. A regra tem que valer no banco
+    -- tambem, senao vale so para quem usa o formulario. O legado escapa por
+    -- origem_registro: 126 dos 206 eventos do dump nao tem observacao, e
+    -- inventar uma seria pior do que admitir que nao existe.
+    CONSTRAINT observacao_no_registro_novo CHECK (
+        origem_registro = 'legado' OR nullif(btrim(observations), '') IS NOT NULL),
+    CONSTRAINT responsavel_no_registro_novo CHECK (
+        origem_registro = 'legado' OR profissional_id IS NOT NULL)
 );
+
+-- Anexo em tabela propria, nao em coluna do evento: o conteudo chega a 5 MB, e
+-- em coluna todo SELECT do evento arrastaria isso junto mesmo sem precisar.
+CREATE TABLE anexos (
+    id            bigserial PRIMARY KEY,
+    evento_id     text NOT NULL REFERENCES patient_events(id) ON DELETE CASCADE,
+    nome          text NOT NULL,
+    tipo          text,                      -- MIME declarado no upload
+    tamanho       int NOT NULL,
+    conteudo      bytea NOT NULL,
+    enviado_por   bigint REFERENCES profissionais(id),
+    enviado_em    timestamptz NOT NULL DEFAULT now(),
+
+    -- O teto de 5 MB e o mesmo da tela e o que o sistema atual ja descreve.
+    -- No banco tambem, senao um upload por outra via passa.
+    CONSTRAINT anexo_ate_5mb CHECK (octet_length(conteudo) <= 5242880),
+    -- tamanho e o que o cliente informou; conteudo e o que chegou. Divergir
+    -- significa upload truncado.
+    CONSTRAINT tamanho_confere CHECK (tamanho = octet_length(conteudo))
+);
+
+CREATE INDEX idx_anexos_evento ON anexos (evento_id);
 
 CREATE TABLE notifications (
     id         char(24) PRIMARY KEY,

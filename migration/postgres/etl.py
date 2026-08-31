@@ -10,8 +10,9 @@ reportadas no fim da execucao.
   1. Migracao de inativacao. Espelha backend/migrate_inactivation.py. Paciente
      escondido por alta (01/1.1) ou obito (04) volta a ser visivel com
      inactive=true; exclusao manual continua excluida.
-  2. Categoria "Sem Operadora". Os pacientes sem operatorId no Mongo ganham uma
-     operadora sintetica, o que permite operator_id NOT NULL no schema.
+  2. Operadora dos sem vinculo. Paciente sem operatorId no Mongo e particular:
+     recebe a operadora "Particular", que ja existe. Nenhuma categoria sintetica
+     e criada, e operator_id pode ser NOT NULL no schema.
   3. social_assistance_reports. Nao existe collection exportada com esse nome:
      as linhas saem do replay dos eventos no event store.
 
@@ -28,10 +29,8 @@ from pathlib import Path
 
 COLLECTIONS = ["operators", "users", "indicators", "patients", "notifications", "events_store"]
 
-# Operadora sintetica para os pacientes sem vinculo. O id nao colide com
-# ObjectId real e e reconhecivel a olho nu num SELECT.
-SEM_OPERADORA_ID = "000000000000000000000001"
-SEM_OPERADORA_NOME = "Sem Operadora"
+# Paciente sem operatorId e particular: cai na operadora que ja existe.
+OPERADORA_PADRAO = "Particular"
 
 # Mesmas regras de backend/routers/proxy.py::_inactivation_reason.
 REGRAS_INATIVACAO = [
@@ -101,21 +100,47 @@ def materializar_sar(eventos: list[dict]) -> dict:
 def transformar(src: Path):
     docs = {c: ler(src, c) for c in COLLECTIONS}
     linhas = {}
-    stats = {"inativados": 0, "excluidos_mantidos": 0, "sem_operadora": 0, "motivos": {}}
+    stats = {"inativados": 0, "excluidos_mantidos": 0, "particular": 0, "motivos": {}}
 
-    operadoras = [
+    linhas["operators"] = [
         (oid(o["_id"]), o["name"], ts(o.get("createdAt")), ts(o.get("updatedAt")),
          ts(o.get("deletedAt")))
         for o in docs["operators"]
     ]
-    operadoras.append((SEM_OPERADORA_ID, SEM_OPERADORA_NOME, None, None, None))
-    linhas["operators"] = operadoras
+
+    # Sem operadora = particular. Se a operadora sumir do dump, para: inventar
+    # um id aqui esconderia o problema atras de uma FK que resolve.
+    padrao = next((oid(o["_id"]) for o in docs["operators"]
+                   if o.get("name") == OPERADORA_PADRAO), None)
+    if padrao is None:
+        raise SystemExit("operadora '%s' nao existe no dump" % OPERADORA_PADRAO)
 
     linhas["users"] = [
         (oid(u["_id"]), u["name"], u["email"], u.get("avatar"),
          ts(u.get("createdAt")), ts(u.get("deletedAt")))
         for u in docs["users"]
     ]
+
+    # A equipe do sistema entra tambem como profissional. Quem for criado pelo
+    # formulario depois nao tera user_id -- e o caso de quem atende sem ter conta.
+    #
+    # profissionais.nome e UNIQUE porque o formulario identifica a pessoa pelo
+    # nome digitado. `users` nao garante isso: so o email e unico, e o dump tem
+    # duas contas "Enfermagem Healthmais" (enfermagem@ e enfermagem2@). Duas
+    # contas com o mesmo nome sao uma pessoa so aqui; quando ha ambiguidade o
+    # vinculo com a conta fica nulo, porque escolher uma das duas seria chute.
+    por_nome_prof = {}
+    for u in docs["users"]:
+        nome = u["name"]
+        if nome in por_nome_prof:
+            por_nome_prof[nome]["ambiguo"] = True
+            continue
+        por_nome_prof[nome] = {"email": u["email"], "user": oid(u["_id"]), "ambiguo": False}
+    linhas["profissionais"] = [
+        (i, nome, None if v["ambiguo"] else v["email"], None if v["ambiguo"] else v["user"])
+        for i, (nome, v) in enumerate(sorted(por_nome_prof.items()), start=1)
+    ]
+    stats["profissionais_ambiguos"] = sum(1 for v in por_nome_prof.values() if v["ambiguo"])
 
     linhas["indicators"] = [
         (oid(i["_id"]), i["name"], i.get("targetType"), i.get("targetDirection"),
@@ -179,14 +204,17 @@ def transformar(src: Path):
 
         operadora = p.get("operatorId")
         if not operadora:
-            operadora = SEM_OPERADORA_ID
-            stats["sem_operadora"] += 1
+            operadora = padrao
+            stats["particular"] += 1
 
         pacientes.append((
             pid, p["name"], data(p.get("birthDate")), data(p.get("admissionDate")),
             p.get("observations"), operadora,
             1 if inativo else 0, inativado_em, motivo, p.get("updatedBy"),
             ts(p.get("createdAt")), ts(p.get("updatedAt")), excluido_em,
+            # Tudo que vem do dump e legado: 133 destes nao tem data de
+            # admissao, e o CHECK do registro novo os recusaria.
+            "legado",
         ))
 
         for pos, e in enumerate(p.get("events") or []):
@@ -199,6 +227,9 @@ def transformar(src: Path):
                 e["_id"], pid, ind_id, por_nome.get((nome_ind, nome_sub)),
                 data(e.get("occurrenceDate")), e.get("observations"),
                 e.get("assistanceType"), pos,
+                # 126 dos 206 nao tem observacao e nenhum tem responsavel:
+                # sao legado, e os CHECK do registro novo nao se aplicam.
+                "legado",
             ))
     linhas["patients"] = pacientes
     linhas["patient_events"] = eventos
@@ -240,56 +271,120 @@ def transformar(src: Path):
 
 # --- Validacao em memoria ---------------------------------------------------
 
-ORDEM = ["operators", "users", "indicators", "subindicators",
+ORDEM = ["operators", "users", "profissionais", "indicators", "subindicators",
          "patients", "patient_events", "notifications",
          "social_assistance_reports", "events_store"]
 
-COLUNAS = {
-    "operators": 5, "users": 6, "indicators": 10, "subindicators": 7,
-    "patients": 13, "patient_events": 8, "notifications": 9,
-    "social_assistance_reports": 13, "events_store": 8,
+# Lista explicita por tabela. patients.situacao e GENERATED ALWAYS: um INSERT
+# posicional tentaria preenche-la e o Postgres recusa.
+COLS = {
+    "operators": "id, name, created_at, updated_at, deleted_at",
+    "users": "id, name, email, avatar, created_at, deleted_at",
+    "profissionais": "id, nome, email, user_id",
+    "indicators": ("id, name, target_type, target_direction, target_value, "
+                   "comparison_interval, observations, created_at, updated_at, deleted_at"),
+    "subindicators": ("id, indicator_id, position, name, target_type, "
+                      "target_direction, target_value"),
+    "patients": ("id, name, birth_date, admission_date, observations, operator_id, "
+                 "inactive, inactivated_at, inactivation_reason, updated_by, "
+                 "created_at, updated_at, deleted_at, origem_registro"),
+    "patient_events": ("id, patient_id, indicator_id, subindicator_id, occurrence_date, "
+                       "observations, assistance_type, position, origem_registro"),
+    "notifications": ("id, title, message, link, type, is_read, created_at, "
+                      "updated_at, deleted_at"),
+    "social_assistance_reports": ("id, patient_name_raw, linked_patient_id, "
+                                  "linked_patient_name, linked_at, occurrence_date, "
+                                  "indicator_id, subindicator_id, reporter_name, "
+                                  "reporter_contact, observations, status, updated_by"),
+    "events_store": ("id, stream_id, stream_type, event_type, version, data, "
+                     "actor, \"timestamp\""),
 }
 
-
-def ddl_sqlite(schema: str) -> str:
-    """schema.sql e a unica fonte de verdade; aqui so cai o que o SQLite nao aceita."""
-    return schema.replace("bigserial", "bigint")
+COLUNAS = {k: len(v.split(",")) for k, v in COLS.items()}
 
 
 def validar(linhas: dict, stats: dict, schema: str) -> None:
-    con = sqlite3.connect(":memory:")
-    con.execute("PRAGMA foreign_keys = ON")
-    con.executescript(ddl_sqlite(schema))
-    for tabela in ORDEM:
-        marcas = ",".join("?" * COLUNAS[tabela])
-        con.executemany("INSERT INTO " + tabela + " VALUES (" + marcas + ")", linhas[tabela])
-    con.commit()
+    """Confere o modelo em Python puro, sem banco.
 
-    print("carga em memoria (SQLite, FK ligada):")
-    for tabela in ORDEM:
-        n = con.execute("SELECT count(*) FROM " + tabela).fetchone()[0]
-        assert n == len(linhas[tabela]), tabela
-        print("  %-28s %5d" % (tabela, n))
+    Ate aqui isto rodava em SQLite. Nao roda mais: o schema passou a usar
+    ENUM, coluna gerada, btrim e octet_length, e manter um tradutor de dialeto
+    para um alvo que ninguem vai usar so produz falha falsa. Quem valida
+    dialeto agora e pgtest.mjs, que roda Postgres de verdade.
 
-    orfaos = con.execute("PRAGMA foreign_key_check").fetchall()
-    if orfaos:
-        raise SystemExit("FK orfa: " + repr(orfaos[:5]))
+    O que ficou aqui e o que sempre importou: FK resolve, chave unica nao
+    colide, cardinalidade bate com a origem.
+    """
+    def chaves(tabela, i):
+        return [l[i] for l in linhas[tabela]]
+
+    # Chaves primarias unicas
+    for tabela, i in (("operators", 0), ("users", 0), ("profissionais", 0),
+                      ("indicators", 0), ("subindicators", 0), ("patients", 0),
+                      ("patient_events", 0), ("notifications", 0),
+                      ("social_assistance_reports", 0), ("events_store", 0)):
+        ks = chaves(tabela, i)
+        if len(ks) != len(set(ks)):
+            dup = [k for k in set(ks) if ks.count(k) > 1][:3]
+            raise SystemExit("%s: chave repetida %r" % (tabela, dup))
+
+    # UNIQUE declarados no schema
+    for tabela, idxs, rotulo in (("operators", (1,), "operators.name"),
+                                 ("users", (2,), "users.email"),
+                                 ("profissionais", (1,), "profissionais.nome"),
+                                 ("indicators", (1,), "indicators.name"),
+                                 ("subindicators", (1, 3), "subindicators(indicator,nome)"),
+                                 ("patient_events", (1, 7), "patient_events(paciente,posicao)"),
+                                 ("events_store", (1, 2, 4), "events_store(stream,tipo,versao)")):
+        vs = [tuple(l[i] for i in idxs) for l in linhas[tabela]]
+        if len(vs) != len(set(vs)):
+            raise SystemExit("%s: valor repetido" % rotulo)
+
+    # FKs
+    ids = {t: set(chaves(t, 0)) for t in linhas}
+    def fk(tabela, i, alvo, obrigatoria=True):
+        for l in linhas[tabela]:
+            v = l[i]
+            if v is None:
+                if obrigatoria:
+                    raise SystemExit("%s: FK para %s nula" % (tabela, alvo))
+                continue
+            if v not in ids[alvo]:
+                raise SystemExit("%s: FK orfa para %s: %r" % (tabela, alvo, v))
+    fk("subindicators", 1, "indicators")
+    fk("patients", 5, "operators")
+    fk("patient_events", 1, "patients")
+    fk("patient_events", 2, "indicators")
+    fk("patient_events", 3, "subindicators", obrigatoria=False)
+    fk("profissionais", 3, "users", obrigatoria=False)
+    fk("social_assistance_reports", 2, "patients", obrigatoria=False)
+
+    # As colunas emitidas tem que casar com a lista declarada
+    for tabela, cols in COLS.items():
+        n = len(cols.split(","))
+        for l in linhas[tabela]:
+            if len(l) != n:
+                raise SystemExit("%s: %d valores para %d colunas" % (tabela, len(l), n))
+
+    print("modelo conferido (chaves, FKs e cardinalidade):")
+    for tabela in ORDEM:
+        print("  %-28s %5d" % (tabela, len(linhas[tabela])))
 
     print("")
     print("transformacoes aplicadas:")
     print("  inativados (alta/obito):      %d  %s" % (stats["inativados"], stats["motivos"]))
     print("  seguem excluidos (manual):    %d" % stats["excluidos_mantidos"])
-    print("  atribuidos a Sem Operadora:   %d" % stats["sem_operadora"])
+    print("  sem operadora -> Particular:  %d" % stats["particular"])
+    if stats.get("profissionais_ambiguos"):
+        print("  profissionais sem vinculo:    %d  (nome repetido em users)"
+              % stats["profissionais_ambiguos"])
 
-    ativos = con.execute(
-        "SELECT count(*) FROM patients WHERE deleted_at IS NULL AND inactive = 0").fetchone()[0]
-    inativos = con.execute(
-        "SELECT count(*) FROM patients WHERE deleted_at IS NULL AND inactive = 1").fetchone()[0]
-    excluidos = con.execute(
-        "SELECT count(*) FROM patients WHERE deleted_at IS NOT NULL").fetchone()[0]
+    sit = {"ativo": 0, "inativo": 0, "excluido": 0}
+    for l in linhas["patients"]:
+        # Mesma expressao da coluna gerada, para o relatorio nao divergir dela.
+        sit["excluido" if l[12] else "inativo" if l[6] else "ativo"] += 1
     print("")
-    print("pacientes por situacao: ativos=%d inativos=%d excluidos=%d" % (ativos, inativos, excluidos))
-    con.close()
+    print("pacientes por situacao: ativos=%(ativo)d inativos=%(inativo)d excluidos=%(excluido)d" % sit)
+    print("dialeto: rode `node pgtest.mjs <data.sql>` -- Postgres de verdade")
 
 
 # --- Emissao para Postgres --------------------------------------------------
@@ -317,14 +412,18 @@ def emitir(linhas: dict, destino: Path) -> None:
                 if tabela in booleanos:
                     i = booleanos[tabela]
                     vals[i] = bool(vals[i])
-                fh.write("INSERT INTO " + tabela + " VALUES ("
+                # Lista de colunas explicita: patients.situacao e GENERATED e
+                # um INSERT posicional tentaria preenche-la.
+                fh.write("INSERT INTO " + tabela + " (" + COLS[tabela] + ") VALUES ("
                          + ", ".join(literal(v) for v in vals) + ");\n")
             fh.write("\n")
         # subindicators.id e bigserial e a carga traz id explicito, o que nao
         # avanca a sequence: sem isto o primeiro INSERT do app colide com a PK.
         # Verificado no Postgres real (PGlite); o teste SQLite nao alcanca isso.
-        fh.write("SELECT setval('subindicators_id_seq', "
-                 "(SELECT coalesce(max(id), 1) FROM subindicators));\n\n")
+        for tab in ("subindicators", "profissionais"):
+            fh.write("SELECT setval('%s_id_seq', "
+                     "(SELECT coalesce(max(id), 1) FROM %s));\n" % (tab, tab))
+        fh.write("\n")
         fh.write("COMMIT;\n")
 
 
