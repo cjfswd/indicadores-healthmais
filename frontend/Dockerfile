@@ -35,8 +35,16 @@ COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# ─── Painel de indicadores, servido em /painel/ ───
-COPY docs/novo-modelo/prototipo/painel.html /usr/share/nginx/html/painel/index.html
+# ─── Painel de indicadores, na raiz ───
+# A raiz e a URL que o Google ja tem registrada como redirecionamento do
+# OAuth. Servir o painel em /painel/ exigiria registrar outra URI, e ate la o
+# login recusaria com redirect_uri_mismatch -- por isso ele assume /.
+#
+# O app Vue nao sai da imagem: o index dele vira legado.html e os assets
+# continuam servidos, entao voltar atras e renomear um arquivo. Standby, nao
+# remocao.
+RUN mv /usr/share/nginx/html/index.html /usr/share/nginx/html/legado.html
+COPY docs/novo-modelo/prototipo/painel.html /usr/share/nginx/html/index.html
 
 # O ARG precisa ser redeclarado: ele nao atravessa estagios.
 ARG VITE_GOOGLE_CLIENT_ID
@@ -48,8 +56,8 @@ ARG VITE_GOOGLE_CLIENT_ID
 RUN sed -i \
       -e "s|<meta name=\"google-client-id\" content=\"\">|<meta name=\"google-client-id\" content=\"${VITE_GOOGLE_CLIENT_ID}\">|" \
       -e "s|content=\"../../../frontend/public/certificates/\"|content=\"/certificates/\"|" \
-      /usr/share/nginx/html/painel/index.html \
- && grep -q 'name="cert-assets" content="/certificates/"' /usr/share/nginx/html/painel/index.html
+      /usr/share/nginx/html/index.html \
+ && grep -q 'name="cert-assets" content="/certificates/"' /usr/share/nginx/html/index.html
 
 EXPOSE 80
 
