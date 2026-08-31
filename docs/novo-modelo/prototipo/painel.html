@@ -832,9 +832,9 @@
 <div class="app">
   <aside class="side">
     <button class="ws" id="btnEmp" type="button" aria-haspopup="menu">
-      <div class="ws-mark" id="wsMark">H+</div>
+      <div class="ws-mark" id="wsMark">HM</div>
       <div class="ws-txt">
-        <div class="ws-name" id="wsName">Consolidado</div>
+        <div class="ws-name" id="wsName">HealthMais Nova Iguaçu</div>
         <div class="ws-sub">Competência 08/2026</div>
       </div>
       <svg class="ws-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg>
@@ -1734,18 +1734,14 @@ const BIMESTRES = [
 ];
 // ═══ Empresas — escopo do painel ═══════════════════════════
 const EMPRESAS = [
-  // Eram tres unidades HealthMais, duas delas exemplo. Viraram uma: a matriz
-  // real, com o CNPJ que ja estava aqui. A segunda empresa e a Cordiva.
-  //
-  // O consolidado deixou de se chamar "Grupo HealthMais": com duas empresas
-  // no seletor, aquele nome afirmaria que a Cordiva pertence ao grupo, e isso
-  // eu nao sei. "Consolidado" diz o que a opcao faz sem inventar estrutura
-  // societaria.
-  { id: "todas",      sigla: "H+", nome: "Consolidado",            sub: "Todas as empresas" },
+  // Duas empresas, e so elas. Nao ha entrada de consolidado: o seletor lista
+  // empresas, nao visoes. Consequencia a saber -- nao existe mais como ver a
+  // base inteira de uma vez; toda tela mostra a fatia da empresa escolhida.
   { id: "healthmais", sigla: "HM", nome: "HealthMais Nova Iguaçu", sub: "Matriz · CNPJ 56.028.702/0001-38" },
-  { id: "cordiva",    sigla: "CO", nome: "Cordiva",                sub: "Empresa" },
+  { id: "cordiva",    sigla: "CO", nome: "Córdiva",                sub: "Empresa" },
 ];
-const UNIDADES = EMPRESAS.filter(e => e.id !== "todas");
+// Sem consolidado, toda empresa da lista e uma unidade do rateio.
+const UNIDADES = EMPRESAS;
 const empresaPor = id => EMPRESAS.find(e => e.id === id) || EMPRESAS[0];
 
 // No modelo novo cada fato carrega empresa_id. Aqui a unidade sai do nome do
@@ -1763,7 +1759,7 @@ function empresaDe(r) {
   return cacheEmp.get(chave);
 }
 
-const F = { emp: "todas", bim: "all", de: "", ate: "", op: "", mod: "" };
+const F = { emp: EMPRESAS[0].id, bim: "all", de: "", ate: "", op: "", mod: "" };
 try {
   const salva = localStorage.getItem("empresa");
   if (salva && EMPRESAS.some(e => e.id === salva)) F.emp = salva;
@@ -1778,7 +1774,7 @@ const rotuloPeriodo = () => (F.de || F.ate)
 function filtrar(codigo, linhas, ignorarDrill) {
   const c = CAMPOS[codigo], i = inicioF(), f = fimF();
   return linhas.filter(r => {
-    if (F.emp !== "todas" && empresaDe(r) !== F.emp) return false;
+    if (empresaDe(r) !== F.emp) return false;
     const d = c.data(r);
     if (i && d && d < i) return false;
     if (f && d && d > f) return false;
@@ -1811,7 +1807,15 @@ function trocaEmpresa(id) {
   try { localStorage.setItem("empresa", id); } catch (e) {}
   drill = null;
   pintaEmpresa();
-  irPara(atual);
+  // `irPara` so conhece os cards: estando numa tela de Operacao, trocar de
+  // empresa jogava a pessoa de volta no card 06. Trocar o recorte nao deveria
+  // custar o lugar onde ela estava.
+  //
+  // A decisao olha a pagina visivel, e nao `opAtual` -- essa variavel guarda
+  // a ultima tela de Operacao aberta e nunca e zerada, entao sozinha ela
+  // diria "Operacao" mesmo com um card na tela.
+  if (opAtual && !$("#pageLegacy").classList.contains("hidden")) abrirPaginaOp(opAtual);
+  else irPara(atual);
 }
 btnEmp.addEventListener("click", ev => {
   fecharPop();
@@ -3261,14 +3265,25 @@ async function buscarDados() {
   const s = (typeof lerSessao === "function") ? lerSessao() : null;
 
   const doArquivo = async (avisoSeFaltar) => {
-    const r = await fetch("dados.json");
-    if (!r.ok) {
+    const semFonte = () => {
       FONTE.origem = "exemplo";
       FONTE.aviso = avisoSeFaltar || "Sem fonte de dados: a tela mostra exemplos.";
-      throw new Error("sem dados.json");
+      return new Error("sem dados.json");
+    };
+    const r = await fetch("dados.json");
+    if (!r.ok) throw semFonte();
+    // Status 200 nao basta. Servido pelo nginx do frontend, um arquivo
+    // ausente cai no fallback do SPA e volta 200 com o proprio HTML do
+    // painel. Sem esta checagem o `json()` estoura fora daqui, o motivo se
+    // perde, e a tela mostra exemplos calada -- que e o desfecho que este
+    // codigo todo existe para evitar.
+    try {
+      const d = await r.json();
+      FONTE.origem = FONTE.origem || "arquivo";
+      return d;
+    } catch (e) {
+      throw semFonte();
     }
-    FONTE.origem = FONTE.origem || "arquivo";
-    return r.json();
   };
 
   if (!s || !s.token) return doArquivo("Entre para ver os dados reais.");
@@ -3689,6 +3704,12 @@ function opValores(tela, dados, chave, fn) {
 function opFiltrar(chave) {
   const t = TELAS[chave];
   let d = t.fonte() || [];
+  // A empresa escolhida vale aqui tambem, pela mesma regra dos cards. Antes
+  // estas telas ignoravam o seletor, e isso passava porque o padrao era o
+  // consolidado -- tudo aparecia de qualquer jeito. Sem consolidado, ignorar
+  // significaria os cards mostrando a fatia de uma empresa e a lista de
+  // pacientes mostrando as duas, na mesma tela e sem explicacao.
+  d = d.filter(r => empresaDe(r) === F.emp);
   (t.filtros || []).forEach(([campo]) => {
     const v = opFiltro[campo];
     if (v) d = d.filter(r => String(r[campo]) === v);
@@ -4664,7 +4685,7 @@ function cardRecorte() {
   const partes = [rotuloPeriodo()];
   if (F.op) partes.push(F.op);
   if (F.mod) partes.push("modalidade " + F.mod);
-  if (F.emp && F.emp !== "todas") partes.push(empresaPor(F.emp).nome);
+  if (F.emp) partes.push(empresaPor(F.emp).nome);
   return partes.join(" · ");
 }
 
