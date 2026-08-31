@@ -834,7 +834,7 @@
     <button class="ws" id="btnEmp" type="button" aria-haspopup="menu">
       <div class="ws-mark" id="wsMark">H+</div>
       <div class="ws-txt">
-        <div class="ws-name" id="wsName">Grupo HealthMais</div>
+        <div class="ws-name" id="wsName">Consolidado</div>
         <div class="ws-sub">Competência 08/2026</div>
       </div>
       <svg class="ws-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg>
@@ -1734,10 +1734,16 @@ const BIMESTRES = [
 ];
 // ═══ Empresas — escopo do painel ═══════════════════════════
 const EMPRESAS = [
-  { id: "todas",  sigla: "H+", nome: "Grupo HealthMais",       sub: "Consolidado · todas as unidades" },
-  { id: "matriz", sigla: "NI", nome: "HealthMais Nova Iguaçu", sub: "Matriz · CNPJ 56.028.702/0001-38" },
-  { id: "un2",    sigla: "U2", nome: "HealthMais Unidade II",  sub: "Filial · unidade de exemplo" },
-  { id: "un3",    sigla: "U3", nome: "HealthMais Unidade III", sub: "Filial · unidade de exemplo" },
+  // Eram tres unidades HealthMais, duas delas exemplo. Viraram uma: a matriz
+  // real, com o CNPJ que ja estava aqui. A segunda empresa e a Cordiva.
+  //
+  // O consolidado deixou de se chamar "Grupo HealthMais": com duas empresas
+  // no seletor, aquele nome afirmaria que a Cordiva pertence ao grupo, e isso
+  // eu nao sei. "Consolidado" diz o que a opcao faz sem inventar estrutura
+  // societaria.
+  { id: "todas",      sigla: "H+", nome: "Consolidado",            sub: "Todas as empresas" },
+  { id: "healthmais", sigla: "HM", nome: "HealthMais Nova Iguaçu", sub: "Matriz · CNPJ 56.028.702/0001-38" },
+  { id: "cordiva",    sigla: "CO", nome: "Cordiva",                sub: "Empresa" },
 ];
 const UNIDADES = EMPRESAS.filter(e => e.id !== "todas");
 const empresaPor = id => EMPRESAS.find(e => e.id === id) || EMPRESAS[0];
