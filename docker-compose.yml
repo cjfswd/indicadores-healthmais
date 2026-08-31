@@ -31,6 +31,12 @@ services:
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     expose:
       - "80"
+    labels:
+      # O container fica em tres redes: a do projeto, a app-network e a
+      # coolify. Sem esta etiqueta o Traefik escolhe uma sozinho, e se escolher
+      # uma em que ele nao esta, a conexao e aceita e a resposta nunca vem --
+      # gateway timeout sem nada no log de nenhum dos dois lados.
+      - traefik.docker.network=coolify
     depends_on:
       - backend
     networks:
