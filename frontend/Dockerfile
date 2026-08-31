@@ -1,3 +1,8 @@
+# O contexto de build e a RAIZ do repositorio, nao frontend/ -- a imagem
+# precisa copiar tambem o painel, que vive em docs/. Por isso todo COPY daqui
+# leva o prefixo frontend/. O .dockerignore da raiz e o que evita mandar
+# .venv e node_modules para o daemon.
+
 # Build stage
 FROM node:20-alpine AS builder
 
@@ -7,13 +12,13 @@ WORKDIR /app
 RUN npm install -g pnpm@10.17.0
 
 # Copiar arquivos de dependência
-COPY package.json pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
 
 # Instalar dependências
 RUN pnpm install --frozen-lockfile
 
 # Copiar resto do código
-COPY . .
+COPY frontend/ .
 
 # Build args passados pelo Coolify / docker-compose
 ARG VITE_GOOGLE_CLIENT_ID
@@ -26,9 +31,25 @@ RUN pnpm build
 FROM nginx:alpine
 
 RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# ─── Painel de indicadores, servido em /painel/ ───
+COPY docs/novo-modelo/prototipo/painel.html /usr/share/nginx/html/painel/index.html
+
+# O ARG precisa ser redeclarado: ele nao atravessa estagios.
+ARG VITE_GOOGLE_CLIENT_ID
+
+# Duas substituicoes no HTML, ambas em meta tags que existem justamente para
+# isto. O client id liga o login com Google -- sem ele o painel abre em modo
+# prototipo. O caminho dos assets do certificado muda porque o Vite copia
+# frontend/public/ para a raiz servida.
+RUN sed -i \
+      -e "s|<meta name=\"google-client-id\" content=\"\">|<meta name=\"google-client-id\" content=\"${VITE_GOOGLE_CLIENT_ID}\">|" \
+      -e "s|content=\"../../../frontend/public/certificates/\"|content=\"/certificates/\"|" \
+      /usr/share/nginx/html/painel/index.html \
+ && grep -q 'name="cert-assets" content="/certificates/"' /usr/share/nginx/html/painel/index.html
 
 EXPOSE 80
 
