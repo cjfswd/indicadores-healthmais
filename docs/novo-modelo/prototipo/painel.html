@@ -3220,7 +3220,25 @@ $("#mgExport").addEventListener("click", () => {
   toast("CSV exportado", pend ? pend + " caso(s) saíram com DECISAO vazia." : "Todos os casos decididos.");
 });
 
-fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+// Com sessao valida os dados vem do Postgres pela API; sem ela, do arquivo ao
+// lado. A API roda as mesmas consultas do consultas_painel.sql que geram esse
+// arquivo, entao a tela nao distingue as duas fontes -- e por isso a troca
+// nao precisa mexer em nenhuma pagina.
+function buscarDados() {
+  const s = (typeof lerSessao === "function") ? lerSessao() : null;
+  const doArquivo = () => fetch("dados.json").then(r => r.ok ? r.json() : Promise.reject());
+  if (!s || !s.token) return doArquivo();
+  return fetch(AUTH.api + "/painel/dados", { headers: { Authorization: "Bearer " + s.token } })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    // Cair no arquivo e proposital: durante a migracao o Postgres pode nao
+    // estar configurado (503) e a tela continua util com o que ha ao lado.
+    .catch(() => doArquivo());
+}
+
+// Adiado de proposito: AUTH e um `const` declarado no bloco de login, mais
+// abaixo neste mesmo script. Chamar aqui direto cairia na zona morta temporal
+// e quebraria justamente para quem tem sessao.
+Promise.resolve().then(buscarDados).then(d => {
   // Formato antigo: um array só de ambíguos. Novo: objeto com uma chave por página.
   if (!Array.isArray(d)) opAplicarDados(d);
   mgDados = Array.isArray(d) ? d : (d.migracao || []);
