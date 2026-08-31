@@ -1737,7 +1737,9 @@ const EMPRESAS = [
   // Duas empresas, e so elas. Nao ha entrada de consolidado: o seletor lista
   // empresas, nao visoes. Consequencia a saber -- nao existe mais como ver a
   // base inteira de uma vez; toda tela mostra a fatia da empresa escolhida.
-  { id: "healthmais", sigla: "HM", nome: "HealthMais Nova Iguaçu", sub: "Matriz · CNPJ 56.028.702/0001-38" },
+  // "Matriz" saiu: com as filiais unificadas numa empresa so, nao ha mais
+  // matriz de que ser cabeca. Fica o CNPJ, que e o dado real.
+  { id: "healthmais", sigla: "HM", nome: "HealthMais Nova Iguaçu", sub: "CNPJ 56.028.702/0001-38" },
   { id: "cordiva",    sigla: "CO", nome: "Córdiva",                sub: "Empresa" },
 ];
 // Sem consolidado, toda empresa da lista e uma unidade do rateio.
@@ -3322,23 +3324,46 @@ async function buscarDados() {
 // Adiado de proposito: AUTH e um `const` declarado no bloco de login, mais
 // abaixo neste mesmo script. Chamar aqui direto cairia na zona morta temporal
 // e quebraria justamente para quem tem sessao.
-Promise.resolve().then(buscarDados).then(d => {
-  // Formato antigo: um array só de ambíguos. Novo: objeto com uma chave por página.
-  if (!Array.isArray(d)) opAplicarDados(d);
-  mgDados = Array.isArray(d) ? d : (d.migracao || []);
-  mgReal = true;
-  btnMigracao.querySelector(".ct").textContent = String(mgDados.length);
-  mgMontarFiltros();
-  if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
-  // Deu certo, mas nao pela API: vale dizer, porque o dado pode estar velho.
-  if (FONTE.aviso) contarFalhaDeFonte();
-}).catch(() => {
-  mgDados = MG_EXEMPLO;
-  btnMigracao.querySelector(".ct").textContent = String(MG_EXEMPLO.length);
-  mgMontarFiltros();
-  if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
-  contarFalhaDeFonte();
-});
+// Busca a fonte e redesenha a pagina atual. Roda no carregamento e DE NOVO
+// quando o login completa -- sem essa segunda chamada, o painel ficava preso
+// no que carregou antes de haver sessao. No retorno do Google a pagina
+// recarrega e esta funcao corre em paralelo com a gravacao da sessao: a
+// primeira vez quase sempre pega "sem sessao" e cai no exemplo. Chamar de novo
+// apos o login e o que troca o exemplo pelo dado real do banco.
+// Redesenha a pagina que esta na tela, seja ela qual for. Decide pela pagina
+// visivel, nao por variavel de estado -- pelo mesmo motivo da troca de
+// empresa: `opAtual` guarda a ultima tela de Operacao e nunca zera.
+function repintarAtual() {
+  if (!$("#pageMigracao").classList.contains("hidden")) { mgRender(); return; }
+  if (!$("#pageLegacy").classList.contains("hidden")) {
+    if (opAtual) abrirPaginaOp(opAtual);
+    return;
+  }
+  if (typeof atual === "string" && CARDS[atual]) irPara(atual, true);
+}
+
+async function carregarDados() {
+  try {
+    const d = await buscarDados();
+    if (!Array.isArray(d)) opAplicarDados(d);
+    mgDados = Array.isArray(d) ? d : (d.migracao || []);
+    mgReal = true;
+    btnMigracao.querySelector(".ct").textContent = String(mgDados.length);
+    mgMontarFiltros();
+    if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+    if (FONTE.aviso) contarFalhaDeFonte();
+  } catch (e) {
+    mgDados = MG_EXEMPLO;
+    btnMigracao.querySelector(".ct").textContent = String(MG_EXEMPLO.length);
+    mgMontarFiltros();
+    if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
+    contarFalhaDeFonte();
+  }
+  // Redesenha a tela aberta com o dado que acabou de chegar. No primeiro
+  // load nao ha o que redesenhar ainda; apos o login, ha.
+  if (typeof repintarAtual === "function") repintarAtual();
+}
+Promise.resolve().then(carregarDados);
 
 function contarFalhaDeFonte() {
   if (!FONTE.aviso) return;
@@ -4095,6 +4120,9 @@ async function trocarPorSessao(accessToken) {
     avisar("");
     mostrarPainel({ user: corpo.user });
     toast("Sessão iniciada", (corpo.user && corpo.user.name) || "");
+    // Agora HA sessao. Buscar de novo troca o exemplo -- carregado antes do
+    // login, quando buscarDados correu sem token -- pelo dado real do banco.
+    carregarDados();
   } catch (e) {
     avisar("Não foi possível falar com o servidor.", "erro");
   }
