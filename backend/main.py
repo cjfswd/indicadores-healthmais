@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from core.database import init_db, close_db
 from core.postgres import init_pg, close_pg
 from core.seeder import seed_database
-from routers import auth, proxy, notifications
+from routers import auth, proxy, notifications, painel
 
 
 load_dotenv()
@@ -41,6 +41,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(proxy.router)
 app.include_router(notifications.router)
+app.include_router(painel.router)
 
 
 @app.post("/report/generate")
