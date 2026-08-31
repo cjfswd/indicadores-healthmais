@@ -23,6 +23,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -32,9 +33,27 @@ from pathlib import Path
 CRU = "https://raw.githubusercontent.com/cjfswd/indicadores-healthmais/main/migration/postgres/"
 PRECISA = ["etl.py", "schema.sql"]
 
-ESPERADO_CARDS = {"01": 28, "02": 13, "03": 11, "04": 3, "05": 24,
-                  "06": 79, "07": 1, "08": 7, "09": 39, "10": 1}
-ESPERADO_SITUACAO = {"ativo": 80, "inativo": 12, "excluido": 50}
+# Fotografia do dump de 28/08. NAO e criterio de aceite: o Mongo e vivo, e uma
+# diferenca aqui costuma ser gente trabalhando, nao defeito. Serve so para
+# dizer o que mudou desde entao.
+REFERENCIA_2608 = {"01": 28, "02": 13, "03": 11, "04": 3, "05": 24,
+                   "06": 79, "07": 1, "08": 7, "09": 39, "10": 1}
+
+
+def contar_por_card(linhas: dict) -> dict:
+    """Eventos por card, contados do que o ETL acabou de gerar.
+
+    Esta e a unica referencia valida para conferir a carga: o Postgres tem que
+    conter exatamente o que saiu do Mongo agora. Comparar com numeros fixos de
+    um dump antigo acusa como falha o sistema estar sendo usado.
+    """
+    nome = {t[0]: t[1] for t in linhas["indicators"]}
+    cards = {}
+    for ev in linhas["patient_events"]:
+        achado = re.match(r"^\s*(\d+)", nome.get(ev[2], ""))
+        if achado:
+            cards[achado.group(1)] = cards.get(achado.group(1), 0) + 1
+    return cards
 
 
 def baixar(destino: Path) -> None:
@@ -86,7 +105,7 @@ def despejar_mongo(destino: Path) -> dict:
     return contagem
 
 
-def carregar(uri: str, schema: str, sql: str) -> int:
+def carregar(uri: str, schema: str, sql: str, linhas: dict) -> int:
     import psycopg
 
     with psycopg.connect(uri, connect_timeout=15, autocommit=True) as conn:
@@ -106,31 +125,46 @@ def carregar(uri: str, schema: str, sql: str) -> int:
             cur.execute(sql)
 
             falhas = []
+            # 1. Toda linha gerada tem que estar la. E o criterio de aceite.
+            for tabela, geradas in sorted(linhas.items()):
+                cur.execute(f"SELECT count(*) FROM {tabela}")
+                no_banco = cur.fetchone()[0]
+                if no_banco != len(geradas):
+                    falhas.append(
+                        f"{tabela}: gerou {len(geradas)}, gravou {no_banco}")
+
             cur.execute(r"""SELECT substring(i.name from '^\s*(\d+)'), count(*)::int
                             FROM patient_events e
                             JOIN indicators i ON i.id = e.indicator_id
                             GROUP BY 1 ORDER BY 1""")
             cards = dict(cur.fetchall())
-            print("  cards  " + "  ".join(
-                f"{c}={cards.get(c, 0)}" for c in sorted(ESPERADO_CARDS)))
-            for c, n in ESPERADO_CARDS.items():
+            da_fonte = contar_por_card(linhas)
+            for c, n in da_fonte.items():
                 if cards.get(c) != n:
-                    falhas.append(f"card {c}: esperado {n}, obtido {cards.get(c)}")
+                    falhas.append(f"card {c}: gerou {n}, gravou {cards.get(c)}")
 
             cur.execute("SELECT situacao, count(*)::int FROM patients GROUP BY 1")
             sit = dict(cur.fetchall())
+            print("  cards  " + "  ".join(
+                f"{c}={cards.get(c, 0)}" for c in sorted(set(cards) | set(da_fonte))))
             print("  situacao  " + "  ".join(f"{k}={v}" for k, v in sorted(sit.items())))
-            for k, n in ESPERADO_SITUACAO.items():
-                if sit.get(k) != n:
-                    falhas.append(f"{k}: esperado {n}, obtido {sit.get(k)}")
 
             if falhas:
                 print()
                 for f in falhas:
-                    print("  DIVERGE " + f)
-                print("\nA carga entrou, mas nao confere com os numeros de 28/08.")
-                print("Se o Mongo mudou desde entao, divergencia e esperada.")
+                    print("  FALHA " + f)
+                print("\nO Postgres nao contem o que o ETL gerou. Isto e defeito.")
                 return 1
+
+            # 2. Diferenca para 28/08: informacao, nao falha.
+            mudou = {c: (REFERENCIA_2608.get(c, 0), n)
+                     for c, n in sorted(da_fonte.items())
+                     if REFERENCIA_2608.get(c, 0) != n}
+            if mudou:
+                print("\n  desde o dump de 28/08:")
+                for c, (antes, agora) in mudou.items():
+                    print(f"    card {c}: {antes} -> {agora}  ({agora - antes:+d})")
+                print("  O Mongo e vivo; isto e o sistema em uso, nao defeito.")
     return 0
 
 
@@ -170,7 +204,7 @@ def main() -> int:
         sql = destino.read_text(encoding="utf-8")
         print(f"\nSQL gerado: {len(sql)} bytes")
 
-        codigo = carregar(uri_pg, schema, sql)
+        codigo = carregar(uri_pg, schema, sql, linhas)
         if codigo == 0:
             print("\ncarga confere com a origem.")
         return codigo
