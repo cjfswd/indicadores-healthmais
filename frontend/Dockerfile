@@ -33,6 +33,11 @@ FROM nginx:alpine
 RUN rm /etc/nginx/conf.d/default.conf
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
+# Roda no boot, depois do script de IPv6 da propria imagem. Deixa o
+# `listen [::]:80` quando ha IPv6 e o remove quando nao ha -- sem isto a linha
+# seria aposta cega: util num container com IPv6, fatal num sem.
+COPY --chmod=0755 frontend/11-remove-ipv6-se-ausente.sh /docker-entrypoint.d/11-remove-ipv6-se-ausente.sh
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # ─── Painel de indicadores, na raiz ───
