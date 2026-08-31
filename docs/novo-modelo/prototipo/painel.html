@@ -8,6 +8,17 @@
   } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
 </script>
 <title>Painel HealthMais</title>
+
+<!-- Configuracao do login. Preenchidas no build da imagem do frontend, a
+     partir das mesmas variaveis que o app Vue ja usa. Vazias, o painel roda
+     como prototipo e o botao Entrar so fecha a tela, como antes.
+     Em dev da para definir sem rebuild pelo console:
+       localStorage.setItem("painel.clientId", "...apps.googleusercontent.com")
+       localStorage.setItem("painel.api", "http://localhost:3000")  -->
+<meta name="google-client-id" content="">
+<meta name="allowed-domain" content="healthmaiscuidados.com">
+<meta name="api-base" content="">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
@@ -487,6 +498,14 @@
   .login .dom { margin-top:16px; font-size:11.5px; color:var(--ink-3);
     border-top:1px solid var(--line); padding-top:14px; }
   .login .dom b { color:var(--ink-2); font-weight:500; font-family:"IBM Plex Mono", monospace; }
+  .login-aviso { margin-top:14px; padding:9px 11px; border-radius:8px; font-size:12.5px;
+    line-height:1.45; text-align:left; border:1px solid var(--line); background:var(--ground);
+    color:var(--ink-2); }
+  .login-aviso[data-tipo="erro"] { border-color:var(--danger); color:var(--danger); }
+  .login-aviso[hidden] { display:none; }
+  .quem { font-size:12.5px; color:var(--ink-3); max-width:190px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .quem[hidden] { display:none; }
 
   /* Certificados — a folha reproduz CertificateSheet/CertificateBackSheet:
      297x210mm (A4 paisagem, como o @page do gerador), fundo, Georgia e o
@@ -832,6 +851,7 @@
       <div class="crumb"><span>Indicadores</span><span class="sep">/</span><b id="crumbNow">—</b></div>
       <div class="spacer"></div>
       <button class="btn btn-ico" id="btnTema" type="button" aria-label="Tema"></button>
+      <span class="quem" id="quem" hidden></span>
       <button class="btn" id="btnSair">Sair</button>
       <button class="btn" id="btnExport">Exportar</button>
       <button class="btn btn-primary" id="btnNovo">Novo registro</button>
@@ -981,6 +1001,7 @@
     <h2>Painel de Indicadores</h2>
     <p>Entre com a conta corporativa para acessar.</p>
     <button class="btn btn-primary" id="btnEntrar">Entrar com Google</button>
+    <div class="login-aviso" id="loginAviso" hidden></div>
     <div class="dom">Acesso restrito ao domínio <b id="loginDominio">healthmaiscuidados.com</b></div>
   </div>
 </div>
@@ -3843,18 +3864,135 @@ function opAplicarDados(d) {
 }
 
 // ═══ Login ════════════════════════════════════════════════════
-// O app real autentica no Google e restringe por dominio (ALLOWED_DOMAIN).
-// Aqui a tela existe para o fluxo ficar completo no prototipo: Sair mostra,
-// Entrar volta. Nao ha autenticacao de verdade e nao deve haver -- e mockup.
+// Mesmo fluxo do app real (frontend/src/views/LoginView.vue): a Google devolve
+// um access_token no hash da URL, o backend troca por um JWT em
+// POST /auth/google, e e o backend quem decide se o dominio vale. A checagem
+// que aparece aqui e so para errar cedo e com mensagem melhor -- seguranca de
+// verdade nao mora no cliente.
+//
+// Sem client id configurado o painel volta a ser prototipo: Entrar apenas
+// fecha a tela. E o que mantem o arquivo utilizavel aberto direto do disco,
+// sem OAuth nenhum, que e como ele foi usado ate agora.
+const metaTag = n => (document.querySelector('meta[name="' + n + '"]') || {}).content || "";
+const doLocal = n => { try { return localStorage.getItem(n) || ""; } catch (e) { return ""; } };
+
+const AUTH = {
+  clientId: doLocal("painel.clientId") || metaTag("google-client-id"),
+  dominio : metaTag("allowed-domain"),
+  api     : doLocal("painel.api") || metaTag("api-base"),   // vazio = mesma origem
+  chave   : "painel.sessao",
+};
+
 const login = $("#login");
+const loginAviso = $("#loginAviso");
+const quem = $("#quem");
+
+if (AUTH.dominio) $("#loginDominio").textContent = AUTH.dominio;
+
+function avisar(texto, tipo) {
+  loginAviso.textContent = texto || "";
+  loginAviso.dataset.tipo = tipo || "info";
+  loginAviso.hidden = !texto;
+}
+
+function lerSessao() {
+  try { return JSON.parse(localStorage.getItem(AUTH.chave) || "null"); }
+  catch (e) { return null; }
+}
+
+function mostrarPainel(s) {
+  login.classList.remove("on");
+  const u = (s && s.user) || null;
+  const nome = u ? (u.name || u.email || "") : "";
+  quem.textContent = nome;
+  quem.title = u ? (u.email || "") : "";
+  quem.hidden = !nome;
+}
+
+function mostrarLogin() {
+  login.classList.add("on");
+  quem.hidden = true;
+}
+
+// `hd` e dica de dominio na tela de escolha de conta: poupa o usuario de
+// escolher a conta errada. Nao e trava -- o filtro que vale roda no backend.
+function irParaGoogle() {
+  const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  u.searchParams.set("client_id", AUTH.clientId);
+  u.searchParams.set("redirect_uri", location.origin + location.pathname);
+  u.searchParams.set("response_type", "token");
+  u.searchParams.set("scope", "email profile");
+  u.searchParams.set("prompt", "select_account");
+  if (AUTH.dominio) u.searchParams.set("hd", AUTH.dominio);
+  location.href = u.toString();
+}
+
+async function trocarPorSessao(accessToken) {
+  avisar("Autenticando…");
+  try {
+    const r = await fetch(AUTH.api + "/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+    const corpo = await r.json().catch(() => ({}));
+    if (!r.ok || !corpo.success) {
+      avisar(corpo.detail || ("Falha na autenticação (" + r.status + ")."), "erro");
+      return;
+    }
+    try { localStorage.setItem(AUTH.chave, JSON.stringify({ token: corpo.token, user: corpo.user })); }
+    catch (e) {}
+    avisar("");
+    mostrarPainel({ user: corpo.user });
+    toast("Sessão iniciada", (corpo.user && corpo.user.name) || "");
+  } catch (e) {
+    avisar("Não foi possível falar com o servidor.", "erro");
+  }
+}
+
+$("#btnEntrar").addEventListener("click", () => {
+  if (!AUTH.clientId) { login.classList.remove("on"); return; }   // prototipo
+  irParaGoogle();
+});
+
 $("#btnSair").addEventListener("click", () => {
   fechar();
-  login.classList.add("on");
+  try { localStorage.removeItem(AUTH.chave); } catch (e) {}
+  mostrarLogin();
 });
-$("#btnEntrar").addEventListener("click", () => login.classList.remove("on"));
+
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && login.classList.contains("on")) login.classList.remove("on");
+  // Sem login real, Esc fecha a tela como antes. Com login real nao fecha:
+  // seria mostrar o painel a quem nao entrou.
+  if (e.key === "Escape" && login.classList.contains("on") && !AUTH.clientId)
+    login.classList.remove("on");
 });
+
+// Volta da Google. O hash sai da URL antes de qualquer outra coisa: token em
+// barra de endereco vaza por historico, por Referer e por print de tela.
+(function iniciarSessao() {
+  const hash = location.hash.slice(1);
+  const limparUrl = () => history.replaceState(null, "", location.pathname + location.search);
+
+  if (hash.indexOf("access_token=") >= 0) {
+    const p = new URLSearchParams(hash);
+    limparUrl();
+    const t = p.get("access_token");
+    if (t) { mostrarLogin(); trocarPorSessao(t); return; }
+  }
+  if (hash.indexOf("error=") >= 0) {
+    const p = new URLSearchParams(hash);
+    limparUrl();
+    mostrarLogin();
+    avisar("A Google recusou: " + (p.get("error_description") || p.get("error")), "erro");
+    return;
+  }
+
+  const s = lerSessao();
+  if (s && s.token) { mostrarPainel(s); return; }
+  // Sem client id o painel abre direto, como prototipo.
+  if (AUTH.clientId) mostrarLogin();
+})();
 
 // ═══ Gráficos ═════════════════════════════════════════════════
 // Serie unica nos dois, de proposito. As cores de status do painel
