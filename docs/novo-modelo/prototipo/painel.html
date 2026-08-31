@@ -500,6 +500,13 @@
   .login-mark { width:44px; height:44px; border-radius:10px; background:var(--accent); color:#fff;
     display:grid; place-items:center; font-size:17px; font-weight:600; margin:0 auto 18px; }
   :root[data-theme="dark"] .login-mark, :root:not([data-theme="light"]) .login-mark { color:#0E141C; }
+  /* A logo entra no lugar do H+ quando o arquivo carrega. O quadrado com as
+     iniciais fica como reserva: se a imagem faltar, a tela nao abre sem marca. */
+  .login-logo { height:52px; width:auto; max-width:200px; object-fit:contain;
+    margin:0 auto 6px; display:block; }
+  /* Os dois precisam da regra explicita: `display` declarado vence o atributo
+     `hidden`, e sem isto a marca reserva aparecia junto com a logo. */
+  .login-logo[hidden], .login-mark[hidden] { display:none; }
   .login h2 { margin:0 0 6px; font-size:19px; letter-spacing:-.02em; font-weight:600; }
   .login p { margin:0 0 22px; font-size:13px; color:var(--ink-3); }
   .login .btn { width:100%; justify-content:center; padding:9px 14px; font-size:13.5px; }
@@ -1005,7 +1012,8 @@
 
 <div class="login" id="login">
   <div class="login-card">
-    <div class="login-mark">H+</div>
+    <div class="login-mark" id="loginMark">H+</div>
+    <img class="login-logo" id="loginLogo" alt="HealthMais" hidden>
     <h2>Painel de Indicadores</h2>
     <p>Entre com a conta corporativa para acessar.</p>
     <button class="btn btn-primary" id="btnEntrar">Entrar com Google</button>
@@ -3983,6 +3991,17 @@ const quem = $("#quem");
 
 if (AUTH.dominio) $("#loginDominio").textContent = AUTH.dominio;
 
+// A logo so substitui o H+ depois de carregar. Trocar antes deixaria um espaco
+// vazio no lugar da marca se o arquivo faltar -- que e o caso quando o painel
+// e aberto direto do disco, fora do caminho servido.
+(function marcaDoLogin() {
+  const img = $("#loginLogo"), mark = $("#loginMark");
+  if (!img || !mark) return;
+  img.addEventListener("load", () => { img.hidden = false; mark.hidden = true; });
+  img.src = (metaTag("cert-assets") || "../../../frontend/public/certificates/")
+            + "healthmais-logo.png";
+})();
+
 function avisar(texto, tipo) {
   loginAviso.textContent = texto || "";
   loginAviso.dataset.tipo = tipo || "info";
@@ -4010,10 +4029,20 @@ function mostrarLogin() {
 
 // `hd` e dica de dominio na tela de escolha de conta: poupa o usuario de
 // escolher a conta errada. Nao e trava -- o filtro que vale roda no backend.
+// Servido na raiz, o painel manda `location.origin` puro -- sem barra final --
+// que e exatamente o que o app Vue mandava (`window.location.origin`) e o que
+// esta registrado no Google. A Google exige correspondencia exata: origin e
+// origin + "/" sao URIs diferentes para ela, e a segunda seria recusada.
+// Fora da raiz (ex.: /painel/) o caminho entra, e ai essa URI precisa estar
+// registrada tambem.
+function voltaPara() {
+  return location.origin + (location.pathname === "/" ? "" : location.pathname);
+}
+
 function irParaGoogle() {
   const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   u.searchParams.set("client_id", AUTH.clientId);
-  u.searchParams.set("redirect_uri", location.origin + location.pathname);
+  u.searchParams.set("redirect_uri", voltaPara());
   u.searchParams.set("response_type", "token");
   u.searchParams.set("scope", "email profile");
   u.searchParams.set("prompt", "select_account");
