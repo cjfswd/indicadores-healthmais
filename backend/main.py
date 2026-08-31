@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 
 from core.database import init_db, close_db
+from core.postgres import init_pg, close_pg
 from core.seeder import seed_database
 from routers import auth, proxy, notifications
 
@@ -21,7 +22,10 @@ PORT = int(os.getenv("PORT", 3000))
 async def lifespan(app: FastAPI):
     db = await init_db()
     await seed_database(db)
+    # Sem POSTGRES_URI isto e no-op: o app segue so no Mongo.
+    await init_pg()
     yield
+    await close_pg()
     await close_db()
 
 app = FastAPI(lifespan=lifespan)

@@ -5,3 +5,6 @@
 *.xlsx
 dados.json
 __pycache__/
+
+# A pagina de Migracao do painel le este arquivo quando servida em localhost.
+dados.json

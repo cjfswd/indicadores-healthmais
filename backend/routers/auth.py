@@ -10,6 +10,19 @@ from core.database import get_db, JSONEncoder
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def dominio_permitido(email: str, dominio: str) -> bool:
+    """A conta pertence ao dominio exigido?
+
+    Dominio vazio libera tudo -- e o comportamento de hoje, mantido para quem
+    subir sem a variavel. Com dominio definido a comparacao e no sufixo
+    "@dominio", nunca `in`: "healthmaiscuidados.com.invasor.net" contem o
+    dominio e nao e ele.
+    """
+    if not dominio:
+        return True
+    return email.strip().lower().endswith("@" + dominio.strip().lower())
+
+
 @router.post("/google")
 async def auth_google(request: Request):
     body = await request.json()
@@ -33,6 +46,23 @@ async def auth_google(request: Request):
 
         if not email:
             raise HTTPException(status_code=400, detail="Token sem email")
+
+        # A Google devolve email_verified=false para alguns tipos de conta.
+        # Sem esta checagem o dominio abaixo poderia ser satisfeito por um
+        # endereco que ninguem provou possuir.
+        if userinfo.get("email_verified") is False:
+            raise HTTPException(status_code=403, detail="E-mail nao verificado")
+
+        # ALLOWED_DOMAIN esta no docker-compose desde sempre e nenhum .py a
+        # lia: qualquer conta Google entrava e era criada como usuario novo.
+        # As 10 contas do banco sao todas do dominio, entao passar a exigir
+        # nao tranca ninguem -- so fecha a porta que ficou aberta.
+        dominio = os.getenv("ALLOWED_DOMAIN", "")
+        if not dominio_permitido(email, dominio):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Acesso restrito ao dominio {dominio}.",
+            )
 
         db = get_db()
         users_col = db.users

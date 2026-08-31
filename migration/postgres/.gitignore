@@ -1,3 +1,6 @@
 data.sql
 export-*/
 node_modules/
+
+# Saida do runner de comparacao
+dados-do-postgres.json

@@ -29,6 +29,41 @@ cd backend
 MONGO_URI="mongodb://localhost:27017" DB_NAME="coringa_db" uvicorn main:app --reload
 ```
 
+## Postgres: ausente por padrão
+
+O app vive no Mongo. O Postgres é o alvo da migração e, enquanto os dois
+coexistem, **não configurar nada é um estado válido** — sem `POSTGRES_URI` o
+backend sobe igual e imprime `[INFO] POSTGRES_URI ausente`.
+
+| Variável | Para que serve |
+| --- | --- |
+| `POSTGRES_URI` | String de conexão. **Sem padrão**: ausente = Postgres desligado. |
+| `POSTGRES_SCHEMA` | Schema onde o painel vive (padrão `painel`). |
+| `POSTGRES_POOL_MAX` | Tamanho máximo do pool (padrão `10`). |
+
+Nenhuma delas tem credencial embutida no `docker-compose.yml`. O `MONGO_URI`
+tem, e é por isso que aquela senha está publicada junto do repositório — o
+padrão não se repete aqui. No Coolify elas entram como variáveis do recurso.
+
+O `search_path` é aplicado em toda conexão do pool, não uma vez no boot. O
+container já tem coisas em `public`, incluindo tabelas de nome igual às nossas
+(`patients`); uma consulta sem qualificação que caísse lá acertaria a tabela
+errada em silêncio.
+
+```bash
+# testa o módulo de conexão contra um Postgres real, sem Docker
+cd migration/postgres
+node servidor_teste.mjs --com-schema &   # Postgres em memória na porta 5433
+python testar_conexao.py
+```
+
+Cobre os três estados que o backend encontra: sem variável, com variável e
+schema ainda não criado, e com o schema aplicado.
+
+> No Windows o `asyncio` usa o `ProactorEventLoop`, e o `psycopg` não roda
+> nele. O módulo detecta e avisa em vez de pendurar dez segundos até o timeout.
+> Em produção (Linux) não acontece.
+
 ## Frontend: dados falsos agora são opt-in
 
 `proxy-client.ts` desviava para `mock-data` sempre que `import.meta.env.DEV`
