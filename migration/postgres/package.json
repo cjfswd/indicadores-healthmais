@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@electric-sql/pglite-socket": "^0.2.11"
+  }
+}
