@@ -12,7 +12,7 @@ services:
       - ALLOWED_DOMAIN=${ALLOWED_DOMAIN:-healthmaiscuidados.com}
       - JWT_SECRET=${JWT_SECRET:-coringa_secret_key}
       # Sem default de proposito: ausente = app segue so no Mongo.
-      - POSTGRES_URI=${POSTGRES_URI}
+      - POSTGRES_URI=${POSTGRES_URI:-}
       - POSTGRES_SCHEMA=${POSTGRES_SCHEMA:-painel}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
