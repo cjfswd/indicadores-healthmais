@@ -28,7 +28,9 @@ await db.exec('SET search_path TO painel;')
 await db.exec(readFileSync(dadosSql, 'utf8'))
 
 // As consultas vivem num .sql proprio para a API poder usar as mesmas.
-const bruto = readFileSync(join(AQUI, 'consultas_painel.sql'), 'utf8')
+// Mora em backend/ para entrar na imagem: a API roda estas mesmas consultas.
+// Copia unica de proposito -- duas divergiriam no primeiro ajuste.
+const bruto = readFileSync(join(AQUI, '..', '..', 'backend', 'consultas_painel.sql'), 'utf8')
 const consultas = {}
 for (const bloco of bruto.split(/^-- @/m).slice(1)) {
   const quebra = bloco.indexOf('\n')
