@@ -44,3 +44,4 @@ docs/novo-modelo/prototipo/dados.json
 
 # Segredos que nao voltam ao versionamento
 backend/*.pem
+/COOLIFY_ENV.txt

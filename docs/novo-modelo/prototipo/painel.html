@@ -268,6 +268,13 @@
   .peek-body { overflow-y:auto; padding:20px 20px 44px; display:flex; flex-direction:column; gap:22px; }
   .peek h2 { margin:0; font-size:20px; letter-spacing:-.02em; font-weight:600; }
   .peek .sub { color:var(--ink-3); font-size:12.5px; margin-top:3px; }
+  /* Barra de acoes do detalhe: editar, excluir, marcar ativo/inativo. */
+  .peek-acoes { display:flex; flex-wrap:wrap; gap:8px; }
+  .peek-acoes .btn { font-size:12.5px; padding:7px 12px; }
+  .btn-perigo { border-color:var(--flag); color:var(--flag); }
+  .btn-perigo:hover { background:var(--flag-soft); }
+  .btn-ok { border-color:var(--done); color:var(--done); }
+  .btn-ok:hover { background:var(--done-soft); }
 
   .props { display:flex; flex-direction:column; gap:1px; }
   .prop { display:grid; grid-template-columns:140px minmax(0,1fr); align-items:center; gap:8px; }
@@ -2167,6 +2174,192 @@ async function pacienteExcluir(p) {
   }
 }
 
+// ── Barra de acoes do detalhe ─────────────────────────────────
+// Editar, excluir e marcar ativo/inativo, no proprio detalhe -- foi o pedido:
+// resolver o registro sem sair da ficha. Cada def e [rotulo, classe, aoClicar].
+function peekAcoes(defs) {
+  const box = el("div", "peek-acoes");
+  defs.filter(Boolean).forEach(([rotulo, classe, aoClicar]) => {
+    const b = el("button", "btn " + (classe || ""), rotulo);
+    b.type = "button";
+    b.addEventListener("click", aoClicar);
+    box.append(b);
+  });
+  return box;
+}
+
+// Marca o paciente ativo <-> inativo. Os campos sao os que o backend le em
+// _situacao: `inactive` decide, com motivo e data juntos. Alta e obito ja
+// inativam sozinhos pelo evento; aqui e a marcacao manual -- hospitalizacao,
+// por exemplo, que hoje nao dispara regra automatica.
+const MOTIVOS_INATIVACAO = ["Hospitalização", "Alta", "Óbito", "A pedido", "Outro"];
+
+function pacienteMarcarSituacao(p, inativar) {
+  if (!inativar) {
+    if (!confirm("Reativar " + p.nome + "?")) return Promise.resolve();
+    return gravarSituacao(p, { inactive: false, inactivationReason: "", inactivatedAt: null },
+                          "Paciente reativado", p.nome);
+  }
+  // Inativar pede motivo: sem ele a lista de inativos fica sem dizer por que,
+  // que e a informacao que a pagina de inativos existe para mostrar.
+  const estado = { motivo: "Hospitalização" };
+  $("#peekId").textContent = (p.id || "").slice(0, 12);
+  const body = $("#peekBody");
+  body.innerHTML = "";
+  const cab = el("div");
+  cab.append(el("h2", null, "Marcar inativo"));
+  cab.append(el("div", "sub", p.nome));
+  body.append(cab);
+  const f = el("div", "form-novo");
+  campoForm(f, "Motivo", combobox(
+    MOTIVOS_INATIVACAO.map(m => ({ valor: m, rotulo: m })),
+    estado.motivo, v => { estado.motivo = v; }, "Motivo"), true);
+  body.append(f);
+  const salvar = el("button", "btn btn-primary", "Confirmar");
+  salvar.addEventListener("click", () => {
+    if (!estado.motivo) { toast("Escolha o motivo", "A inativação precisa de um motivo."); return; }
+    salvar.disabled = true;
+    gravarSituacao(p, {
+      inactive: true,
+      inactivationReason: estado.motivo,
+      inactivatedAt: new Date().toISOString(),
+    }, "Paciente inativado", p.nome + " · " + estado.motivo)
+      .catch(() => { salvar.disabled = false; });
+  });
+  const cancelar = el("button", "btn", "Cancelar");
+  cancelar.addEventListener("click", fechar);
+  const acoes = el("div", "peek-acoes");
+  acoes.append(salvar, cancelar);
+  body.append(acoes);
+  avisoSemSessao(body);
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+  return Promise.resolve();
+}
+
+async function gravarSituacao(p, campos, titulo, detalhe) {
+  try {
+    await apiDb("update", "patients", { id: p.id, data: campos });
+    fechar();
+    await recarregarDados();
+    toast(titulo, detalhe);
+  } catch (err) {
+    toast("Não foi possível gravar", err.message);
+    throw err;
+  }
+}
+
+// Editar e excluir um evento passam pelos __op que o backend ja entende
+// (eventUpdate / eventRemove), gravando no paciente dono do evento.
+async function eventoExcluir(ev) {
+  if (!confirm("Excluir este registro de " + ev.paciente + "?"
+               + "\n\nA exclusão é lógica: o evento sai da lista e continua na trilha.")) return;
+  try {
+    await apiDb("update", "patients", {
+      id: ev.paciente_id,
+      data: { __op: "eventRemove", eventId: ev.id },
+    });
+    fechar();
+    await recarregarDados();
+    toast("Registro excluído", ev.paciente + " · " + (ev.data ? dbr(ev.data) : ""));
+  } catch (err) {
+    toast("Não foi possível excluir", err.message);
+  }
+}
+
+function eventoEditar(ev) {
+  // So os campos que se editam na pratica: data, categoria e observacao. O
+  // resto do evento (anexo, ator) o backend preserva no merge do eventUpdate.
+  const estado = {
+    card: ev.card || ORDEM[0],
+    sub: ev.cod || "",
+    data: ev.data || "",
+    obs: ev.observacoes || "",
+  };
+  $("#peekId").textContent = (ev.id || "").slice(0, 12);
+  const body = $("#peekBody");
+  const desenha = () => {
+    body.innerHTML = "";
+    const cab = el("div");
+    cab.append(el("h2", null, "Editar registro"));
+    cab.append(el("div", "sub", ev.paciente + " · " + ev.operadora));
+    body.append(cab);
+    const f = el("div", "form-novo");
+    campoForm(f, "Card", combobox(
+      ORDEM.map(c => ({ valor: c, rotulo: c + " — " + CARDS[c].nome })),
+      estado.card,
+      v => { estado.card = v; estado.sub = Object.keys(CARDS[v] ? CARDS[v].sub || {} : {})[0] || ""; desenha(); },
+      "Escolha o card"), true);
+    const subs = CARDS[estado.card] ? (CARDS[estado.card].sub || {}) : {};
+    campoForm(f, "Subcategoria", combobox(
+      Object.entries(subs).map(([k, v]) => ({ valor: k, rotulo: k + " " + v })),
+      estado.sub, v => { estado.sub = v; },
+      Object.keys(subs).length ? "Escolha a subcategoria" : "sem subcategoria"), true);
+    const dt = document.createElement("input");
+    dt.type = "date"; dt.value = estado.data;
+    dt.addEventListener("change", () => { estado.data = dt.value; });
+    campoForm(f, "Data da ocorrência", dt, true);
+    const obs = document.createElement("textarea");
+    obs.value = estado.obs;
+    obs.addEventListener("input", () => { estado.obs = obs.value; });
+    campoForm(f, "Observações", obs, true);
+    body.append(f);
+    const salvar = el("button", "btn btn-primary", "Salvar");
+    salvar.addEventListener("click", async () => {
+      const falta = [];
+      if (!estado.sub) falta.push("subcategoria");
+      if (!estado.data) falta.push("data");
+      if (!estado.obs.trim()) falta.push("observações");
+      if (falta.length) { toast("Faltam campos obrigatórios", falta.join(", ") + "."); return; }
+      const card = CARDS[estado.card];
+      salvar.disabled = true;
+      try {
+        await apiDb("update", "patients", {
+          id: ev.paciente_id,
+          data: { __op: "eventUpdate", eventId: ev.id, event: {
+            occurrenceDate: estado.data,
+            indicator: { name: estado.card + " - " + card.nome },
+            subindicator: { name: estado.sub + " - " + card.sub[estado.sub] },
+            observations: estado.obs.trim(),
+            catalogo: CATALOGO_NOVO, card: estado.card, cod: estado.sub,
+          } },
+        });
+        fechar();
+        await recarregarDados();
+        toast("Registro atualizado", ev.paciente + " · " + dbr(estado.data));
+      } catch (err) {
+        salvar.disabled = false;
+        toast("Não foi possível gravar", err.message);
+      }
+    });
+    const cancelar = el("button", "btn", "Cancelar");
+    cancelar.addEventListener("click", fechar);
+    const acoes = el("div", "peek-acoes");
+    acoes.append(salvar, cancelar);
+    body.append(acoes);
+    avisoSemSessao(body);
+  };
+  desenha();
+  peek.classList.add("on");
+  peek.setAttribute("aria-hidden", "false");
+  scrim.classList.add("on");
+}
+
+// Acoes de paciente para o detalhe: editar, excluir, e o par ativo/inativo
+// conforme a situacao atual. Excluido nao recebe toggle -- volta pelo Editar.
+function acoesDePaciente(p) {
+  return peekAcoes([
+    ["Editar", "", () => pacienteForm(p.id)],
+    p.situacao === "ativo"
+      ? ["Marcar inativo", "", () => pacienteMarcarSituacao(p, true)]
+      : p.situacao === "inativo"
+        ? ["Marcar ativo", "btn-ok", () => pacienteMarcarSituacao(p, false)]
+        : null,
+    ["Excluir", "btn-perigo", () => pacienteExcluir(p)],
+  ]);
+}
+
 function operadoraForm(id) {
   const existente = id ? (OP.operadoras || []).find(o => o.id === id) : null;
   const e = existente ? { ...existente } : { id: "", nome: "", criado: null, pacientes: 0 };
@@ -3568,6 +3761,7 @@ function pacienteDetalhe(pid, voltar) {
       g.append(d);
     });
     body.append(g);
+    body.append(acoesDePaciente(p));
     if (p.recuperavel) {
       const a = el("div", "alertbox acc");
       a.style.marginTop = "10px";
@@ -4983,6 +5177,14 @@ function relDetalheEvento(ev, voltar) {
   s2.append(nb);
   body.append(s2);
 
+  // Editar / excluir o proprio registro, sem sair da ficha.
+  if (ev.paciente_id) {
+    body.append(peekAcoes([
+      ["Editar registro", "", () => eventoEditar(ev)],
+      ["Excluir registro", "btn-perigo", () => eventoExcluir(ev)],
+    ]));
+  }
+
   // O paciente do evento, quando o dados.json esta ao lado.
   const pac = (OP.pacientes || []).find(p => p.id === ev.paciente_id);
   if (pac) {
@@ -4998,6 +5200,8 @@ function relDetalheEvento(ev, voltar) {
       p2.append(r);
     });
     s3.append(p2);
+    // Ativo/inativo do paciente aqui embaixo -- foi onde o Israel apontou.
+    s3.append(acoesDePaciente(pac));
     body.append(s3);
   }
 
