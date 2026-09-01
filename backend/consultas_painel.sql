@@ -23,6 +23,7 @@ SELECT p.id,
        o.name AS operadora,
        -- situacao vem da coluna gerada: a regra mora no banco, nao aqui.
        p.situacao,
+       p.empresa,
        coalesce(p.inactivation_reason, '') AS motivo,
        coalesce(to_char(p.birth_date, 'YYYY-MM-DD'), '') AS nascimento,
        coalesce(to_char(p.admission_date, 'YYYY-MM-DD'), '') AS admissao,
@@ -38,7 +39,7 @@ SELECT p.id,
 FROM patients p
 JOIN operators o ON o.id = p.operator_id
 LEFT JOIN patient_events e ON e.patient_id = p.id
-GROUP BY p.id, p.name, o.name, p.situacao, p.inactivation_reason, p.birth_date,
+GROUP BY p.id, p.name, o.name, p.situacao, p.empresa, p.inactivation_reason, p.birth_date,
          p.admission_date, p.observations, p.created_at, p.updated_at,
          p.updated_by, p.inactivated_at, p.deleted_at
 ORDER BY p.name;
@@ -48,12 +49,23 @@ SELECT e.id,
        e.patient_id AS paciente_id,
        p.name AS paciente,
        o.name AS operadora,
+       p.empresa,
        to_char(e.occurrence_date, 'YYYY-MM-DD') AS data,
        -- O codigo do card sai do proprio nome do indicador, como no de-para.
        substring(i.name from '^\s*(\d+)') AS card,
        i.name AS indicador,
        coalesce(s.name, '') AS subindicador,
        coalesce(e.assistance_type, '') AS assistencia,
+       -- Os tres campos abaixo existem para a tela nao ter que adivinhar em
+       -- que catalogo o registro foi feito. O Mongo os guarda no proprio
+       -- evento; aqui eles saem de origem_registro e do codigo do
+       -- subindicador, que e a mesma informacao ja normalizada.
+       CASE WHEN e.origem_registro = 'sistema'
+            THEN 'recategorizacao-2026' ELSE '' END AS catalogo,
+       CASE WHEN e.origem_registro = 'sistema'
+            THEN coalesce(substring(s.name from '^\s*([0-9]+\.[0-9]+)'), '')
+            ELSE '' END AS cod,
+       coalesce(pr.nome, '') AS responsavel,
        regexp_replace(btrim(coalesce(e.observations, '')), '\s+', ' ', 'g') AS observacoes,
        EXISTS (SELECT 1 FROM anexos a WHERE a.evento_id = e.id) AS anexo
 FROM patient_events e
@@ -61,6 +73,7 @@ JOIN patients p ON p.id = e.patient_id
 JOIN operators o ON o.id = p.operator_id
 JOIN indicators i ON i.id = e.indicator_id
 LEFT JOIN subindicators s ON s.id = e.subindicator_id
+LEFT JOIN profissionais pr ON pr.id = e.profissional_id
 ORDER BY e.occurrence_date DESC NULLS LAST, e.id;
 
 -- @auditoria

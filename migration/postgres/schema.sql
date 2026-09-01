@@ -97,6 +97,13 @@ CREATE TABLE patients (
     inactivated_at      timestamptz,
     inactivation_reason text,
     updated_by          text,
+    -- Empresa dona do registro. O painel tem seletor de empresa, e sem esta
+    -- coluna todo cadastro feito com a Cordiva escolhida reaparecia na
+    -- HealthMais -- o registro sumia da tela em que foi criado.
+    -- text com default: a lista de empresas ainda e curta e vive na tela; um
+    -- enum obrigaria migration a cada empresa nova. O default cobre o
+    -- historico, que e todo da HealthMais.
+    empresa             text NOT NULL DEFAULT 'healthmais',
     origem_registro     origem_registro NOT NULL DEFAULT 'sistema',
     created_at          timestamptz,
     updated_at          timestamptz,

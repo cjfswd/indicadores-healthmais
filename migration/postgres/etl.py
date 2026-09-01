@@ -25,7 +25,12 @@ import argparse
 import json
 import sqlite3
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
+# O catalogo da recategorizacao mora num arquivo so, transcrito do PDF.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from catalogo_novo import CARDS as CARDS_NOVOS  # noqa: E402
 
 COLLECTIONS = ["operators", "users", "indicators", "patients", "notifications", "events_store"]
 
@@ -33,10 +38,45 @@ COLLECTIONS = ["operators", "users", "indicators", "patients", "notifications", 
 OPERADORA_PADRAO = "Particular"
 
 # Mesmas regras de backend/routers/proxy.py::_inactivation_reason.
-REGRAS_INATIVACAO = [
+# O catalogo da recategorizacao reaproveita os mesmos prefixos do antigo com
+# outro significado, e as regras antigas casavam por prefixo de texto. Um
+# registro novo de "01 - Movimentacao da Carteira" / "1.1 - Admissao" batia na
+# regra ("01", "1.1", "alta") e inativava o paciente como alta -- no ato de
+# admiti-lo. E o obito novo (1.4) nao inativava ninguem, porque a regra do
+# obito procurava o prefixo "04".
+#
+# Por isso a origem do registro decide qual tabela vale. Registro gravado pelo
+# painel carrega `catalogo`; o historico nao carrega nada e continua no de-para
+# antigo.
+CATALOGO_NOVO = "recategorizacao-2026"
+
+# Catalogo novo: o codigo da saida e explicito, entao a regra le o codigo.
+# 1.5 (internacao prolongada), 1.6 (desligamento) e 1.7 (transferencia) tambem
+# encerram o acompanhamento, mas nao entram aqui de proposito: `alta` e `obito`
+# sao os dois motivos que o resto do sistema sabe tratar (pagina de inativos,
+# reativacao, `recuperavel` da migracao). Fechar por eles exige o desfecho do
+# episodio, que ainda nao existe -- ate la, sao inativacao manual.
+INATIVACAO_POR_CODIGO = {"1.2": "alta", "1.3": "alta", "1.4": "obito"}
+
+REGRAS_INATIVACAO_LEGADO = [
     ("04", None, "obito"),
     ("01", "1.1", "alta"),
 ]
+
+
+def id_indicador_novo(card: str) -> str:
+    """char(24) deterministico para os indicadores do catalogo novo.
+
+    `indicators.id` e char(24) porque veio do ObjectId do Mongo. Os cards da
+    recategorizacao nao nascem no Mongo -- nascem do PDF -- entao precisam de
+    um id proprio, estavel entre execucoes (senao cada carga religaria os
+    eventos a linhas diferentes) e legivel a olho no banco.
+    """
+    return ("catalogo2026card" + card).ljust(24, "0")[:24]
+
+
+def nome_indicador_novo(card: str) -> str:
+    return card + " - " + CARDS_NOVOS[card][0]
 
 
 # --- Leitura do formato do mongoexport --------------------------------------
@@ -55,10 +95,47 @@ def oid(v):
 
 
 def ts(v):
-    """{'$date': '...'} -> str ISO, ou None."""
+    """{'$date': ...} -> str ISO, ou None.
+
+    O mongoexport emite duas formas para a mesma data: `{"$date": "ISO"}` no
+    modo relaxed e `{"$date": {"$numberLong": "ms"}}` no canonical -- e o dump
+    de producao veio no segundo. Tratar so o primeiro fazia o carregador
+    estourar no primeiro paciente.
+    """
     if isinstance(v, dict):
-        return v.get("$date")
+        d = v.get("$date")
+        if isinstance(d, dict):
+            ms = d.get("$numberLong")
+            if ms is None:
+                return None
+            return (datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc)
+                    .isoformat().replace("+00:00", "Z"))
+        return d
     return v or None
+
+
+def num(v, padrao=None):
+    """{'$numberInt': '2'} -> 2.
+
+    O mongoexport canonical embrulha todo numero. Sem desembrulhar, `version` e
+    `target_value` iam dict para colunas numericas -- e a validacao de unicidade
+    de events_store(stream,tipo,versao) levantava "unhashable type: 'dict'"
+    antes mesmo de o INSERT ser tentado.
+    """
+    if isinstance(v, dict):
+        for chave in ("$numberInt", "$numberLong", "$numberDecimal", "$numberDouble"):
+            if chave in v:
+                bruto = v[chave]
+                return float(bruto) if chave in ("$numberDecimal", "$numberDouble") else int(bruto)
+        return padrao
+    if isinstance(v, bool) or v is None:
+        return padrao if v is None else int(v)
+    if isinstance(v, (int, float)):
+        return v
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return padrao
 
 
 def data(v):
@@ -69,9 +146,11 @@ def data(v):
 
 def motivo_inativacao(evento: dict):
     """Alta ou obito? Espelha proxy.py para nao divergir da regra do app."""
+    if evento.get("catalogo") == CATALOGO_NOVO:
+        return INATIVACAO_POR_CODIGO.get(str(evento.get("cod") or ""))
     ind = (evento.get("indicator") or {}).get("name", "")
     sub = (evento.get("subindicator") or {}).get("name", "")
-    for pref_ind, pref_sub, motivo in REGRAS_INATIVACAO:
+    for pref_ind, pref_sub, motivo in REGRAS_INATIVACAO_LEGADO:
         if not ind.startswith(pref_ind):
             continue
         if pref_sub is None or sub.startswith(pref_sub):
@@ -83,7 +162,7 @@ def materializar_sar(eventos: list[dict]) -> dict:
     """Replay dos social_assistance_reports: nao ha collection exportada."""
     estados = {}
     relevantes = [e for e in eventos if e.get("streamType") == "social_assistance_reports"]
-    for e in sorted(relevantes, key=lambda x: (x["streamId"], x["version"])):
+    for e in sorted(relevantes, key=lambda x: (x["streamId"], num(x.get("version"), 0))):
         d = e.get("data") or {}
         # O event store pode guardar operadores mongo; aqui so $set aparece.
         if any(k.startswith("$") for k in d):
@@ -144,10 +223,18 @@ def transformar(src: Path):
 
     linhas["indicators"] = [
         (oid(i["_id"]), i["name"], i.get("targetType"), i.get("targetDirection"),
-         i.get("targetValue"), i.get("comparisonInterval"), i.get("observations"),
+         num(i.get("targetValue")), i.get("comparisonInterval"), i.get("observations"),
          ts(i.get("createdAt")), ts(i.get("updatedAt")), ts(i.get("deletedAt")))
         for i in docs["indicators"]
     ]
+    # Os dez cards da recategorizacao entram sempre, ao lado dos antigos. O
+    # painel ja grava neles: sem estas linhas, `indicator_id` nao resolveria e
+    # a carga abortava no primeiro registro feito depois do corte -- que e
+    # exatamente o registro que nao pode se perder.
+    for card, (nome, _subs, nota) in sorted(CARDS_NOVOS.items()):
+        linhas["indicators"].append(
+            (id_indicador_novo(card), nome_indicador_novo(card),
+             None, None, None, None, nota, None, None, None))
 
     # Subindicadores nao tem _id no Mongo: a chave sintetica e atribuida aqui, e
     # o indice por (indicador, nome) e o que permite religar os eventos depois.
@@ -162,11 +249,23 @@ def transformar(src: Path):
                 raise SystemExit("subindicador duplicado em " + ind["name"] + ": " + s["name"])
             por_nome[chave] = proximo
             subs.append((proximo, ind_id, pos, s["name"], s.get("targetType"),
-                         s.get("targetDirection"), s.get("targetValue")))
+                         s.get("targetDirection"), num(s.get("targetValue"))))
+            proximo += 1
+    for card, (_nome, subcats, _nota) in sorted(CARDS_NOVOS.items()):
+        ind_id = id_indicador_novo(card)
+        for pos, (cod, rotulo) in enumerate(sorted(subcats.items())):
+            chave = (nome_indicador_novo(card), cod + " - " + rotulo)
+            por_nome[chave] = proximo
+            subs.append((proximo, ind_id, pos, cod + " - " + rotulo, None, None, None))
             proximo += 1
     linhas["subindicators"] = subs
 
     ind_por_nome = {i["name"]: oid(i["_id"]) for i in docs["indicators"]}
+    ind_por_nome.update({nome_indicador_novo(c): id_indicador_novo(c)
+                         for c in CARDS_NOVOS})
+    # Nome do profissional -> id, para religar o responsavel do registro novo.
+    prof_por_nome = {nome: i for i, nome, _e, _u in linhas["profissionais"]}
+    proximo_prof = max(prof_por_nome.values(), default=0) + 1
 
     # SOFT_DELETE mais recente por paciente: carrega motivo e data da inativacao.
     soft_delete = {}
@@ -210,6 +309,8 @@ def transformar(src: Path):
         pacientes.append((
             pid, p["name"], data(p.get("birthDate")), data(p.get("admissionDate")),
             p.get("observations"), operadora,
+            # Registro sem empresa e da HealthMais: mesmo default da coluna.
+            p.get("empresa") or "healthmais",
             1 if inativo else 0, inativado_em, motivo, p.get("updatedBy"),
             ts(p.get("createdAt")), ts(p.get("updatedAt")), excluido_em,
             # Tudo que vem do dump e legado: 133 destes nao tem data de
@@ -223,13 +324,32 @@ def transformar(src: Path):
             ind_id = ind_por_nome.get(nome_ind)
             if ind_id is None:
                 raise SystemExit("evento cita indicador inexistente: " + repr(nome_ind))
+            # Registro feito depois do corte: nasce no catalogo novo, tem
+            # observacao e responsavel, e entra como 'sistema' -- os CHECK do
+            # schema valem para ele. O historico continua 'legado': 126 dos 206
+            # nao tem observacao e nenhum tem responsavel, e inventar seria pior
+            # do que admitir que nao existe.
+            novo = e.get("catalogo") == CATALOGO_NOVO
+            prof_id = None
+            if novo:
+                nome_prof = (e.get("responsavel") or "").strip()
+                if nome_prof:
+                    if nome_prof not in prof_por_nome:
+                        # Quem atende nem sempre tem conta: o painel deixa criar
+                        # o profissional na hora, e ele chega aqui so como nome.
+                        prof_por_nome[nome_prof] = proximo_prof
+                        linhas["profissionais"].append(
+                            (proximo_prof, nome_prof, None, None))
+                        proximo_prof += 1
+                    prof_id = prof_por_nome[nome_prof]
+                if prof_id is None or not (e.get("observations") or "").strip():
+                    raise SystemExit(
+                        "registro novo sem observacao ou sem responsavel: " + repr(e["_id"]))
             eventos.append((
                 e["_id"], pid, ind_id, por_nome.get((nome_ind, nome_sub)),
                 data(e.get("occurrenceDate")), e.get("observations"),
-                e.get("assistanceType"), pos,
-                # 126 dos 206 nao tem observacao e nenhum tem responsavel:
-                # sao legado, e os CHECK do registro novo nao se aplicam.
-                "legado",
+                e.get("assistanceType"), prof_id, pos,
+                "sistema" if novo else "legado",
             ))
     linhas["patients"] = pacientes
     linhas["patient_events"] = eventos
@@ -261,7 +381,7 @@ def transformar(src: Path):
     linhas["social_assistance_reports"] = relatorios
 
     linhas["events_store"] = [
-        (oid(e["_id"]), e["streamId"], e["streamType"], e["eventType"], e["version"],
+        (oid(e["_id"]), e["streamId"], e["streamType"], e["eventType"], num(e["version"], 0),
          json.dumps(e.get("data"), ensure_ascii=False), e.get("actor"), ts(e.get("timestamp")))
         for e in docs["events_store"]
     ]
@@ -285,11 +405,12 @@ COLS = {
                    "comparison_interval, observations, created_at, updated_at, deleted_at"),
     "subindicators": ("id, indicator_id, position, name, target_type, "
                       "target_direction, target_value"),
-    "patients": ("id, name, birth_date, admission_date, observations, operator_id, "
+    "patients": ("id, name, birth_date, admission_date, observations, operator_id, empresa, "
                  "inactive, inactivated_at, inactivation_reason, updated_by, "
                  "created_at, updated_at, deleted_at, origem_registro"),
     "patient_events": ("id, patient_id, indicator_id, subindicator_id, occurrence_date, "
-                       "observations, assistance_type, position, origem_registro"),
+                       "observations, assistance_type, profissional_id, position, "
+                       "origem_registro"),
     "notifications": ("id, title, message, link, type, is_read, created_at, "
                       "updated_at, deleted_at"),
     "social_assistance_reports": ("id, patient_name_raw, linked_patient_id, "
@@ -299,6 +420,18 @@ COLS = {
     "events_store": ("id, stream_id, stream_type, event_type, version, data, "
                      "actor, \"timestamp\""),
 }
+
+
+def idx(tabela: str, coluna: str) -> int:
+    """Posicao de uma coluna na tupla da tabela, pelo nome.
+
+    Havia tres lugares com a posicao escrita a mao -- o indice do booleano em
+    `emitir`, a chave unica de patient_events e o relatorio de situacao. Add uma
+    coluna no meio quebrava os tres em silencio: o INSERT mandava 'healthmais'
+    para `inactive` e o Postgres so reclamava do tipo, sem dizer de onde vinha.
+    """
+    return [c.strip() for c in COLS[tabela].split(",")].index(coluna)
+
 
 COLUNAS = {k: len(v.split(",")) for k, v in COLS.items()}
 
@@ -333,7 +466,10 @@ def validar(linhas: dict, stats: dict, schema: str) -> None:
                                  ("profissionais", (1,), "profissionais.nome"),
                                  ("indicators", (1,), "indicators.name"),
                                  ("subindicators", (1, 3), "subindicators(indicator,nome)"),
-                                 ("patient_events", (1, 7), "patient_events(paciente,posicao)"),
+                                 ("patient_events",
+                                  (idx("patient_events", "patient_id"),
+                                   idx("patient_events", "position")),
+                                  "patient_events(paciente,posicao)"),
                                  ("events_store", (1, 2, 4), "events_store(stream,tipo,versao)")):
         vs = [tuple(l[i] for i in idxs) for l in linhas[tabela]]
         if len(vs) != len(set(vs)):
@@ -351,10 +487,13 @@ def validar(linhas: dict, stats: dict, schema: str) -> None:
             if v not in ids[alvo]:
                 raise SystemExit("%s: FK orfa para %s: %r" % (tabela, alvo, v))
     fk("subindicators", 1, "indicators")
-    fk("patients", 5, "operators")
-    fk("patient_events", 1, "patients")
-    fk("patient_events", 2, "indicators")
-    fk("patient_events", 3, "subindicators", obrigatoria=False)
+    fk("patients", idx("patients", "operator_id"), "operators")
+    fk("patient_events", idx("patient_events", "patient_id"), "patients")
+    fk("patient_events", idx("patient_events", "indicator_id"), "indicators")
+    fk("patient_events", idx("patient_events", "subindicator_id"), "subindicators",
+       obrigatoria=False)
+    fk("patient_events", idx("patient_events", "profissional_id"), "profissionais",
+       obrigatoria=False)
     fk("profissionais", 3, "users", obrigatoria=False)
     fk("social_assistance_reports", 2, "patients", obrigatoria=False)
 
@@ -381,7 +520,8 @@ def validar(linhas: dict, stats: dict, schema: str) -> None:
     sit = {"ativo": 0, "inativo": 0, "excluido": 0}
     for l in linhas["patients"]:
         # Mesma expressao da coluna gerada, para o relatorio nao divergir dela.
-        sit["excluido" if l[12] else "inativo" if l[6] else "ativo"] += 1
+        sit["excluido" if l[idx("patients", "deleted_at")]
+            else "inativo" if l[idx("patients", "inactive")] else "ativo"] += 1
     print("")
     print("pacientes por situacao: ativos=%(ativo)d inativos=%(inativo)d excluidos=%(excluido)d" % sit)
     print("dialeto: rode `node pgtest.mjs <data.sql>` -- Postgres de verdade")
@@ -400,7 +540,8 @@ def literal(v) -> str:
 
 
 def emitir(linhas: dict, destino: Path) -> None:
-    booleanos = {"patients": 6, "notifications": 5}
+    booleanos = {"patients": idx("patients", "inactive"),
+                 "notifications": idx("notifications", "is_read")}
     with destino.open("w", encoding="utf-8") as fh:
         fh.write("BEGIN;\n\n")
         for tabela in ORDEM:
