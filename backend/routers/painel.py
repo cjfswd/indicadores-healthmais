@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 from core import painel_mongo, postgres
+from core.seguranca import jwt_secret as _jwt_secret
 from core.database import get_db
 
 router = APIRouter(prefix="/painel", tags=["painel"])
@@ -42,7 +43,7 @@ def exigir_sessao(authorization: str = Header(default="")) -> dict:
     try:
         return jwt.decode(
             authorization[7:],
-            os.getenv("JWT_SECRET", "coringa_secret_key"),
+            _jwt_secret(),
             algorithms=["HS256"],
         )
     except jwt.InvalidTokenError:

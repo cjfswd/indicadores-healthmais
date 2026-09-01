@@ -2,6 +2,13 @@
 Fixtures compartilhadas para todos os testes.
 Usa mongomock_motor para simular MongoDB in-memory.
 """
+import os
+
+# Segredo de teste, fixo, definido antes de a app ler o ambiente. Substitui o
+# literal "coringa_secret_key" que vazou -- o teste passa a nao repetir o
+# segredo de producao, e o header abaixo assina com o mesmo valor.
+os.environ.setdefault("JWT_SECRET", "segredo-de-teste-nao-usar-em-producao")
+
 import pytest
 import asyncio
 from mongomock_motor import AsyncMongoMockClient
@@ -66,6 +73,6 @@ def make_meta(action: str, collection: str, **kwargs) -> str:
 def make_auth_header(email: str = "test@healthmais.com") -> str:
     """Gera um header Authorization válido com JWT contendo o email."""
     import jwt as pyjwt
-    token = pyjwt.encode({"id": "test123", "email": email}, "coringa_secret_key", algorithm="HS256")
+    token = pyjwt.encode({"id": "test123", "email": email}, os.environ["JWT_SECRET"], algorithm="HS256")
     return f"Bearer {token}"
 

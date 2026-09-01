@@ -9,6 +9,7 @@ from core.database import (
     get_db, JSONEncoder,
     append_event, EVENT_STORE_COLLECTION, get_stream_events
 )
+from core.seguranca import jwt_secret as _jwt_secret
 
 router = APIRouter(prefix="/db", tags=["proxy"])
 
@@ -143,7 +144,7 @@ def _extract_actor(request: Request, data: dict, metadata: dict) -> str:
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
         try:
-            secret = os.getenv("JWT_SECRET", "coringa_secret_key")
+            secret = _jwt_secret()
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             email = payload.get("email", "")
             if email:
