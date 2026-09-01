@@ -6,6 +6,7 @@ import jwt
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 from core.database import get_db, JSONEncoder
+from core.seguranca import jwt_secret as _jwt_secret
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,7 +31,7 @@ async def auth_google(request: Request):
     if not access_token:
         raise HTTPException(status_code=400, detail="Missing access_token")
 
-    jwt_secret = os.getenv("JWT_SECRET", "coringa_secret_key")
+    jwt_secret = _jwt_secret()
 
     try:
         # Busca info do usuário direto da Google API usando o access_token

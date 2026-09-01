@@ -5,12 +5,16 @@ services:
       - "3000"
     environment:
       - PORT=3000
-      - MONGO_URI=${MONGO_URI:-mongodb://root:whdQdCaV2ySMYmHiKIC0Eydm5Mf3U3Rxl5OZuiFJsPc1l5TDKdfqFGCKWkVcAVNu@ac4ljene7dzemo5naoldrcmv:27017/?directConnection=true}
+      # Sem default: a senha do banco nao mora no repositorio. Defina no
+      # Coolify. Ausente, o :? faz o compose falhar em vez de subir com uma
+      # credencial vazada ou cair calado no banco em memoria.
+      - MONGO_URI=${MONGO_URI:?defina MONGO_URI no ambiente}
       - DB_NAME=${DB_NAME:-mongodb-database-ac4ljene7dzemo5naoldrcmv}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - ALLOWED_DOMAIN=${ALLOWED_DOMAIN:-healthmaiscuidados.com}
-      - JWT_SECRET=${JWT_SECRET:-coringa_secret_key}
+      # Sem default: o segredo de assinatura nao pode ser um valor conhecido.
+      - JWT_SECRET=${JWT_SECRET:?defina JWT_SECRET no ambiente}
       # Sem default de proposito: ausente = app segue so no Mongo.
       - POSTGRES_URI=${POSTGRES_URI:-}
       - POSTGRES_SCHEMA=${POSTGRES_SCHEMA:-painel}
