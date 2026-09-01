@@ -14,6 +14,7 @@ import json
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "postgres"))
@@ -40,9 +41,38 @@ def oid(v):
 
 
 def ts(v):
+    # Mesma regra do etl.ts: o dump canonical traz {"$date": {"$numberLong"}}.
     if isinstance(v, dict):
-        return v.get("$date")
+        d = v.get("$date")
+        if isinstance(d, dict):
+            ms = d.get("$numberLong")
+            return None if ms is None else (
+                datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc)
+                .isoformat().replace("+00:00", "Z"))
+        return d
     return v or None
+
+
+def num(v, padrao=0):
+    """{'$numberInt': '2'} -> 2.
+
+    O mongoexport canonical embrulha todo numero. Sem desembrulhar, o valor
+    chegava dict ate a tela e a coluna de versao da auditoria mostrava
+    "[object Object]" -- e ordenar por ele levantava TypeError assim que dois
+    eventos do mesmo stream existissem.
+    """
+    if isinstance(v, dict):
+        for chave in ("$numberInt", "$numberLong", "$numberDouble", "$numberDecimal"):
+            if chave in v:
+                bruto = v[chave]
+                return int(bruto) if chave != "$numberDouble" else float(bruto)
+        return padrao
+    if isinstance(v, (int, float)):
+        return v
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return padrao
 
 
 def dia(v):
@@ -96,7 +126,8 @@ def pg_pacientes(pacientes, operadoras, store):
             "admissao": (p.get("admissionDate") or "").strip(),
             "eventos": len(eventos),
             "observacoes": limpa(p.get("observations")),
-            "criado": dia(p.get("createdAt")),
+            "empresa": p.get("empresa") or "healthmais",
+        "criado": dia(p.get("createdAt")),
             "atualizado": dia(p.get("updatedAt")),
             "atualizado_por": p.get("updatedBy") or "",
             "inativado": (ts(p.get("inactivatedAt")) or "")[:10],
@@ -138,6 +169,11 @@ def pg_eventos(pacientes, operadoras):
                 "indicador": ind,
                 "subindicador": sub,
                 "assistencia": ev.get("assistanceType") or "",
+                # Mesmos campos que a API devolve: a tela nao distingue a fonte.
+                "empresa": p.get("empresa") or "healthmais",
+                "catalogo": ev.get("catalogo") or "",
+                "cod": ev.get("cod") or "",
+                "responsavel": ev.get("responsavel") or "",
                 "observacoes": limpa(ev.get("observations"), 400),
                 "anexo": bool(ev.get("file")),
             })
@@ -159,7 +195,7 @@ def pg_auditoria(store):
             "stream": e.get("streamType", ""),
             "stream_id": e.get("streamId", ""),
             "tipo": e.get("eventType", ""),
-            "versao": e.get("version", 0),
+            "versao": num(e.get("version")),
             "quando": ts(e.get("timestamp")),
             "ator": e.get("actor") or "",
             "campos": campos[:8],
@@ -204,7 +240,7 @@ def pg_triagem(store, pacientes):
     ids = {oid(p["_id"]) for p in pacientes}
     estados = {}
     relevantes = [e for e in store if e.get("streamType") == "social_assistance_reports"]
-    for e in sorted(relevantes, key=lambda x: (x["streamId"], x["version"])):
+    for e in sorted(relevantes, key=lambda x: (x["streamId"], num(x.get("version")))):
         d = e.get("data") or {}
         if any(k.startswith("$") for k in d):
             d = d.get("$set") or {}
