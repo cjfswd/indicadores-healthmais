@@ -13,7 +13,7 @@ morre junto com o processo.
 import os
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -42,7 +42,11 @@ def desconverter(v):
         if "$oid" in v:
             return ObjectId(v["$oid"])
         if "$date" in v:
-            return datetime.fromisoformat(v["$date"].replace("Z", "+00:00"))
+            d = v["$date"]
+            if isinstance(d, dict):
+                return datetime.fromtimestamp(int(d["$numberLong"]) / 1000,
+                                              tz=timezone.utc)
+            return datetime.fromisoformat(d.replace("Z", "+00:00"))
         return {k: desconverter(x) for k, x in v.items()}
     if isinstance(v, list):
         return [desconverter(x) for x in v]

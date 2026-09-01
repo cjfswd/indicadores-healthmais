@@ -1,7 +1,9 @@
 # Novo modelo — recategorização dos indicadores
 
-Registro da análise e do protótipo da próxima versão do sistema. Nada aqui altera o
-sistema em produção: é documentação, protótipo estático e scripts de exportação.
+Registro da análise, do modelo alvo e da tela que hoje está no ar.
+[`prototipo/painel.html`](prototipo/painel.html) deixou de ser protótipo: é o que a imagem do
+frontend serve na raiz, e o app Vue está em standby em `/legado.html`. O resto desta pasta é
+documentação do modelo e scripts de exportação.
 
 Documento de origem: [Recategorizacao-dos-indicadores.pdf](Recategorizacao-dos-indicadores.pdf) — 10 cards,
 com subcategorias, campos obrigatórios e regras novas.
@@ -173,29 +175,87 @@ eventos reais e valida o modelo de episódio antes de investir em 06 e 07.
 
 ---
 
-## 5. Protótipo
+## 5. O painel
 
 [`prototipo/painel.html`](prototipo/painel.html) — página única, sem dependência externa,
-com os dez cards. Reproduz os tokens do shadcn (mesma estrutura de variáveis, raios e densidade);
-na stack real vira `DataTable`, `Sheet`, `Command`, `Popover` e `Badge`.
+com os dez cards. É o que a imagem do frontend serve na raiz (`frontend/Dockerfile`), então
+não é mais protótipo: é a tela por onde a assistência entra.
+
+**Nenhum número é inventado.** Os dez cards não guardam linha própria: cada um lê os registros
+que a equipe gravou (`GET /painel/dados`) e os coloca no catálogo novo pelo de-para do
+`MAPA_LEGADO`, transcrito de [`migration/catalogo_novo.py`](../../migration/catalogo_novo.py).
+Registro que o rótulo antigo não consegue traduzir fica **Em triagem** e aparece na página de
+Migração, com a explicação de por que precisa de decisão. Card sem registro aparece vazio, e o
+vazio é a resposta — cards 07 (custo) e 10 (vulnerabilidade) nunca tiveram onde ser registrados,
+e dizem isso na tela em vez de mostrar exemplo.
+
+Os 83 registros de "06 - Quantitativo de pacientes AD e ID" não viram linha de card nenhum:
+são a modalidade do paciente, atributo do acompanhamento. Eles continuam visíveis em Relatórios,
+sob "Modalidade do paciente".
 
 Contém: filtros globais retrocompatíveis (bimestre com os presets do `filterStore` atual, De/Até
-com prioridade, operadora, modalidade), metas por card (`targetType`/`targetDirection`/`targetValue`
-preservados) com atingida/fora recalculado sobre o filtro, três views por card (tabela, board,
-evolução mensal), drill-down da linha do pivô para a tabela, side peek com propriedades editáveis
-inline e completude dos campos obrigatórios, paleta de comandos (⌘K), menu de exportação, e o
-inventário de retrocompatibilidade das nove páginas do sistema atual.
+com prioridade, operadora vinda do cadastro, modalidade), metas por card — só as que o dado real
+sustenta, e o selo some quando não há registro categorizado para julgar —, três views por card
+(tabela, board, evolução mensal), drill-down da linha do pivô para a tabela, side peek com a
+categoria decidível e a lista de campos obrigatórios que o histórico não tem, paleta de comandos
+(⌘K), menu de exportação, e as páginas de Operação sobre o mesmo dado.
 
-**Os nomes de paciente são fictícios.** Nenhum dado real de `seed_data.py` foi usado.
+**Escopo por empresa.** Enquanto o modelo novo não carrega `empresa_id`, todo registro do banco
+é da HealthMais — a única que operou o sistema. A Córdiva aparece vazia de propósito: ela ainda
+não tem registro, e mostrar evento da HealthMais na view dela seria inventar histórico.
 
-Para abrir: qualquer navegador, direto no arquivo.
+**Gravação.** Novo registro, cadastro de paciente e de operadora gravam em
+`POST /db/execute` — o mesmo endpoint do resto do sistema, com event store, soft update e
+`SOFT_DELETE`. Depois de gravar a tela relê a fonte, em vez de remendar o array em memória.
+Registro criado pelo painel nasce no catálogo novo (`catalogo: "recategorizacao-2026"`) e não
+passa pelo de-para: quem registrou escolheu a categoria na hora.
+
+Para abrir: precisa de servidor HTTP (a página busca `/painel/dados`), e de sessão para ver
+dado real.
+
+---
+
+## 5.1 O que o painel exige do banco
+
+O painel grava, e gravar mexe em duas regras que o modelo já tinha.
+
+**Inativação automática.** Alta e óbito escondem o paciente da carteira, e a
+regra casava por prefixo do nome do indicador. O catálogo novo reaproveita os
+mesmos prefixos com outro significado: `01 - Movimentação da Carteira` /
+`1.1 - Admissão` batia em `("01", "1.1", "alta")` e **inativava o paciente no ato
+de admiti-lo**, enquanto o óbito novo (1.4) não inativava ninguém. Agora a origem
+do registro decide a tabela: quem carrega `catalogo` usa o código da saída
+(1.2/1.3 → alta, 1.4 → óbito); o histórico segue no de-para antigo. Vale nos dois
+lados — `backend/routers/proxy.py` e `migration/postgres/etl.py`.
+
+**Catálogo novo como linha de banco.** `patient_events.indicator_id` é NOT NULL
+com FK para `indicators`, e os dez cards da recategorização não nascem no Mongo
+— nascem do PDF. O carregador passa a emitir os dez, com id determinístico
+(`catalogo2026cardNN000000`), ao lado dos nove antigos. Sem isso ele abortava no
+primeiro registro feito depois do corte.
+
+**Empresa.** `patients.empresa` (`text NOT NULL DEFAULT 'healthmais'`) é o que
+mantém o cadastro na empresa em que foi criado. Operadora, conta de acesso,
+trilha e notificação continuam compartilhadas: as duas empresas atendem pelos
+mesmos convênios e pelas mesmas contas.
+
+**Registro novo é `origem_registro = 'sistema'`**, e os CHECK do schema passam a
+valer para ele: observação e profissional responsável são obrigatórios. O
+histórico continua `legado`, sem esses campos.
+
+Verificado ponta a ponta contra Postgres de verdade (PGlite):
+`etl.py` → `pgtest.mjs` → `painel_do_postgres.mjs`.
 
 ---
 
 ## 6. Exportações
 
-[`exportacoes/`](exportacoes) gera PDF, XLSX e PPTX a partir dos **mesmos dados do protótipo** —
-relatório e tela não podem divergir.
+[`exportacoes/`](exportacoes) gera PDF, XLSX e PPTX a partir dos **mesmos dados da tela** —
+relatório e painel não podem divergir.
+
+> `prototipo/painel.json` e as saídas em [`saidas/`](saidas) foram gerados quando o painel ainda
+> carregava dados de exemplo. Enquanto não forem regerados contra o dado real, valem como
+> amostra do formato, não como número da competência.
 
 ```bash
 cd docs/novo-modelo/prototipo

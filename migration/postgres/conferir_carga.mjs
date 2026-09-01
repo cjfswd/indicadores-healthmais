@@ -74,9 +74,19 @@ const tot = (await q(`SELECT (SELECT count(*)::int FROM painel.patients) pacient
 conferir('142 pacientes, 206 eventos, 972 na auditoria', tot, ESPERADO.totais)
 
 console.log('\n--- origem do registro ---')
+// O que veio do sistema antigo e legado, e a contagem tem que bater com a
+// origem. O que foi gravado pelo painel depois do corte entra como `sistema`:
+// nao e desvio, e o registro novo -- exigir 206 legados faria a conciliacao
+// acusar falha justamente por o sistema estar em uso.
 const org = await q(`SELECT origem_registro, count(*)::int n FROM painel.patient_events GROUP BY 1`)
-conferir('todo o dump entra como legado',
-         Object.fromEntries(org.map(r => [r.origem_registro, r.n])), { legado: 206 })
+const porOrigem = Object.fromEntries(org.map(r => [r.origem_registro, r.n]))
+conferir('o historico do dump entra todo como legado',
+         { legado: porOrigem.legado || 0 }, { legado: ESPERADO.totais.eventos })
+if (porOrigem.sistema) {
+  // Sem CHECK a cumprir aqui: o schema ja recusa registro novo sem observacao
+  // e sem responsavel. Isto so torna o numero visivel na conciliacao.
+  console.log(`  --  ${porOrigem.sistema} registro(s) gravados apos o corte, no catalogo novo`)
+}
 
 console.log('\n' + (falhas ? falhas + ' FALHA(S)' : 'carga confere com a origem'))
 await db.close()
