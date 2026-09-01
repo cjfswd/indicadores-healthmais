@@ -21,7 +21,9 @@ BACKEND = AQUI.parent / "backend"
 EXPORT = Path(os.getenv("EXPORT_DIR", r"C:\Users\Usuario\Downloads\export\export-2026-08-28"))
 
 os.environ["USE_IN_MEMORY_DB"] = "true"
-os.environ.setdefault("JWT_SECRET", "coringa_secret_key")
+# Segredo qualquer de dev -- este preview roda so em memoria. Nao repete o
+# segredo de producao, que vazou e sai do repositorio.
+os.environ.setdefault("JWT_SECRET", "dev-preview-em-memoria")
 
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(AQUI / "postgres"))
