@@ -13,23 +13,46 @@ from core.database import (
 router = APIRouter(prefix="/db", tags=["proxy"])
 
 
-# ── Indicadores que disparam inativação automática ──
-_INACTIVATION_RULES = [
+# ── Inativacao automatica ────────────────────────────────────────────────────
+# O catalogo da recategorizacao reaproveita os mesmos prefixos do antigo com
+# outro significado, e as regras antigas casavam por prefixo de texto. Um
+# registro novo de "01 - Movimentacao da Carteira" / "1.1 - Admissao" batia na
+# regra ("01", "1.1", "alta") e inativava o paciente como alta -- no ato de
+# admiti-lo. E o obito novo (1.4) nao inativava ninguem, porque a regra do
+# obito procurava o prefixo "04".
+#
+# Por isso a origem do registro decide qual tabela vale. Registro gravado pelo
+# painel carrega `catalogo`; o historico nao carrega nada e continua no de-para
+# antigo.
+CATALOGO_NOVO = "recategorizacao-2026"
+
+# Catalogo novo: o codigo da saida e explicito, entao a regra le o codigo.
+# 1.5 (internacao prolongada), 1.6 (desligamento) e 1.7 (transferencia) tambem
+# encerram o acompanhamento, mas nao entram aqui de proposito: `alta` e `obito`
+# sao os dois motivos que o resto do sistema sabe tratar (pagina de inativos,
+# reativacao, `recuperavel` da migracao). Fechar por eles exige o desfecho do
+# episodio, que ainda nao existe -- ate la, sao inativacao manual.
+INATIVACAO_POR_CODIGO = {"1.2": "alta", "1.3": "alta", "1.4": "obito"}
+
+# Catalogo antigo: o codigo nao existia como campo, so o texto do nome.
+REGRAS_INATIVACAO_LEGADO = [
     # (prefixo do indicador, prefixo do subindicador ou None, motivo)
     ("04", None, "obito"),
     ("01", "1.1", "alta"),
 ]
 
 
-def _inactivation_reason(event: dict) -> str | None:
-    """Retorna o motivo de inativação se o evento deve inativar o paciente, ou None."""
-    ind_name = (event.get("indicator") or {}).get("name", "")
-    sub_name = (event.get("subindicator") or {}).get("name", "")
-    for ind_prefix, sub_prefix, reason in _INACTIVATION_RULES:
-        if not ind_name.startswith(ind_prefix):
+def _inactivation_reason(evento: dict) -> str | None:
+    """Alta ou obito? Vale para o app e para o carregador da migracao."""
+    if evento.get("catalogo") == CATALOGO_NOVO:
+        return INATIVACAO_POR_CODIGO.get(str(evento.get("cod") or ""))
+    ind = (evento.get("indicator") or {}).get("name", "")
+    sub = (evento.get("subindicator") or {}).get("name", "")
+    for pref_ind, pref_sub, motivo in REGRAS_INATIVACAO_LEGADO:
+        if not ind.startswith(pref_ind):
             continue
-        if sub_prefix is None or sub_name.startswith(sub_prefix):
-            return reason
+        if pref_sub is None or sub.startswith(pref_sub):
+            return motivo
     return None
 
 

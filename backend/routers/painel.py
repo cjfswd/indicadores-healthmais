@@ -7,7 +7,8 @@ import jwt
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
 
-from core import postgres
+from core import painel_mongo, postgres
+from core.database import get_db
 
 router = APIRouter(prefix="/painel", tags=["painel"])
 
@@ -70,12 +71,24 @@ def montar_relatorios(eventos: list) -> dict:
 
 
 @router.get("/dados")
-async def dados(authorization: str = Header(default="")):
-    """Devolve o mesmo JSON que o painel le hoje do dados.json.
+async def dados(authorization: str = Header(default=""), fonte: str = ""):
+    """Devolve o JSON que o painel desenha, da base em uso.
 
-    Mesma forma e mesmos nomes de campo: trocar a fonte nao muda a tela.
+    A base em uso e o Mongo: e nele que `/db/execute` grava, com event store,
+    soft update e SOFT_DELETE. Ler de outro lugar faria o painel esconder o que
+    a equipe acabou de registrar -- e, sem POSTGRES_URI (que nao tem default no
+    docker-compose), a resposta era 503 e a tela ficava vazia em producao.
+
+    `?fonte=postgres` roda as consultas do schema novo, quando ele existe. E o
+    caminho da conciliacao: mesma forma, mesmos nomes de campo, para comparar
+    as duas saidas sem tocar na tela.
     """
     exigir_sessao(authorization)
+
+    if fonte != "postgres":
+        saida = await painel_mongo.montar(get_db())
+        saida["relatorios"] = montar_relatorios(saida.get("eventos", []))
+        return JSONResponse(content=json.loads(json.dumps(saida, default=str)))
 
     if not postgres.esta_ligado():
         # 503 e nao 500: nao ha defeito, ha configuracao faltando. Durante a
@@ -104,8 +117,9 @@ async def dados(authorization: str = Header(default="")):
 async def saude():
     """Diz se a fonte esta de pe, sem exigir sessao e sem devolver dado.
 
-    Serve para a tela saber se pede o /dados ou se cai no arquivo, e para
-    conferir a configuracao sem precisar de um login valido.
+    Serve para conferir a configuracao sem precisar de um login valido. O
+    painel nao depende mais disto para decidir de onde le: ele pede /dados, que
+    responde da base em uso.
     """
     if not postgres.esta_ligado():
         return {"postgres": False, "schema": None, "pacientes": None}
