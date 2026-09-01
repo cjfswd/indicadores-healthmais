@@ -3700,17 +3700,17 @@ function opMontarFiltros(chave, base) {
   if (!temFiltro) return;
   (t.filtros || []).forEach(([campo, rotulo, valores]) => {
     const f = el("div", "fld");
-    const lb = el("label", null, rotulo);
-    const sel = document.createElement("select");
-    sel.innerHTML = '<option value="">Todas</option>';
-    opValores(t, base, campo, valores).forEach(v => {
-      const o = document.createElement("option");
-      o.value = v; o.textContent = v;
-      if (opFiltro[campo] === v) o.selected = true;
-      sel.append(o);
-    });
-    sel.addEventListener("change", () => { opFiltro[campo] = sel.value; opRender(chave); });
-    f.append(lb, sel);
+    f.append(el("label", null, rotulo));
+    // Antes era um <select>. Com operadora, card ou status a lista e curta,
+    // mas o combobox e pesquisavel e uniforme com o resto do painel -- e onde
+    // a lista cresce (indicador, subindicador) deixa de ser rolagem cega.
+    const opcoes = [{ valor: "", rotulo: "Todas" }].concat(
+      opValores(t, base, campo, valores).map(v => ({ valor: String(v), rotulo: String(v) })));
+    const cbx = combobox(opcoes, opFiltro[campo] || "", v => {
+      opFiltro[campo] = v;
+      opRedesenhar(chave);   // so a tabela; a caixa de filtros fica de pe
+    }, "Todas");
+    f.append(cbx);
     box.append(f);
   });
   if (t.busca) {
@@ -3720,7 +3720,9 @@ function opMontarFiltros(chave, base) {
     inp.type = "search";
     inp.placeholder = "paciente, texto…";
     inp.value = opFiltro.q || "";
-    inp.addEventListener("input", () => { opFiltro.q = inp.value; opRender(chave); });
+    // opRedesenhar, NAO opRender: sem reconstruir a caixa de filtros, o proprio
+    // input sobrevive a cada tecla e o foco fica. Era a raiz do "nao funciona".
+    inp.addEventListener("input", () => { opFiltro.q = inp.value; opRedesenhar(chave); });
     f.append(inp);
     box.append(f);
   }
@@ -3738,7 +3740,19 @@ function opMontarFiltros(chave, base) {
   }
 }
 
+// Entrar numa tela: monta os filtros UMA vez e desenha a tabela. Os filtros
+// nao podem ser reconstruidos a cada tecla -- era esse o bug da busca: o input
+// era recriado a cada caractere e perdia o foco no meio da digitacao, entao so
+// a primeira letra entrava. Trocar de filtro chama opRedesenhar, que refaz so
+// stats, contagem e tabela, e deixa a caixa de filtros de pe.
 function opRender(chave) {
+  const t = TELAS[chave];
+  if (!t) return;
+  opMontarFiltros(chave, opBase(chave));
+  opRedesenhar(chave);
+}
+
+function opRedesenhar(chave) {
   const t = TELAS[chave];
   if (!t) return;
   const base = opBase(chave);
@@ -3752,7 +3766,6 @@ function opRender(chave) {
     s.append(c);
   });
 
-  opMontarFiltros(chave, base);
   const cnt = $("#opCount");
   if (cnt) cnt.querySelector("b").textContent = String(d.length);
 
