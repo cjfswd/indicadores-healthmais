@@ -3136,6 +3136,10 @@ function montarListaMelhorias(container, nps) {
       inp.addEventListener("input", () => {
         l.texto = inp.value;
         if (confirma) confirma.disabled = !inp.value.trim();   // confirmar segue o campo
+        // Reflete em tempo real: editar um item ja salvo atualiza os dados a
+        // cada tecla. Rascunho (nao salvo) continua de fora ate confirmar --
+        // o sync so conta itens salvos.
+        sync();
         if (pop.classList.contains("on")) desenhaPop();
       });
       inp.addEventListener("keydown", ev => {
