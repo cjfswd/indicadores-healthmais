@@ -345,11 +345,16 @@ def transformar(src: Path):
                 if prof_id is None or not (e.get("observations") or "").strip():
                     raise SystemExit(
                         "registro novo sem observacao ou sem responsavel: " + repr(e["_id"]))
+            # classe/nps so existem no registro qualitativo (NPS) da Ouvidoria;
+            # o dump legado nao tem nenhum, entao aqui saem NULL. O nps vai
+            # pre-serializado: literal() poe aspas e o Postgres converte em jsonb.
+            nps_val = json.dumps(e["nps"], ensure_ascii=False) if e.get("nps") else None
             eventos.append((
                 e["_id"], pid, ind_id, por_nome.get((nome_ind, nome_sub)),
                 data(e.get("occurrenceDate")), e.get("observations"),
                 e.get("assistanceType"), prof_id, pos,
                 "sistema" if novo else "legado",
+                e.get("classe") or None, nps_val,
             ))
     linhas["patients"] = pacientes
     linhas["patient_events"] = eventos
@@ -410,7 +415,7 @@ COLS = {
                  "created_at, updated_at, deleted_at, origem_registro"),
     "patient_events": ("id, patient_id, indicator_id, subindicator_id, occurrence_date, "
                        "observations, assistance_type, profissional_id, position, "
-                       "origem_registro"),
+                       "origem_registro, classe, nps"),
     "notifications": ("id, title, message, link, type, is_read, created_at, "
                       "updated_at, deleted_at"),
     "social_assistance_reports": ("id, patient_name_raw, linked_patient_id, "
