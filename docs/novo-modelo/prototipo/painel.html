@@ -280,9 +280,6 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
-  .nps-assin { display:flex; flex-direction:column; gap:6px; }
-  .nps-check { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); cursor:pointer; }
-  .nps-check input { width:15px; height:15px; }
   /* Painel NPS na pagina da Ouvidoria. */
   #npsPainel { margin:4px 0 16px; padding:16px; border:1px solid var(--line);
     border-radius:10px; background:var(--surface); display:flex; flex-direction:column; gap:14px; }
@@ -2922,21 +2919,6 @@ function montarInstrumentoNps(f, estado, campo) {
   par.placeholder = "Parentesco (se não for o próprio paciente)";
   par.addEventListener("input", () => { nps.parentesco = par.value; });
   campo("Parentesco", par);
-
-  // Assinaturas: no papel sao rubricas; aqui, confirmacao de que foram colhidas.
-  const box = el("div", "nps-assin");
-  [["assinouRespondente", "Assinatura de quem respondeu"],
-   ["assinouProfissional", "Assinatura do profissional que aplicou"]].forEach(([k, rot]) => {
-    const lab = el("label", "nps-check");
-    const cb = document.createElement("input");
-    cb.type = "checkbox"; cb.checked = !!nps[k];
-    cb.addEventListener("change", () => { nps[k] = cb.checked; });
-    lab.append(cb, document.createTextNode(" " + rot));
-    box.append(lab);
-  });
-  const d = el("div", "fld");
-  d.append(el("label", null, "Assinaturas"), box);
-  f.append(d);
 }
 
 function abrirNovoRegistro() {
@@ -2947,8 +2929,7 @@ function abrirNovoRegistro() {
                    // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
                    classe: "quantitativa",
                    nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
-                          respondente: "", parentesco: "",
-                          assinouRespondente: false, assinouProfissional: false } };
+                          respondente: "", parentesco: "" } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
   const tamanho = b => b < 1024 ? b + " B"
@@ -3196,8 +3177,6 @@ function abrirNovoRegistro() {
           q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
           respondente: nps.respondente, parentesco: (nps.parentesco || "").trim(),
-          assinouRespondente: !!nps.assinouRespondente,
-          assinouProfissional: !!nps.assinouProfissional,
           tratado: false,   // detrator: vira true quando a coordenacao trata
         };
       }
@@ -5607,9 +5586,6 @@ function relDetalheEvento(ev, voltar) {
     rNota.append(el("span", "pk", "Recomendação (0–10)"), pv);
     p.append(rNota);
     linhaN("Quem respondeu", nps.respondente + (nps.parentesco ? " · " + nps.parentesco : ""));
-    linhaN("Assinaturas", (nps.assinouRespondente ? "respondente ✓ " : "")
-      + (nps.assinouProfissional ? "profissional ✓" : "")
-      || "não registradas");
     if (c === "detrator") {
       linhaN("Fluxo do detrator", nps.tratado ? "tratado" : "pendente — contato em até 5 dias úteis");
     }
