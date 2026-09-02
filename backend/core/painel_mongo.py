@@ -145,6 +145,11 @@ async def montar(db) -> dict:
                 # com a categoria escolhida na hora, e sem nada a decidir.
                 "catalogo": e.get("catalogo") or "",
                 "cod": e.get("cod") or "",
+                # Classe da Ouvidoria (quantitativa | qualitativa) e, quando
+                # qualitativa, o instrumento NPS inteiro. Sem estes campos o
+                # painel nao teria como apurar o NPS nem separar as classes.
+                "classe": e.get("classe") or "",
+                "nps": e.get("nps") or None,
                 "responsavel": e.get("responsavel") or "",
                 "observacoes": _texto(e.get("observations")),
                 "anexo": bool(e.get("file")),

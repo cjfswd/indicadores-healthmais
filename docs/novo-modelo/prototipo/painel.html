@@ -275,6 +275,55 @@
   .btn-perigo:hover { background:var(--flag-soft); }
   .btn-ok { border-color:var(--done); color:var(--done); }
   .btn-ok:hover { background:var(--done-soft); }
+  /* NPS: selo da classe do respondente ao lado da nota, e checks de assinatura. */
+  .nps-selo { margin-left:10px; font-size:11.5px; font-weight:600; letter-spacing:.02em; }
+  .nps-selo.promotor { color:var(--done); }
+  .nps-selo.passivo { color:var(--sev-2); }
+  .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
+  .nps-assin { display:flex; flex-direction:column; gap:6px; }
+  .nps-check { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); cursor:pointer; }
+  .nps-check input { width:15px; height:15px; }
+  /* Painel NPS na pagina da Ouvidoria. */
+  #npsPainel { margin:4px 0 16px; padding:16px; border:1px solid var(--line);
+    border-radius:10px; background:var(--surface); display:flex; flex-direction:column; gap:14px; }
+  #npsPainel.hidden { display:none; }
+  .nps-cab { display:flex; align-items:baseline; justify-content:space-between; }
+  .nps-tit { font-size:13px; font-weight:600; letter-spacing:-.01em; }
+  .nps-per { font-size:11.5px; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  .nps-vazio { font-size:12.5px; color:var(--ink-3); }
+  .nps-topo { display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
+  .nps-score { text-align:center; min-width:120px; }
+  .nps-score .n { font-size:40px; font-weight:600; letter-spacing:-.03em; line-height:1; }
+  .nps-score.meta-ok .n { color:var(--done); }
+  .nps-score .z { margin:6px 0 4px; }
+  .nps-score .d { font-size:11px; color:var(--ink-3); }
+  .nps-meio { flex:1; min-width:220px; }
+  .nps-barra { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-hi); }
+  .nps-barra .seg.promotor { background:var(--done); }
+  .nps-barra .seg.passivo { background:var(--sev-2); }
+  .nps-barra .seg.detrator { background:var(--flag); }
+  .nps-leg { display:flex; gap:14px; margin-top:8px; font-size:11.5px; }
+  .nps-leg .l { display:flex; align-items:center; gap:5px; color:var(--ink-2); }
+  .nps-leg .l::before { content:""; width:9px; height:9px; border-radius:2px; display:inline-block; }
+  .nps-leg .l.promotor::before { background:var(--done); }
+  .nps-leg .l.passivo::before { background:var(--sev-2); }
+  .nps-leg .l.detrator::before { background:var(--flag); }
+  .nps-qual { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .nps-qual .cell { background:var(--surface); padding:10px 12px; display:flex; flex-direction:column; gap:2px; }
+  .nps-qual .cell.warn { background:var(--sev-2-soft); }
+  .nps-qual .cell .k { font-size:11px; color:var(--ink-3); }
+  .nps-qual .cell .v { font-size:19px; font-weight:600; letter-spacing:-.02em; }
+  .nps-qual .cell .d { font-size:10.5px; color:var(--ink-3); }
+  .nps-aviso { font-size:12px; padding:9px 11px; border-radius:8px;
+    background:var(--sev-2-soft); color:var(--sev-2); }
+  .nps-detr { display:flex; flex-direction:column; gap:8px; }
+  .nps-detr-linha { display:flex; align-items:center; gap:10px; }
+  .nps-detr-linha .nota { font-weight:600; color:var(--flag); font-family:"IBM Plex Mono", monospace;
+    min-width:24px; text-align:center; }
+  .nps-detr-linha .quem { flex:1; font-size:12.5px; color:var(--ink-2);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nps-detr-linha .btn { font-size:12px; padding:5px 10px; }
 
   .props { display:flex; flex-direction:column; gap:1px; }
   .prop { display:grid; grid-template-columns:140px minmax(0,1fr); align-items:center; gap:8px; }
@@ -924,6 +973,7 @@
       </div>
 
       <div class="split" id="stats"></div>
+      <div id="npsPainel" class="hidden"></div>
       <div class="views" id="views"></div>
       <section id="viewTable">
         <div id="drillBar"></div>
@@ -1221,6 +1271,9 @@ function linhasPorCard() {
     antiga: e.subindicador || e.indicador || "",
   });
   (OP.eventos || []).forEach(e => {
+    // NPS e classe qualitativa: leitura agregada, tem painel proprio. Nao
+    // entra na tabela de linhas quantitativas nem nas contagens do card.
+    if (e.classe === "qualitativa") return;
     const destino = paraOnde(e);
     if (!destino || !destino.card) return;
     fora[destino.card].push(
@@ -1248,6 +1301,18 @@ const SUB_MODALIDADE = { AD: "AD — Atenção Domiciliar", ID: "ID — Interna�
 
 function enriquecerEventos() {
   (OP.eventos || []).forEach(e => {
+    // Registro ja nascido no catalogo novo: a categoria e a que quem registrou
+    // escolheu (e.card/e.cod). Nao pode passar pelo de-para legado -- ele
+    // remaparia 9.1->9.4 e jogaria o NPS (9.NPS) em "sem correspondencia",
+    // porque codDe so casa \d+\.\d+.
+    if (e.catalogo === CATALOGO_NOVO && e.card && CARDS[e.card]) {
+      e.card_novo = e.card;
+      e.indicador_novo = e.card + " — " + CARDS[e.card].nome;
+      e.sub_novo = e.cod
+        ? e.cod + " — " + (CARDS[e.card].sub[e.cod] || e.cod)
+        : "Em triagem";
+      return;
+    }
     const d = MAPA_LEGADO[codDe(e.subindicador)];
     if (d && d.modalidade) {
       e.card_novo = CARD_MODALIDADE;
@@ -1300,6 +1365,7 @@ function montarCard(codigo, cfg) {
     nome: cfg.nome,
     nota: cfg.nota,
     sub: cfg.sub,
+    classes: cfg.classes || null,   // so a Ouvidoria usa; demais ficam null
     obrigatorios: cfg.obrigatorios,
     semFonte: cfg.semFonte || null,
     get linhas() { return linhasPorCard()[codigo]; },
@@ -1422,11 +1488,87 @@ montarCard("08", {
   obrigatorios: ["Topografia da infecção", "Dispositivo associado", "Cultura coletada", "Antimicrobiano e data de início", "Data de reavaliação"],
 });
 
+// ── NPS — instrumento e apuracao ──────────────────────────
+// A Ouvidoria passa a ter DUAS classes: quantitativa (as manifestacoes de
+// sempre) e qualitativa (o NPS). O NPS nao e uma manifestacao com categoria:
+// e um questionario cuja nota (Q5) classifica o RESPONDENTE. Por isso ele
+// mora numa spec propria, e nao numa subcategoria como as demais.
+const NPS_SUB = "9.NPS";   // sub sintetico: mantem o rendering de card>sub de pe
+const NPS_SPEC = {
+  perguntas: [
+    { id: "q1", texto: "Atendimento da equipe/empresa",
+      opcoes: ["Excelente", "Bom", "Regular", "Péssimo"] },
+    { id: "q2", texto: "Comunicação da equipe",
+      opcoes: ["Excelente", "Boa", "Regular", "Péssima"] },
+    { id: "q3", texto: "Tempo de atendimento mediante solicitações",
+      opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
+  ],
+  aberta: { id: "q4", texto: "Algo que precisamos melhorar" },
+  escala: { id: "q5", texto: "Probabilidade de recomendar (0 a 10)", min: 0, max: 10 },
+  respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
+};
+
+/** Promotor 9-10 · Passivo 7-8 · Detrator 0-6. Fora de 0-10 => null. */
+function npsClasse(nota) {
+  const n = Number(nota);
+  if (!Number.isFinite(n) || n < 0 || n > 10) return null;
+  if (n >= 9) return "promotor";
+  if (n >= 7) return "passivo";
+  return "detrator";
+}
+
+// Regua de zonas do NPS CONSOLIDADO (nunca da nota individual).
+const NPS_ZONAS = [
+  { zona: "Excelência", min: 75, max: 100, cls: "b-ok" },
+  { zona: "Qualidade", min: 50, max: 75, cls: "b-acc" },
+  { zona: "Aperfeiçoamento", min: 0, max: 50, cls: "b-2" },
+  { zona: "Crítica", min: -100, max: 0, cls: "b-3" },
+];
+function npsZona(score) {
+  // Faixas com limite inferior fechado; a Critica pega o topo negativo ate 0.
+  return NPS_ZONAS.find(z => score >= z.min && (score < z.max || z.max === 100))
+      || NPS_ZONAS[NPS_ZONAS.length - 1];
+}
+const NPS_META_PADRAO = 70;   // parametrizavel; calibrar pela linha de base apos 3 meses
+const NPS_N_MINIMO = 10;      // < 10 respostas no mes = resultado instavel
+
+/** Apura o NPS de um conjunto de eventos qualitativos (com .nps.q5).
+ *  elegiveis: pacientes elegiveis no periodo, para a taxa de resposta. */
+function npsApurar(eventosNps, elegiveis) {
+  const validos = eventosNps.filter(e => npsClasse(e.nps && e.nps.q5) !== null);
+  const n = validos.length;
+  const cont = { promotor: 0, passivo: 0, detrator: 0 };
+  validos.forEach(e => { cont[npsClasse(e.nps.q5)]++; });
+  const pct = k => n ? (cont[k] / n) * 100 : 0;
+  const score = n ? Math.round((pct("promotor") - pct("detrator"))) : null;
+  const detratoresPendentes = validos.filter(e =>
+    npsClasse(e.nps.q5) === "detrator" && !(e.nps && e.nps.tratado)).length;
+  return {
+    n, validos, contagem: cont,
+    pctPromotores: pct("promotor"), pctDetratores: pct("detrator"), pctPassivos: pct("passivo"),
+    score,
+    zona: score === null ? null : npsZona(score),
+    instavel: n > 0 && n < NPS_N_MINIMO,
+    semDados: n === 0,
+    taxaResposta: elegiveis ? Math.round((n / elegiveis) * 100) : null,
+    detratoresPendentes,
+  };
+}
+
 // ── 09 — Ouvidoria ────────────────────────────────────────
 montarCard("09", {
   nome: "Ouvidoria",
   nota: "Tudo o que a família, o paciente ou a operadora traz: reclamação, solicitação, sugestão, elogio ou dúvida. Registre o motivo e a resposta — o prazo é de 5 dias úteis. Quando a manifestação traz mais de um assunto, vale o mais crítico; os outros ficam como motivo adicional.",
-  sub: { "9.1": "Reclamação", "9.2": "Solicitação", "9.3": "Sugestão", "9.4": "Elogio", "9.5": "Dúvida ou pedido de informação" },
+  // A Ouvidoria e o unico card com classes. As demais seguem card>sub direto;
+  // aqui e card>classe>sub, e o formulario ramifica pela classe escolhida.
+  classes: {
+    quantitativa: { nome: "Quantitativa", nota: "Manifestações: reclamação, solicitação, sugestão, elogio, dúvida." },
+    qualitativa: { nome: "Qualitativa (NPS)", nota: "Pesquisa de satisfação — classifica o respondente pela nota 0–10.", nps: true },
+  },
+  // O 9.NPS entra como sub para o evento qualitativo nao cair em triagem nem
+  // em "sem correspondencia": ele tem categoria, so que a categoria e o NPS.
+  sub: { "9.1": "Reclamação", "9.2": "Solicitação", "9.3": "Sugestão", "9.4": "Elogio", "9.5": "Dúvida ou pedido de informação",
+         "9.NPS": "NPS — Pesquisa de satisfação" },
   obrigatorios: ["Teor principal", "Motivo", "Origem", "Data de resposta", "Procedência"],
 });
 
@@ -1678,6 +1820,139 @@ function atualizarContagens() {
   });
 }
 
+// Eventos NPS de um card, respeitando o recorte de empresa e o periodo -- a
+// mesma janela que `filtrar` aplica aos cards, por inicioF()/fimF().
+function eventosNpsDoCard(codigo) {
+  const i = inicioF(), f = fimF();
+  return (OP.eventos || []).filter(e => {
+    if (!(e.card === codigo && e.classe === "qualitativa" && e.nps)) return false;
+    if (empresaDe(e) !== F.emp) return false;
+    const d = e.data || "";
+    if (i && d && d < i) return false;
+    if (f && d && d > f) return false;
+    return true;
+  });
+}
+
+// Pacientes elegiveis no periodo = ativos da empresa. Denominador da taxa de
+// resposta (respondentes / elegiveis), qualificador obrigatorio da leitura.
+function elegiveisNps() {
+  return (OP.pacientes || []).filter(p => p.situacao === "ativo" && empresaDe(p) === F.emp).length;
+}
+
+function desenharPainelNps(codigo) {
+  const box = $("#npsPainel");
+  const cardCfg = CARDS[codigo] || {};
+  if (!box) return;
+  if (!cardCfg.classes || !cardCfg.classes.qualitativa) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+  box.classList.remove("hidden");
+  box.innerHTML = "";
+
+  const ap = npsApurar(eventosNpsDoCard(codigo), elegiveisNps());
+  const meta = NPS_META_PADRAO;
+
+  const cab = el("div", "nps-cab");
+  cab.append(el("span", "nps-tit", "NPS — Pesquisa de satisfação"));
+  cab.append(el("span", "nps-per", rotuloPeriodo()));
+  box.append(cab);
+
+  if (ap.semDados) {
+    const vazio = el("div", "nps-vazio",
+      "Nenhuma resposta de NPS no período. O NPS aparece a partir do primeiro "
+      + "registro na classe Qualitativa da Ouvidoria.");
+    box.append(vazio);
+    return;
+  }
+
+  // Score grande + zona.
+  const topo = el("div", "nps-topo");
+  const bloco = el("div", "nps-score" + (ap.score >= meta ? " meta-ok" : ""));
+  bloco.append(el("div", "n", (ap.score > 0 ? "+" : "") + ap.score));
+  const zona = el("div", "z");
+  zona.append(badge(ap.zona.zona, ap.zona.cls, true));
+  bloco.append(zona);
+  bloco.append(el("div", "d", "meta interna " + meta + (ap.score >= meta ? " · atingida" : " · abaixo")));
+  topo.append(bloco);
+
+  // Barra promotores/passivos/detratores.
+  const barra = el("div", "nps-barra");
+  [["promotor", ap.pctPromotores, "Promotores 9–10"],
+   ["passivo", ap.pctPassivos, "Passivos 7–8"],
+   ["detrator", ap.pctDetratores, "Detratores 0–6"]].forEach(([k, pct, rot]) => {
+    if (pct <= 0) return;
+    const seg = el("div", "seg " + k);
+    seg.style.width = pct + "%";
+    seg.title = rot + " · " + pct.toFixed(0) + "%";
+    barra.append(seg);
+  });
+  const legenda = el("div", "nps-leg");
+  legenda.append(
+    el("span", "l promotor", "Promotores " + ap.contagem.promotor),
+    el("span", "l passivo", "Passivos " + ap.contagem.passivo),
+    el("span", "l detrator", "Detratores " + ap.contagem.detrator));
+  const meio = el("div", "nps-meio");
+  meio.append(barra, legenda);
+  topo.append(meio);
+  box.append(topo);
+
+  // Qualificadores: taxa de resposta, N, pendencias.
+  const qual = el("div", "nps-qual");
+  const cel = (k, v, d, cls) => {
+    const c = el("div", "cell" + (cls ? " " + cls : ""));
+    c.append(el("span", "k", k), el("span", "v", String(v)), el("span", "d", d));
+    qual.append(c);
+  };
+  cel("Respostas válidas", ap.n, "com nota 0–10", ap.instavel ? "warn" : "");
+  cel("Taxa de resposta", (ap.taxaResposta == null ? "—" : ap.taxaResposta + "%"),
+      ap.n + " de " + elegiveisNps() + " elegíveis");
+  cel("Fórmula", "%P − %D", ap.pctPromotores.toFixed(0) + "% − " + ap.pctDetratores.toFixed(0) + "%");
+  cel("Detratores a tratar", ap.detratoresPendentes,
+      "contato em até 5 dias úteis", ap.detratoresPendentes ? "warn" : "");
+  box.append(qual);
+
+  if (ap.instavel) {
+    const a = el("div", "nps-aviso");
+    a.innerHTML = "<b>Resultado instável.</b> Menos de " + NPS_N_MINIMO
+      + " respostas no período: registre, leia pelo trimestre, não decida isolado.";
+    box.append(a);
+  }
+
+  // Fluxo do detrator: lista dos pendentes, com botao para marcar tratado.
+  if (ap.detratoresPendentes) {
+    const pend = ap.validos.filter(e => e.nps.classe === "detrator" && !e.nps.tratado);
+    const s = el("div", "nps-detr");
+    s.append(el("div", "sec-h", "Detratores — fluxo (nota ≤ 6)"));
+    pend.forEach(e => {
+      const linha = el("div", "nps-detr-linha");
+      linha.append(el("span", "nota", String(e.nps.q5)));
+      linha.append(el("span", "quem", e.paciente + (e.nps.q4 ? " · “" + e.nps.q4.slice(0, 60) + "”" : "")));
+      const b = el("button", "btn btn-ok", "Marcar tratado");
+      b.type = "button";
+      b.addEventListener("click", () => npsMarcarTratado(e));
+      linha.append(b);
+      s.append(linha);
+    });
+    box.append(s);
+  }
+}
+
+// Marca o detrator como tratado (coordenacao notificada, contato feito). Grava
+// no proprio evento, via eventUpdate: some do contador de pendencias.
+async function npsMarcarTratado(ev) {
+  const alvo = (OP.eventos || []).find(x => x.id === ev.id) || ev;
+  const nps = { ...(alvo.nps || {}), tratado: true, tratadoEm: new Date().toISOString() };
+  try {
+    await apiDb("update", "patients", {
+      id: alvo.paciente_id,
+      data: { __op: "eventUpdate", eventId: alvo.id, event: { nps: nps } },
+    });
+    await recarregarDados();
+    toast("Detrator tratado", alvo.paciente + " · sai do contador de pendências");
+  } catch (err) {
+    toast("Não foi possível gravar", err.message);
+  }
+}
+
 function irPara(codigo, manterDrill) {
   if (codigo !== atual && !manterDrill) drill = null;
   atual = codigo;
@@ -1734,6 +2009,10 @@ function irPara(codigo, manterDrill) {
     }
     stats.append(c);
   });
+
+  // NPS: so na Ouvidoria, e so quando ha classe qualitativa. E leitura
+  // agregada -- nao entra na tabela de linhas, tem painel proprio.
+  desenharPainelNps(codigo);
 
   const views = $("#views");
   views.innerHTML = "";
@@ -2269,6 +2548,14 @@ async function eventoExcluir(ev) {
 }
 
 function eventoEditar(ev) {
+  // NPS nao se edita por este formulario de card>subcategoria: mudar o cod
+  // reclassificaria a resposta e a tiraria do NPS. A edicao de NPS, quando
+  // existir, tem de ser pelo proprio instrumento. Por ora, so a nota de
+  // recomendacao decide, e ela nao se corrige por aqui sem refazer o registro.
+  if (ev.cod === NPS_SUB || (ev.nps && ev.classe === "qualitativa")) {
+    toast("Registro de NPS", "A resposta do NPS não se edita por aqui — refaça o registro se algo estiver errado.");
+    return;
+  }
   // So os campos que se editam na pratica: data, categoria e observacao. O
   // resto do evento (anexo, ator) o backend preserva no merge do eventUpdate.
   const estado = {
@@ -2589,11 +2876,79 @@ function combobox(opcoes, valor, aoEscolher, vazio, criar) {
 // As categorias saem de CARDS[x].sub -- o catalogo da recategorizacao que o
 // painel ja carrega -- em vez de uma lista paralela que sairia de sincronia.
 // O prototipo nao grava: confirma e mostra o que seria enviado.
+// Instrumento NPS dentro do formulario de registro. Recebe o `campo` do
+// formulario para herdar o mesmo layout de rotulo+controle das demais linhas.
+function montarInstrumentoNps(f, estado, campo) {
+  const nps = estado.nps;
+  // Q1..Q3: escolha unica, via combobox (uniforme com o resto do painel).
+  NPS_SPEC.perguntas.forEach(p => {
+    campo(p.texto, combobox(
+      p.opcoes.map(o => ({ valor: o, rotulo: o })),
+      nps[p.id], v => { nps[p.id] = v; }, "Escolha"), true);
+  });
+
+  // Q5: nota 0..10. Mostra a classificacao do respondente ao vivo -- e o que
+  // vira promotor/passivo/detrator, entao ver na hora evita erro de digitacao.
+  const wrapQ5 = el("div");
+  const inq5 = document.createElement("input");
+  inq5.type = "number"; inq5.min = "0"; inq5.max = "10"; inq5.step = "1";
+  inq5.value = nps.q5;
+  inq5.placeholder = "0 a 10";
+  const selo = el("span", "nps-selo");
+  const pintaSelo = () => {
+    const c = npsClasse(nps.q5);
+    selo.textContent = nps.q5 === "" ? ""
+      : (c ? c.charAt(0).toUpperCase() + c.slice(1) : "fora de 0–10");
+    selo.className = "nps-selo" + (c ? " " + c : (nps.q5 === "" ? "" : " erro"));
+  };
+  inq5.addEventListener("input", () => { nps.q5 = inq5.value; pintaSelo(); });
+  wrapQ5.append(inq5, selo);
+  pintaSelo();
+  campo(NPS_SPEC.escala.texto, wrapQ5, true);
+
+  // Q4: aberta.
+  const q4 = document.createElement("textarea");
+  q4.value = nps.q4;
+  q4.placeholder = "Sugestão de melhoria (opcional).";
+  q4.addEventListener("input", () => { nps.q4 = q4.value; });
+  campo(NPS_SPEC.aberta.texto, q4);
+
+  // Identificacao do respondente.
+  campo("Quem respondeu", combobox(
+    NPS_SPEC.respondentes.map(o => ({ valor: o, rotulo: o })),
+    nps.respondente, v => { nps.respondente = v; }, "Paciente, familiar…"), true);
+  const par = document.createElement("input");
+  par.type = "text"; par.value = nps.parentesco;
+  par.placeholder = "Parentesco (se não for o próprio paciente)";
+  par.addEventListener("input", () => { nps.parentesco = par.value; });
+  campo("Parentesco", par);
+
+  // Assinaturas: no papel sao rubricas; aqui, confirmacao de que foram colhidas.
+  const box = el("div", "nps-assin");
+  [["assinouRespondente", "Assinatura de quem respondeu"],
+   ["assinouProfissional", "Assinatura do profissional que aplicou"]].forEach(([k, rot]) => {
+    const lab = el("label", "nps-check");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !!nps[k];
+    cb.addEventListener("change", () => { nps[k] = cb.checked; });
+    lab.append(cb, document.createTextNode(" " + rot));
+    box.append(lab);
+  });
+  const d = el("div", "fld");
+  d.append(el("label", null, "Assinaturas"), box);
+  f.append(d);
+}
+
 function abrirNovoRegistro() {
   const card0 = (typeof atual === "string" && CARDS[atual]) ? atual : ORDEM[0];
   const estado = { card: card0, sub: Object.keys(CARDS[card0].sub || {})[0] || "",
                    paciente: "", data: "", obs: "", responsavel: "",
-                   anexo: null, anexoErro: "" };
+                   anexo: null, anexoErro: "",
+                   // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
+                   classe: "quantitativa",
+                   nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
+                          respondente: "", parentesco: "",
+                          assinouRespondente: false, assinouProfissional: false } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
   const tamanho = b => b < 1024 ? b + " B"
@@ -2620,18 +2975,44 @@ function abrirNovoRegistro() {
       return d;
     };
 
+    // Ao trocar de card, escolhe a primeira subcategoria que NAO seja o NPS:
+    // o NPS so entra pela classe qualitativa, nunca como sub avulso.
+    const primeiroSubReal = c => (Object.keys((CARDS[c] || {}).sub || {})
+      .filter(k => k !== NPS_SUB)[0]) || "";
     campo("Card", combobox(
       ORDEM.map(c => ({ valor: c, rotulo: c + " — " + CARDS[c].nome })),
       estado.card,
-      v => { estado.card = v; estado.sub = Object.keys(CARDS[v] ? CARDS[v].sub || {} : {})[0] || ""; desenha(); },
+      v => { estado.card = v; estado.classe = "quantitativa";
+             estado.sub = primeiroSubReal(v); desenha(); },
       "Escolha o card"), true);
 
-    const subs = CARDS[estado.card] ? (CARDS[estado.card].sub || {}) : {};
-    campo("Subcategoria", combobox(
-      Object.entries(subs).map(([k, v]) => ({ valor: k, rotulo: k + " " + v })),
-      estado.sub,
-      v => { estado.sub = v; },
-      Object.keys(subs).length ? "Escolha a subcategoria" : "este card não tem subcategoria"), true);
+    const cardCfg = CARDS[estado.card] || {};
+    const ehNps = cardCfg.classes && estado.classe === "qualitativa";
+
+    // Classe: so a Ouvidoria tem. As demais seguem card>sub direto.
+    if (cardCfg.classes) {
+      campo("Classe", combobox(
+        Object.entries(cardCfg.classes).map(([k, v]) => ({ valor: k, rotulo: v.nome, sub: v.nota })),
+        estado.classe,
+        v => { estado.classe = v;
+               estado.sub = v === "qualitativa" ? NPS_SUB : primeiroSubReal(estado.card);
+               desenha(); },
+        "Escolha a classe"), true);
+    }
+
+    if (ehNps) {
+      // ── Instrumento NPS ──
+      montarInstrumentoNps(f, estado, campo);
+    } else {
+      const subs = cardCfg.sub || {};
+      // O NPS nunca aparece na lista de subs quantitativos.
+      const entradas = Object.entries(subs).filter(([k]) => k !== NPS_SUB);
+      campo("Subcategoria", combobox(
+        entradas.map(([k, v]) => ({ valor: k, rotulo: k + " " + v })),
+        estado.sub,
+        v => { estado.sub = v; },
+        entradas.length ? "Escolha a subcategoria" : "este card não tem subcategoria"), true);
+    }
 
     // Pacientes reais quando o dados.json esta ao lado; texto livre sem ele.
     // 80 pacientes num select viram rolagem cega; aqui e busca por nome.
@@ -2660,14 +3041,18 @@ function abrirNovoRegistro() {
     dt.addEventListener("change", () => { estado.data = dt.value; });
     campo("Data da ocorrência", dt, true);
 
-    const obs = document.createElement("textarea");
-    obs.value = estado.obs;
-    obs.placeholder = "O que aconteceu, com o detalhe que a categoria exige.";
-    obs.addEventListener("input", () => { estado.obs = obs.value; });
-    campo("Observações", obs, true);
-    f.append(el("div", "dica",
-      "Obrigatória. É o que permite entender o caso depois, quando a categoria "
-      + "sozinha não basta — e é o que falta na maior parte do histórico."));
+    // No NPS a pergunta aberta (Q4) ja esta no instrumento; a observacao
+    // generica sairia repetida. Nas demais classes ela segue obrigatoria.
+    if (!ehNps) {
+      const obs = document.createElement("textarea");
+      obs.value = estado.obs;
+      obs.placeholder = "O que aconteceu, com o detalhe que a categoria exige.";
+      obs.addEventListener("input", () => { estado.obs = obs.value; });
+      campo("Observações", obs, true);
+      f.append(el("div", "dica",
+        "Obrigatória. É o que permite entender o caso depois, quando a categoria "
+        + "sozinha não basta — e é o que falta na maior parte do histórico."));
+    }
 
     // ── Responsável ──
     // Lista propria, semeada com a equipe do sistema. Quem atende nem sempre
@@ -2755,12 +3140,20 @@ function abrirNovoRegistro() {
     acoes.style.gap = "8px";
     const salvar = el("button", "btn btn-primary", "Registrar");
     salvar.addEventListener("click", async () => {
+      const ehNpsSalvar = (CARDS[estado.card] || {}).classes && estado.classe === "qualitativa";
       const faltando = [];
       if (!estado.paciente) faltando.push("paciente");
       if (!estado.data) faltando.push("data");
-      if (!estado.sub) faltando.push("subcategoria");
-      if (!estado.obs.trim()) faltando.push("observações");
       if (!estado.responsavel) faltando.push("profissional responsável");
+      if (ehNpsSalvar) {
+        const nps = estado.nps;
+        NPS_SPEC.perguntas.forEach(p => { if (!nps[p.id]) faltando.push(p.texto); });
+        if (npsClasse(nps.q5) === null) faltando.push("nota de recomendação (0 a 10)");
+        if (!nps.respondente) faltando.push("quem respondeu");
+      } else {
+        if (!estado.sub) faltando.push("subcategoria");
+        if (!estado.obs.trim()) faltando.push("observações");
+      }
       if (faltando.length) {
         toast("Faltam campos obrigatórios", faltando.join(", ") + ".");
         return;
@@ -2785,14 +3178,29 @@ function abrirNovoRegistro() {
         occurrenceDate: estado.data,
         indicator: { name: estado.card + " - " + card.nome },
         subindicator: { name: estado.sub + " - " + card.sub[estado.sub] },
-        observations: estado.obs.trim(),
+        // NPS guarda a resposta aberta como observacao; as demais, o texto livre.
+        observations: (ehNpsSalvar ? estado.nps.q4 : estado.obs).trim(),
         catalogo: CATALOGO_NOVO,
         card: estado.card,
         cod: estado.sub,
+        classe: estado.classe,
         responsavel: estado.responsavel,
         file: estado.anexo ? { name: estado.anexo.nome, size: estado.anexo.tamanho,
                                data: estado.anexo.data || "" } : null,
       };
+      if (ehNpsSalvar) {
+        const nps = estado.nps;
+        // A nota vira numero e a classe do respondente e gravada junto: ler o
+        // NPS depois nao pode depender de recalcular a regra em todo lugar.
+        evento.nps = {
+          q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
+          q5: Number(nps.q5), classe: npsClasse(nps.q5),
+          respondente: nps.respondente, parentesco: (nps.parentesco || "").trim(),
+          assinouRespondente: !!nps.assinouRespondente,
+          assinouProfissional: !!nps.assinouProfissional,
+          tratado: false,   // detrator: vira true quando a coordenacao trata
+        };
+      }
       salvar.disabled = true;
       try {
         await apiDb("update", "patients", {
@@ -5176,6 +5584,38 @@ function relDetalheEvento(ev, voltar) {
   nb.style.whiteSpace = "pre-wrap";
   s2.append(nb);
   body.append(s2);
+
+  // Respostas do NPS, quando for um registro qualitativo.
+  if (ev.nps) {
+    const nps = ev.nps;
+    const s = el("div");
+    s.append(el("div", "sec-h", "NPS — respostas"));
+    const p = el("div", "props");
+    p.style.marginTop = "10px";
+    const linhaN = (k, v) => {
+      const r = el("div", "prop");
+      r.append(el("span", "pk", k), el("span", "pv", v == null || v === "" ? "—" : String(v)));
+      p.append(r);
+    };
+    NPS_SPEC.perguntas.forEach(q => linhaN(q.texto, nps[q.id]));
+    // A nota com a classe do respondente ao lado.
+    const rNota = el("div", "prop");
+    const pv = el("span", "pv");
+    pv.append(document.createTextNode(String(nps.q5)));
+    const c = npsClasse(nps.q5);
+    if (c) pv.append(el("span", "nps-selo " + c, " " + c.charAt(0).toUpperCase() + c.slice(1)));
+    rNota.append(el("span", "pk", "Recomendação (0–10)"), pv);
+    p.append(rNota);
+    linhaN("Quem respondeu", nps.respondente + (nps.parentesco ? " · " + nps.parentesco : ""));
+    linhaN("Assinaturas", (nps.assinouRespondente ? "respondente ✓ " : "")
+      + (nps.assinouProfissional ? "profissional ✓" : "")
+      || "não registradas");
+    if (c === "detrator") {
+      linhaN("Fluxo do detrator", nps.tratado ? "tratado" : "pendente — contato em até 5 dias úteis");
+    }
+    s.append(p);
+    body.append(s);
+  }
 
   // Editar / excluir o proprio registro, sem sair da ficha.
   if (ev.paciente_id) {
