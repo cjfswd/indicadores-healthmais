@@ -142,17 +142,32 @@ CREATE TABLE patient_events (
     -- responsavel, que pode ser outra pessoa.
     profissional_id bigint REFERENCES profissionais(id),
     origem_registro origem_registro NOT NULL DEFAULT 'sistema',
+    -- Classe da Ouvidoria: so ela distingue quantitativa (manifestacoes) de
+    -- qualitativa (NPS). Os demais cards ficam com NULL -- nao tem classe.
+    classe          text,
+    -- Instrumento NPS inteiro (Q1..Q5, nota, classe do respondente, melhorias,
+    -- respondente, tratado). jsonb porque a apuracao -- %, zonas, mais citadas
+    -- -- roda na aplicacao, nao em SQL; normalizar aqui nao pagaria.
+    nps             jsonb,
     position        int NOT NULL,
     UNIQUE (patient_id, position),
 
     -- A tela exige observacao e responsavel. A regra tem que valer no banco
     -- tambem, senao vale so para quem usa o formulario. O legado escapa por
     -- origem_registro: 126 dos 206 eventos do dump nao tem observacao, e
-    -- inventar uma seria pior do que admitir que nao existe.
+    -- inventar uma seria pior do que admitir que nao existe. O NPS qualitativo
+    -- tambem escapa: seu conteudo sao as respostas, e a Q4 e opcional.
     CONSTRAINT observacao_no_registro_novo CHECK (
-        origem_registro = 'legado' OR nullif(btrim(observations), '') IS NOT NULL),
+        origem_registro = 'legado' OR classe = 'qualitativa'
+        OR nullif(btrim(observations), '') IS NOT NULL),
     CONSTRAINT responsavel_no_registro_novo CHECK (
-        origem_registro = 'legado' OR profissional_id IS NOT NULL)
+        origem_registro = 'legado' OR profissional_id IS NOT NULL),
+    CONSTRAINT classe_valida CHECK (
+        classe IS NULL OR classe IN ('quantitativa', 'qualitativa')),
+    -- NPS so existe em evento qualitativo, e todo qualitativo tem NPS.
+    CONSTRAINT nps_no_qualitativo CHECK (
+        (nps IS NULL AND classe IS DISTINCT FROM 'qualitativa')
+        OR (nps IS NOT NULL AND classe = 'qualitativa'))
 );
 
 -- Anexo em tabela propria, nao em coluna do evento: o conteudo chega a 5 MB, e
