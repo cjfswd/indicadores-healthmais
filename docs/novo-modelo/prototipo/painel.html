@@ -280,13 +280,16 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
-  /* Q4: areas de melhoria marcaveis (varias por envio). */
-  .nps-areas { display:flex; flex-wrap:wrap; gap:6px; }
-  .nps-area { display:inline-flex; align-items:center; gap:6px; padding:5px 10px;
-    border:1px solid var(--line); border-radius:16px; font-size:12px; color:var(--ink-2);
-    cursor:pointer; user-select:none; }
-  .nps-area.on { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
-  .nps-area input { width:13px; height:13px; }
+  /* Q4: lista aberta de melhorias -- combobox editavel + remover, e adicionar. */
+  .mel-lista { display:flex; flex-direction:column; gap:7px; }
+  .mel-item { display:flex; align-items:center; gap:7px; }
+  .mel-item .cbx { flex:1; }
+  .mel-rem { flex:none; width:28px; height:28px; border:1px solid var(--line);
+    border-radius:6px; color:var(--ink-3); font-size:12px; }
+  .mel-rem:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .mel-add { align-self:flex-start; font-size:12.5px; color:var(--accent);
+    padding:4px 2px; }
+  .mel-add:hover { text-decoration:underline; }
   /* Barra de areas citadas no painel NPS. */
   .nps-areas-ct { display:flex; flex-direction:column; gap:5px; }
   .nps-areas-ct .lin { display:flex; align-items:center; gap:8px; font-size:12px; }
@@ -1514,13 +1517,10 @@ const NPS_SPEC = {
     { id: "q3", texto: "Tempo de atendimento mediante solicitações",
       opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
   ],
-  // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS areas de
-  // melhoria. As areas marcadas contam entre os envios (o quantitativo); o
-  // texto livre guarda o que nao couber nelas (a aberta).
-  aberta: { id: "q4", texto: "Algo que precisamos melhorar",
-            areas: ["Atendimento da equipe", "Comunicação", "Tempo de resposta",
-                    "Materiais e equipamentos", "Medicação e farmácia",
-                    "Agendamento e visitas", "Orientação ao cuidador", "Outro"] },
+  // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS melhorias,
+  // digitadas livremente numa lista. O combobox editavel sugere as ja usadas
+  // para o mesmo texto se repetir e poder ser contado entre os envios.
+  aberta: { id: "q4", texto: "Algo que precisamos melhorar" },
   escala: { id: "q5", texto: "Probabilidade de recomendar (0 a 10)", min: 0, max: 10 },
   respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
 };
@@ -2918,6 +2918,50 @@ function combobox(opcoes, valor, aoEscolher, vazio, criar) {
 // As categorias saem de CARDS[x].sub -- o catalogo da recategorizacao que o
 // painel ja carrega -- em vez de uma lista paralela que sairia de sincronia.
 // O prototipo nao grava: confirma e mostra o que seria enviado.
+// Melhorias ja digitadas em envios anteriores, para o combobox sugerir e o
+// mesmo texto poder ser reaproveitado (e contado junto) em vez de regrafado.
+function sugestoesMelhorias() {
+  const vistas = new Set();
+  (OP.eventos || []).forEach(e => (e.nps && e.nps.melhorias || []).forEach(m => {
+    const t = (m || "").trim();
+    if (t) vistas.add(t);
+  }));
+  return [...vistas].sort((a, b) => a.localeCompare(b));
+}
+
+// Lista aberta de melhorias: cada item e um combobox editavel (sugere as ja
+// usadas, cria novas) com um botao de remover; e um botao adiciona itens.
+// Rerenderiza so o proprio container -- os comboboxes sao acoes discretas,
+// entao nao ha foco de digitacao a perder aqui.
+function montarListaMelhorias(container, nps) {
+  const render = () => {
+    container.innerHTML = "";
+    const sugestoes = sugestoesMelhorias();
+    nps.melhorias.forEach((item, i) => {
+      const linha = el("div", "mel-item");
+      const opcoes = sugestoes.map(s => ({ valor: s, rotulo: s }));
+      // Garante que o valor atual apareca mesmo se nao estiver nas sugestoes.
+      if (item && !sugestoes.includes(item)) opcoes.unshift({ valor: item, rotulo: item });
+      const cbx = combobox(
+        opcoes, item,
+        v => { nps.melhorias[i] = v; },
+        "Digite a melhoria…",
+        texto => { nps.melhorias[i] = texto; return texto; });   // criar = usar o texto
+      const rem = el("button", "mel-rem", "✕");
+      rem.type = "button";
+      rem.title = "Remover";
+      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
+      linha.append(cbx, rem);
+      container.append(linha);
+    });
+    const add = el("button", "mel-add", "+ Adicionar melhoria");
+    add.type = "button";
+    add.addEventListener("click", () => { nps.melhorias.push(""); render(); });
+    container.append(add);
+  };
+  render();
+}
+
 // Instrumento NPS dentro do formulario de registro. Recebe o `campo` do
 // formulario para herdar o mesmo layout de rotulo+controle das demais linhas.
 function montarInstrumentoNps(f, estado, campo) {
@@ -2948,28 +2992,21 @@ function montarInstrumentoNps(f, estado, campo) {
   pintaSelo();
   campo(NPS_SPEC.escala.texto, wrapQ5, true);
 
-  // Q4: varias areas de melhoria por envio (o quantitativo) + texto livre.
+  // Q4: lista aberta de melhorias. Quem responde digita cada item; a lista
+  // multiplica, edita e remove. O combobox e editavel -- sugere melhorias ja
+  // usadas antes (para o mesmo texto poder ser contado entre envios) e deixa
+  // criar uma nova na hora. E o "aberta + quantitativo": livre para escrever,
+  // mas reaproveitando o que ja existe para nao virar 10 grafias do mesmo.
   if (!Array.isArray(nps.melhorias)) nps.melhorias = [];
-  const areas = el("div", "nps-areas");
-  NPS_SPEC.aberta.areas.forEach(area => {
-    const lab = el("label", "nps-area" + (nps.melhorias.includes(area) ? " on" : ""));
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = nps.melhorias.includes(area);
-    cb.addEventListener("change", () => {
-      if (cb.checked) { if (!nps.melhorias.includes(area)) nps.melhorias.push(area); }
-      else { nps.melhorias = nps.melhorias.filter(a => a !== area); }
-      lab.classList.toggle("on", cb.checked);
-    });
-    lab.append(cb, document.createTextNode(" " + area));
-    areas.append(lab);
-  });
-  const dArea = el("div", "fld");
-  dArea.append(el("label", null, NPS_SPEC.aberta.texto), areas);
-  f.append(dArea);
+  const dMel = el("div", "fld");
+  dMel.append(el("label", null, NPS_SPEC.aberta.texto));
+  const lista = el("div", "mel-lista");
+  dMel.append(lista);
+  montarListaMelhorias(lista, nps);
+  f.append(dMel);
   const q4 = document.createElement("textarea");
   q4.value = nps.q4;
-  q4.placeholder = "Detalhe das melhorias, ou algo fora das áreas acima (opcional).";
+  q4.placeholder = "Observação livre sobre as melhorias (opcional).";
   q4.addEventListener("input", () => { nps.q4 = q4.value; });
   campo("Detalhe (texto livre)", q4);
 
@@ -3238,7 +3275,8 @@ function abrirNovoRegistro() {
         // NPS depois nao pode depender de recalcular a regra em todo lugar.
         evento.nps = {
           q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
-          melhorias: Array.isArray(nps.melhorias) ? nps.melhorias.slice() : [],
+          melhorias: (Array.isArray(nps.melhorias) ? nps.melhorias : [])
+            .map(m => (m || "").trim()).filter(Boolean),
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
           respondente: nps.respondente, parentesco: (nps.parentesco || "").trim(),
           tratado: false,   // detrator: vira true quando a coordenacao trata
