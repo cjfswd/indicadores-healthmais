@@ -280,6 +280,23 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
+  /* Q4: lista aberta de melhorias -- combobox editavel + remover, e adicionar. */
+  .mel-lista { display:flex; flex-direction:column; gap:7px; }
+  .mel-item { display:flex; align-items:center; gap:7px; }
+  .mel-item .cbx { flex:1; }
+  .mel-rem { flex:none; width:28px; height:28px; border:1px solid var(--line);
+    border-radius:6px; color:var(--ink-3); font-size:12px; }
+  .mel-rem:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .mel-add { align-self:flex-start; font-size:12.5px; color:var(--accent);
+    padding:4px 2px; }
+  .mel-add:hover { text-decoration:underline; }
+  /* Barra de areas citadas no painel NPS. */
+  .nps-areas-ct { display:flex; flex-direction:column; gap:5px; }
+  .nps-areas-ct .lin { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .nps-areas-ct .lin .nm { min-width:150px; color:var(--ink-2); }
+  .nps-areas-ct .lin .bar { flex:1; height:8px; background:var(--surface-hi); border-radius:4px; overflow:hidden; }
+  .nps-areas-ct .lin .bar i { display:block; height:100%; background:var(--accent); }
+  .nps-areas-ct .lin .n { min-width:24px; text-align:right; font-family:"IBM Plex Mono", monospace; color:var(--ink-3); }
   /* Painel NPS na pagina da Ouvidoria. */
   #npsPainel { margin:4px 0 16px; padding:16px; border:1px solid var(--line);
     border-radius:10px; background:var(--surface); display:flex; flex-direction:column; gap:14px; }
@@ -1500,6 +1517,9 @@ const NPS_SPEC = {
     { id: "q3", texto: "Tempo de atendimento mediante solicitações",
       opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
   ],
+  // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS melhorias,
+  // digitadas livremente numa lista. O combobox editavel sugere as ja usadas
+  // para o mesmo texto se repetir e poder ser contado entre os envios.
   aberta: { id: "q4", texto: "Algo que precisamos melhorar" },
   escala: { id: "q5", texto: "Probabilidade de recomendar (0 a 10)", min: 0, max: 10 },
   respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
@@ -1912,6 +1932,31 @@ function desenharPainelNps(codigo) {
     a.innerHTML = "<b>Resultado instável.</b> Menos de " + NPS_N_MINIMO
       + " respostas no período: registre, leia pelo trimestre, não decida isolado.";
     box.append(a);
+  }
+
+  // Areas de melhoria mais citadas -- o quantitativo da Q4. Um envio conta em
+  // todas as areas que marcou, entao o total pode passar de n respostas.
+  const contAreas = {};
+  ap.validos.forEach(e => (e.nps.melhorias || []).forEach(a => {
+    contAreas[a] = (contAreas[a] || 0) + 1;
+  }));
+  const ranking = Object.entries(contAreas).sort((a, b) => b[1] - a[1]);
+  if (ranking.length) {
+    const s = el("div");
+    s.append(el("div", "sec-h", "Melhorias mais citadas"));
+    const ct = el("div", "nps-areas-ct");
+    ct.style.marginTop = "8px";
+    const maxN = ranking[0][1];
+    ranking.forEach(([area, n]) => {
+      const lin = el("div", "lin");
+      lin.append(el("span", "nm", area));
+      const bar = el("div", "bar"); const i = el("i");
+      i.style.width = Math.round((n / maxN) * 100) + "%"; bar.append(i);
+      lin.append(bar, el("span", "n", String(n)));
+      ct.append(lin);
+    });
+    s.append(ct);
+    box.append(s);
   }
 
   // Fluxo do detrator: lista dos pendentes, com botao para marcar tratado.
@@ -2873,6 +2918,50 @@ function combobox(opcoes, valor, aoEscolher, vazio, criar) {
 // As categorias saem de CARDS[x].sub -- o catalogo da recategorizacao que o
 // painel ja carrega -- em vez de uma lista paralela que sairia de sincronia.
 // O prototipo nao grava: confirma e mostra o que seria enviado.
+// Melhorias ja digitadas em envios anteriores, para o combobox sugerir e o
+// mesmo texto poder ser reaproveitado (e contado junto) em vez de regrafado.
+function sugestoesMelhorias() {
+  const vistas = new Set();
+  (OP.eventos || []).forEach(e => (e.nps && e.nps.melhorias || []).forEach(m => {
+    const t = (m || "").trim();
+    if (t) vistas.add(t);
+  }));
+  return [...vistas].sort((a, b) => a.localeCompare(b));
+}
+
+// Lista aberta de melhorias: cada item e um combobox editavel (sugere as ja
+// usadas, cria novas) com um botao de remover; e um botao adiciona itens.
+// Rerenderiza so o proprio container -- os comboboxes sao acoes discretas,
+// entao nao ha foco de digitacao a perder aqui.
+function montarListaMelhorias(container, nps) {
+  const render = () => {
+    container.innerHTML = "";
+    const sugestoes = sugestoesMelhorias();
+    nps.melhorias.forEach((item, i) => {
+      const linha = el("div", "mel-item");
+      const opcoes = sugestoes.map(s => ({ valor: s, rotulo: s }));
+      // Garante que o valor atual apareca mesmo se nao estiver nas sugestoes.
+      if (item && !sugestoes.includes(item)) opcoes.unshift({ valor: item, rotulo: item });
+      const cbx = combobox(
+        opcoes, item,
+        v => { nps.melhorias[i] = v; },
+        "Digite a melhoria…",
+        texto => { nps.melhorias[i] = texto; return texto; });   // criar = usar o texto
+      const rem = el("button", "mel-rem", "✕");
+      rem.type = "button";
+      rem.title = "Remover";
+      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
+      linha.append(cbx, rem);
+      container.append(linha);
+    });
+    const add = el("button", "mel-add", "+ Adicionar melhoria");
+    add.type = "button";
+    add.addEventListener("click", () => { nps.melhorias.push(""); render(); });
+    container.append(add);
+  };
+  render();
+}
+
 // Instrumento NPS dentro do formulario de registro. Recebe o `campo` do
 // formulario para herdar o mesmo layout de rotulo+controle das demais linhas.
 function montarInstrumentoNps(f, estado, campo) {
@@ -2903,12 +2992,23 @@ function montarInstrumentoNps(f, estado, campo) {
   pintaSelo();
   campo(NPS_SPEC.escala.texto, wrapQ5, true);
 
-  // Q4: aberta.
+  // Q4: lista aberta de melhorias. Quem responde digita cada item; a lista
+  // multiplica, edita e remove. O combobox e editavel -- sugere melhorias ja
+  // usadas antes (para o mesmo texto poder ser contado entre envios) e deixa
+  // criar uma nova na hora. E o "aberta + quantitativo": livre para escrever,
+  // mas reaproveitando o que ja existe para nao virar 10 grafias do mesmo.
+  if (!Array.isArray(nps.melhorias)) nps.melhorias = [];
+  const dMel = el("div", "fld");
+  dMel.append(el("label", null, NPS_SPEC.aberta.texto));
+  const lista = el("div", "mel-lista");
+  dMel.append(lista);
+  montarListaMelhorias(lista, nps);
+  f.append(dMel);
   const q4 = document.createElement("textarea");
   q4.value = nps.q4;
-  q4.placeholder = "Sugestão de melhoria (opcional).";
+  q4.placeholder = "Observação livre sobre as melhorias (opcional).";
   q4.addEventListener("input", () => { nps.q4 = q4.value; });
-  campo(NPS_SPEC.aberta.texto, q4);
+  campo("Detalhe (texto livre)", q4);
 
   // Identificacao do respondente.
   campo("Quem respondeu", combobox(
@@ -2929,7 +3029,7 @@ function abrirNovoRegistro() {
                    // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
                    classe: "quantitativa",
                    nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
-                          respondente: "", parentesco: "" } };
+                          melhorias: [], respondente: "", parentesco: "" } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
   const tamanho = b => b < 1024 ? b + " B"
@@ -3175,6 +3275,8 @@ function abrirNovoRegistro() {
         // NPS depois nao pode depender de recalcular a regra em todo lugar.
         evento.nps = {
           q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
+          melhorias: (Array.isArray(nps.melhorias) ? nps.melhorias : [])
+            .map(m => (m || "").trim()).filter(Boolean),
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
           respondente: nps.respondente, parentesco: (nps.parentesco || "").trim(),
           tratado: false,   // detrator: vira true quando a coordenacao trata
@@ -5577,6 +5679,9 @@ function relDetalheEvento(ev, voltar) {
       p.append(r);
     };
     NPS_SPEC.perguntas.forEach(q => linhaN(q.texto, nps[q.id]));
+    if (Array.isArray(nps.melhorias) && nps.melhorias.length) {
+      linhaN("Melhorias citadas", nps.melhorias.join(" · "));
+    }
     // A nota com a classe do respondente ao lado.
     const rNota = el("div", "prop");
     const pv = el("span", "pv");
