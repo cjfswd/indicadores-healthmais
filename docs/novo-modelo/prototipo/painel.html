@@ -280,6 +280,20 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
+  /* Q4: areas de melhoria marcaveis (varias por envio). */
+  .nps-areas { display:flex; flex-wrap:wrap; gap:6px; }
+  .nps-area { display:inline-flex; align-items:center; gap:6px; padding:5px 10px;
+    border:1px solid var(--line); border-radius:16px; font-size:12px; color:var(--ink-2);
+    cursor:pointer; user-select:none; }
+  .nps-area.on { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
+  .nps-area input { width:13px; height:13px; }
+  /* Barra de areas citadas no painel NPS. */
+  .nps-areas-ct { display:flex; flex-direction:column; gap:5px; }
+  .nps-areas-ct .lin { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .nps-areas-ct .lin .nm { min-width:150px; color:var(--ink-2); }
+  .nps-areas-ct .lin .bar { flex:1; height:8px; background:var(--surface-hi); border-radius:4px; overflow:hidden; }
+  .nps-areas-ct .lin .bar i { display:block; height:100%; background:var(--accent); }
+  .nps-areas-ct .lin .n { min-width:24px; text-align:right; font-family:"IBM Plex Mono", monospace; color:var(--ink-3); }
   /* Painel NPS na pagina da Ouvidoria. */
   #npsPainel { margin:4px 0 16px; padding:16px; border:1px solid var(--line);
     border-radius:10px; background:var(--surface); display:flex; flex-direction:column; gap:14px; }
@@ -1500,7 +1514,13 @@ const NPS_SPEC = {
     { id: "q3", texto: "Tempo de atendimento mediante solicitações",
       opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
   ],
-  aberta: { id: "q4", texto: "Algo que precisamos melhorar" },
+  // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS areas de
+  // melhoria. As areas marcadas contam entre os envios (o quantitativo); o
+  // texto livre guarda o que nao couber nelas (a aberta).
+  aberta: { id: "q4", texto: "Algo que precisamos melhorar",
+            areas: ["Atendimento da equipe", "Comunicação", "Tempo de resposta",
+                    "Materiais e equipamentos", "Medicação e farmácia",
+                    "Agendamento e visitas", "Orientação ao cuidador", "Outro"] },
   escala: { id: "q5", texto: "Probabilidade de recomendar (0 a 10)", min: 0, max: 10 },
   respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
 };
@@ -1912,6 +1932,31 @@ function desenharPainelNps(codigo) {
     a.innerHTML = "<b>Resultado instável.</b> Menos de " + NPS_N_MINIMO
       + " respostas no período: registre, leia pelo trimestre, não decida isolado.";
     box.append(a);
+  }
+
+  // Areas de melhoria mais citadas -- o quantitativo da Q4. Um envio conta em
+  // todas as areas que marcou, entao o total pode passar de n respostas.
+  const contAreas = {};
+  ap.validos.forEach(e => (e.nps.melhorias || []).forEach(a => {
+    contAreas[a] = (contAreas[a] || 0) + 1;
+  }));
+  const ranking = Object.entries(contAreas).sort((a, b) => b[1] - a[1]);
+  if (ranking.length) {
+    const s = el("div");
+    s.append(el("div", "sec-h", "Melhorias mais citadas"));
+    const ct = el("div", "nps-areas-ct");
+    ct.style.marginTop = "8px";
+    const maxN = ranking[0][1];
+    ranking.forEach(([area, n]) => {
+      const lin = el("div", "lin");
+      lin.append(el("span", "nm", area));
+      const bar = el("div", "bar"); const i = el("i");
+      i.style.width = Math.round((n / maxN) * 100) + "%"; bar.append(i);
+      lin.append(bar, el("span", "n", String(n)));
+      ct.append(lin);
+    });
+    s.append(ct);
+    box.append(s);
   }
 
   // Fluxo do detrator: lista dos pendentes, com botao para marcar tratado.
@@ -2903,12 +2948,30 @@ function montarInstrumentoNps(f, estado, campo) {
   pintaSelo();
   campo(NPS_SPEC.escala.texto, wrapQ5, true);
 
-  // Q4: aberta.
+  // Q4: varias areas de melhoria por envio (o quantitativo) + texto livre.
+  if (!Array.isArray(nps.melhorias)) nps.melhorias = [];
+  const areas = el("div", "nps-areas");
+  NPS_SPEC.aberta.areas.forEach(area => {
+    const lab = el("label", "nps-area" + (nps.melhorias.includes(area) ? " on" : ""));
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = nps.melhorias.includes(area);
+    cb.addEventListener("change", () => {
+      if (cb.checked) { if (!nps.melhorias.includes(area)) nps.melhorias.push(area); }
+      else { nps.melhorias = nps.melhorias.filter(a => a !== area); }
+      lab.classList.toggle("on", cb.checked);
+    });
+    lab.append(cb, document.createTextNode(" " + area));
+    areas.append(lab);
+  });
+  const dArea = el("div", "fld");
+  dArea.append(el("label", null, NPS_SPEC.aberta.texto), areas);
+  f.append(dArea);
   const q4 = document.createElement("textarea");
   q4.value = nps.q4;
-  q4.placeholder = "Sugestão de melhoria (opcional).";
+  q4.placeholder = "Detalhe das melhorias, ou algo fora das áreas acima (opcional).";
   q4.addEventListener("input", () => { nps.q4 = q4.value; });
-  campo(NPS_SPEC.aberta.texto, q4);
+  campo("Detalhe (texto livre)", q4);
 
   // Identificacao do respondente.
   campo("Quem respondeu", combobox(
@@ -2929,7 +2992,7 @@ function abrirNovoRegistro() {
                    // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
                    classe: "quantitativa",
                    nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
-                          respondente: "", parentesco: "" } };
+                          melhorias: [], respondente: "", parentesco: "" } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
   const tamanho = b => b < 1024 ? b + " B"
@@ -3175,6 +3238,7 @@ function abrirNovoRegistro() {
         // NPS depois nao pode depender de recalcular a regra em todo lugar.
         evento.nps = {
           q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
+          melhorias: Array.isArray(nps.melhorias) ? nps.melhorias.slice() : [],
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
           respondente: nps.respondente, parentesco: (nps.parentesco || "").trim(),
           tratado: false,   // detrator: vira true quando a coordenacao trata
@@ -5577,6 +5641,9 @@ function relDetalheEvento(ev, voltar) {
       p.append(r);
     };
     NPS_SPEC.perguntas.forEach(q => linhaN(q.texto, nps[q.id]));
+    if (Array.isArray(nps.melhorias) && nps.melhorias.length) {
+      linhaN("Melhorias citadas", nps.melhorias.join(" · "));
+    }
     // A nota com a classe do respondente ao lado.
     const rNota = el("div", "prop");
     const pv = el("span", "pv");
