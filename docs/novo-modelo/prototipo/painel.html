@@ -3079,21 +3079,16 @@ const MEL_ICON = {
   lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  lixeira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/><path d="M10 11v6M14 11v6"/></svg>',
 };
 
-// Lista de melhorias com estados por linha:
-//  - rascunho (a inserir): combobox editavel; confirmar (adicao) salva; editar
-//    fica DESATIVADO -- so vale para item ja salvo, e o botao continua no lugar
-//    para nao quebrar o layout;
-//  - salvo: campo em leitura; editar liga a edicao; remover pede confirmacao;
-//  - salvo em edicao: combobox editavel de novo; confirmar guarda a alteracao.
-// Cada linha tem sempre o mesmo trio [editar][confirmar][remover], habilitado
-// conforme o estado -- layout estavel.
+// Lista de melhorias: cada linha e um combobox editavel direto (tempo real) e
+// uma lixeira para remover. Nao ha mais botoes externos de editar/confirmar --
+// o campo ja e editavel e os dados refletem a cada tecla; a edicao do catalogo
+// (renomear em todos os registros) fica no lapis dentro do dropdown.
 function montarListaMelhorias(container, nps) {
-  // Estado local do widget: texto + se ja foi salvo + se esta em edicao.
-  // Itens que ja vieram preenchidos entram como salvos.
-  const linhas = (nps.melhorias || []).map(t => ({ texto: t, salvo: true, editando: false }));
-  if (!linhas.length) linhas.push({ texto: "", salvo: false, editando: false });
+  const linhas = (nps.melhorias || []).map(t => ({ texto: t }));
+  if (!linhas.length) linhas.push({ texto: "" });
   const foco = { l: null };
 
   // Tempo real para todos: qualquer item com texto conta na hora, novo ou
@@ -3144,16 +3139,13 @@ function montarListaMelhorias(container, nps) {
   };
 
   const criarLinha = (l) => {
-    const editavel = !l.salvo || l.editando;
     const linha = el("div", "mel-item");
-    const campo = el("div", "mel-campo" + (editavel ? "" : " lock"));
+    const campo = el("div", "mel-campo");
     const inp = document.createElement("input");
     inp.type = "text"; inp.value = l.texto;
     inp.placeholder = "Ex.: retorno de ligação mais rápido";
-    inp.readOnly = !editavel;
     const chev = el("button", "mel-chev");
     chev.type = "button"; chev.title = "Ver melhorias já usadas"; chev.innerHTML = MEL_ICON.chev;
-    chev.disabled = !editavel;
     const pop = el("div", "mel-pop");
     campo.append(inp, chev, pop);
 
@@ -3176,7 +3168,7 @@ function montarListaMelhorias(container, nps) {
         // Escolher a sugestao para esta linha.
         const b = el("button", "mel-op", s);
         b.type = "button";
-        b.addEventListener("click", ev => { ev.stopPropagation(); l.texto = s; inp.value = s; if (confirma) confirma.disabled = false; sync(); fecha(); inp.focus(); });
+        b.addEventListener("click", ev => { ev.stopPropagation(); l.texto = s; inp.value = s; sync(); fecha(); inp.focus(); });
         // Lapis: edita a propria melhoria da lista -- renomeia em todos os
         // registros que a usaram.
         const ed = el("button", "mel-op-edit");
@@ -3209,46 +3201,28 @@ function montarListaMelhorias(container, nps) {
     };
     const abre = () => { desenhaPop(); if (pop.children.length) { pop.classList.add("on"); setTimeout(() => document.addEventListener("click", fora), 0); } };
 
-    let confirma;   // referenciado pelo input para ligar/desligar ao vivo
-    const confirmar = () => {
-      if (!l.texto.trim()) { toast("Melhoria vazia", "Escreva a melhoria antes de confirmar."); return; }
-      l.salvo = true; l.editando = false; fecha(); sync(); render();
-    };
+    // Sempre editavel; os dados refletem a cada tecla (tempo real).
+    inp.addEventListener("input", () => {
+      l.texto = inp.value;
+      sync();
+      if (pop.classList.contains("on")) desenhaPop();
+    });
+    inp.addEventListener("keydown", ev => {
+      if (ev.key === "Enter") { ev.preventDefault(); fecha(); adicionar(); }
+      if (ev.key === "Escape") fecha();
+    });
+    chev.addEventListener("click", ev => { ev.stopPropagation(); pop.classList.contains("on") ? fecha() : abre(); });
 
-    if (editavel) {
-      inp.addEventListener("input", () => {
-        l.texto = inp.value;
-        if (confirma) confirma.disabled = !inp.value.trim();   // confirmar segue o campo
-        // Reflete em tempo real: editar um item ja salvo atualiza os dados a
-        // cada tecla. Rascunho (nao salvo) continua de fora ate confirmar --
-        // o sync so conta itens salvos.
-        sync();
-        if (pop.classList.contains("on")) desenhaPop();
-      });
-      inp.addEventListener("keydown", ev => {
-        if (ev.key === "Enter") { ev.preventDefault(); confirmar(); }
-        if (ev.key === "Escape") fecha();
-      });
-      chev.addEventListener("click", ev => { ev.stopPropagation(); pop.classList.contains("on") ? fecha() : abre(); });
-    }
-
-    // Trio de acoes, sempre presente. Habilita conforme o estado.
+    // Unica acao externa: remover (lixeira). Item com texto pede confirmacao;
+    // linha vazia sai direto. A lista pode ficar vazia -- "algo a melhorar" e
+    // opcional.
     const acoes = el("div", "mel-acoes");
-    // Editar: SO em item ja salvo e fora de edicao. Nos demais, desativado.
-    const editar = botao("mel-editar", MEL_ICON.lapis, "Editar este item",
-      l.salvo && !l.editando, () => { l.editando = true; foco.l = l; render(); });
-    // Confirmar: adiciona (rascunho) ou guarda a edicao (salvo em edicao).
-    confirma = botao("mel-confirmar", MEL_ICON.check,
-      l.salvo && !l.editando ? "Já confirmado" : (l.salvo ? "Confirmar edição" : "Confirmar adição"),
-      editavel && !!l.texto.trim(), confirmar);
-    // Remover: rascunho descarta; salvo pede confirmacao. A lista PODE ficar
-    // vazia -- "algo a melhorar" e opcional; entao nao readiciona rascunho.
-    const remover = botao("mel-rem", MEL_ICON.x, "Remover", true, () => {
-      if (l.salvo && !confirm("Remover “" + (l.texto || "este item") + "”?")) return;
+    const remover = botao("mel-rem", MEL_ICON.lixeira, "Remover", true, () => {
+      if (l.texto.trim() && !confirm("Remover “" + l.texto.trim() + "”?")) return;
       linhas.splice(linhas.indexOf(l), 1);
       sync(); render();
     });
-    acoes.append(editar, confirma, remover);
+    acoes.append(remover);
 
     linha.append(campo, acoes);
     if (foco.l === l) setTimeout(() => inp.focus(), 0);
@@ -3262,10 +3236,10 @@ function montarListaMelhorias(container, nps) {
     const add = el("button", "mel-add", "+ Adicionar melhoria");
     add.type = "button";
     add.addEventListener("click", () => {
-      // Nao empilha rascunhos vazios: se ja ha um, foca ele.
-      const rascunho = linhas.find(l => !l.salvo && !l.texto.trim());
-      if (rascunho) { foco.l = rascunho; render(); return; }
-      const nova = { texto: "", salvo: false, editando: false };
+      // Nao empilha linhas vazias: se ja ha uma, foca ela.
+      const vazia = linhas.find(l => !l.texto.trim());
+      if (vazia) { foco.l = vazia; render(); return; }
+      const nova = { texto: "" };
       linhas.push(nova); foco.l = nova; render();
     });
     container.append(add);
