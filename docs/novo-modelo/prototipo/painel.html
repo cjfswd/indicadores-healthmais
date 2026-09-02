@@ -263,6 +263,10 @@
   .peek.on { transform:translateX(0); }
   .peek-top { display:flex; align-items:center; gap:8px; padding:11px 16px; border-bottom:1px solid var(--line); flex:none; }
   .peek-top .id { font-size:11.5px; color:var(--ink-3); }
+  /* Breadcrumb do topo do painel: diz o contexto do que esta aberto. */
+  .peek-crumb { font-size:11.5px; color:var(--ink-3); letter-spacing:.02em;
+    text-transform:uppercase; font-family:"IBM Plex Mono", monospace;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .icon-btn { width:26px; height:26px; border-radius:6px; display:grid; place-items:center; color:var(--ink-3); font-size:15px; line-height:1; }
   .icon-btn:hover { background:var(--surface-hi); color:var(--ink); }
   .peek-body { overflow-y:auto; padding:20px 20px 44px; display:flex; flex-direction:column; gap:22px; }
@@ -1063,9 +1067,8 @@
 
 <aside class="peek" id="peek" aria-hidden="true">
   <div class="peek-top">
-    <span class="id mono" id="peekId"></span>
+    <span class="peek-crumb" id="peekId"></span>
     <div style="flex:1"></div>
-    <button class="icon-btn" title="Anexar">+</button>
     <button class="icon-btn" id="peekClose" title="Fechar (Esc)">✕</button>
   </div>
   <div class="peek-body" id="peekBody"></div>
@@ -2199,6 +2202,13 @@ function irPara(codigo, manterDrill) {
 // ═══ Side peek ════════════════════════════════════════════
 const peek = $("#peek"), scrim = $("#scrim"), peekBody = $("#peekBody");
 
+// Breadcrumb do topo do painel lateral. Antes o topo mostrava um id cru ("novo",
+// "nova", ou 12 hex) que nao dizia nada -- agora diz o caminho do que esta
+// aberto, ex.: "Ouvidoria › Novo". Ignora partes vazias.
+function peekCrumb(...partes) {
+  $("#peekId").textContent = partes.filter(Boolean).join(" › ");
+}
+
 function propRow(chave, valor, opcoes, aoMudar) {
   const row = el("div", "prop");
   row.append(el("span", "pk", chave));
@@ -2403,7 +2413,7 @@ function pacienteForm(id) {
     nascimento: "", admissao: "", observacoes: "", eventos: 0, recuperavel: "",
   };
 
-  $("#peekId").textContent = existente ? id.slice(0, 12) : "novo";
+  peekCrumb("Pacientes", existente ? "Editar" : "Novo");
   const body = $("#peekBody");
   body.innerHTML = "";
   const cab = el("div");
@@ -2589,6 +2599,69 @@ async function eventoExcluir(ev) {
   }
 }
 
+// Campo de anexo reutilizavel: le e escreve estado.anexo / estado.anexoErro,
+// e chama redesenha() apos escolher ou remover. Mesmo teto de 5 MB do sistema
+// atual. `jaTem` mostra que ja existe um arquivo no registro (na edicao), ainda
+// que o conteudo esteja no servidor -- o backend preserva o que nao for trocado.
+function campoAnexo(estado, redesenha, jaTem) {
+  const TETO = 5 * 1024 * 1024;
+  const tam = b => b < 1024 ? b + " B"
+    : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB";
+  const cx = el("div", "fld");
+  cx.append(el("label", null, "Anexo"));
+  const caixa = el("div", "anexo" + (estado.anexo ? " tem" : "") + (estado.anexoErro ? " erro" : ""));
+  const entrada = document.createElement("input");
+  entrada.type = "file";
+  entrada.style.display = "none";
+  entrada.addEventListener("change", () => {
+    const arq = entrada.files && entrada.files[0];
+    if (!arq) return;
+    if (arq.size > TETO) {
+      estado.anexo = null;
+      estado.anexoErro = arq.name + " tem " + tam(arq.size) + " — o teto é 5 MB.";
+    } else {
+      estado.anexo = { nome: arq.name, tamanho: arq.size };
+      estado.anexoErro = "";
+      const leitor = new FileReader();
+      leitor.onload = () => { estado.anexo.data = String(leitor.result).split(",").pop(); };
+      leitor.readAsDataURL(arq);
+    }
+    redesenha();
+  });
+  if (estado.anexo) {
+    caixa.append(el("span", "nome", estado.anexo.nome));
+    caixa.append(el("span", "tam", tam(estado.anexo.tamanho)));
+    const x = el("button", null, "✕");
+    x.type = "button"; x.title = "Remover";
+    x.addEventListener("click", () => { estado.anexo = null; estado.trocarAnexo = true; redesenha(); });
+    caixa.append(x);
+  } else if (estado.anexoErro) {
+    caixa.append(el("span", "nome", estado.anexoErro));
+    const t = el("button", null, "↻");
+    t.type = "button"; t.title = "Escolher outro";
+    t.addEventListener("click", () => entrada.click());
+    caixa.append(t);
+  } else {
+    // Na edicao, se ja havia arquivo e nao foi trocado, diz isso em vez de
+    // "ate 5 MB" -- senao pareceria que o anexo sumiu.
+    const temAntigo = jaTem && !estado.trocarAnexo;
+    const b = el("button", null, temAntigo ? "Substituir arquivo" : "Escolher arquivo");
+    b.type = "button"; b.style.color = "var(--accent)"; b.style.fontSize = "12.5px";
+    b.addEventListener("click", () => entrada.click());
+    caixa.append(b);
+    caixa.append(el("span", "tam", temAntigo ? "arquivo anexado · substituir ou "
+      : "até 5 MB"));
+    if (temAntigo) {
+      const rem = el("button", null, "remover");
+      rem.type = "button"; rem.style.color = "var(--flag)"; rem.style.fontSize = "12px";
+      rem.addEventListener("click", () => { estado.trocarAnexo = true; estado.removerAnexo = true; redesenha(); });
+      caixa.append(rem);
+    }
+  }
+  cx.append(caixa, entrada);
+  return cx;
+}
+
 function eventoEditar(ev) {
   // NPS nao se edita por este formulario de card>subcategoria: mudar o cod
   // reclassificaria a resposta e a tiraria do NPS. A edicao de NPS, quando
@@ -2605,8 +2678,9 @@ function eventoEditar(ev) {
     sub: ev.cod || "",
     data: ev.data || "",
     obs: ev.observacoes || "",
+    anexo: null, anexoErro: "", trocarAnexo: false, removerAnexo: false,
   };
-  $("#peekId").textContent = (ev.id || "").slice(0, 12);
+  peekCrumb(CARDS[estado.card] ? estado.card + " " + CARDS[estado.card].nome : "Registro", "Editar");
   const body = $("#peekBody");
   const desenha = () => {
     body.innerHTML = "";
@@ -2621,10 +2695,15 @@ function eventoEditar(ev) {
       v => { estado.card = v; estado.sub = Object.keys(CARDS[v] ? CARDS[v].sub || {} : {})[0] || ""; desenha(); },
       "Escolha o card"), true);
     const subs = CARDS[estado.card] ? (CARDS[estado.card].sub || {}) : {};
+    // Subcategoria NAO e obrigatoria na edicao: um registro legado pode estar
+    // "Em triagem" (sem cod), e forcar categoria so para corrigir a observacao
+    // travava a edicao inteira -- era esse o "nao funciona".
     campoForm(f, "Subcategoria", combobox(
-      Object.entries(subs).map(([k, v]) => ({ valor: k, rotulo: k + " " + v })),
+      [{ valor: "", rotulo: "Em triagem (sem categoria)" }].concat(
+        Object.entries(subs).filter(([k]) => k !== NPS_SUB)
+          .map(([k, v]) => ({ valor: k, rotulo: k + " " + v }))),
       estado.sub, v => { estado.sub = v; },
-      Object.keys(subs).length ? "Escolha a subcategoria" : "sem subcategoria"), true);
+      "Em triagem"));
     const dt = document.createElement("input");
     dt.type = "date"; dt.value = estado.data;
     dt.addEventListener("change", () => { estado.data = dt.value; });
@@ -2633,26 +2712,39 @@ function eventoEditar(ev) {
     obs.value = estado.obs;
     obs.addEventListener("input", () => { estado.obs = obs.value; });
     campoForm(f, "Observações", obs, true);
+    // Anexo: todo evento pode ter arquivo, inclusive na edicao.
+    f.append(campoAnexo(estado, desenha, ev.anexo));
     body.append(f);
     const salvar = el("button", "btn btn-primary", "Salvar");
     salvar.addEventListener("click", async () => {
       const falta = [];
-      if (!estado.sub) falta.push("subcategoria");
       if (!estado.data) falta.push("data");
       if (!estado.obs.trim()) falta.push("observações");
+      if (estado.anexoErro) { toast("Anexo acima do limite", estado.anexoErro); return; }
       if (falta.length) { toast("Faltam campos obrigatórios", falta.join(", ") + "."); return; }
       const card = CARDS[estado.card];
+      // Sub vazio => registro segue em triagem: nao inventa subindicator nem cod.
+      const ev2 = {
+        occurrenceDate: estado.data,
+        indicator: { name: estado.card + " - " + card.nome },
+        observations: estado.obs.trim(),
+        catalogo: CATALOGO_NOVO, card: estado.card, cod: estado.sub || null,
+      };
+      if (estado.sub && card.sub[estado.sub]) {
+        ev2.subindicator = { name: estado.sub + " - " + card.sub[estado.sub] };
+      }
+      // Anexo: so mexe se foi trocado. Novo arquivo vai com data; remover manda
+      // file:null. Sem trocar, o backend preserva o que ja existia.
+      if (estado.anexo && estado.anexo.data) {
+        ev2.file = { name: estado.anexo.nome, size: estado.anexo.tamanho, data: estado.anexo.data };
+      } else if (estado.removerAnexo) {
+        ev2.file = null;
+      }
       salvar.disabled = true;
       try {
         await apiDb("update", "patients", {
           id: ev.paciente_id,
-          data: { __op: "eventUpdate", eventId: ev.id, event: {
-            occurrenceDate: estado.data,
-            indicator: { name: estado.card + " - " + card.nome },
-            subindicator: { name: estado.sub + " - " + card.sub[estado.sub] },
-            observations: estado.obs.trim(),
-            catalogo: CATALOGO_NOVO, card: estado.card, cod: estado.sub,
-          } },
+          data: { __op: "eventUpdate", eventId: ev.id, event: ev2 },
         });
         fechar();
         await recarregarDados();
@@ -2693,7 +2785,7 @@ function operadoraForm(id) {
   const existente = id ? (OP.operadoras || []).find(o => o.id === id) : null;
   const e = existente ? { ...existente } : { id: "", nome: "", criado: null, pacientes: 0 };
 
-  $("#peekId").textContent = existente ? id.slice(0, 12) : "nova";
+  peekCrumb("Operadoras", existente ? "Editar" : "Nova");
   const body = $("#peekBody");
   body.innerHTML = "";
   const cab = el("div");
@@ -3035,11 +3127,14 @@ function abrirNovoRegistro() {
   const tamanho = b => b < 1024 ? b + " B"
     : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB";
 
-  $("#peekId").textContent = "novo";
   const body = $("#peekBody");
 
   const desenha = () => {
     body.innerHTML = "";
+    // Breadcrumb do topo: diz de que card (e classe, na Ouvidoria) e este novo.
+    const nomeCard = CARDS[estado.card] ? estado.card + " " + CARDS[estado.card].nome : "Registro";
+    const ehNpsCrumb = (CARDS[estado.card] || {}).classes && estado.classe === "qualitativa";
+    peekCrumb(nomeCard, "Novo", ehNpsCrumb ? "NPS" : null);
     const cab = el("div");
     cab.append(el("h2", null, "Novo registro"));
     cab.append(el("div", "sub", "Campos com * são obrigatórios. O anexo aceita até 5 MB."));
@@ -4223,7 +4318,7 @@ function pacienteDetalhe(pid, voltar) {
   if (!p && !evs.length) { toast("Sem ficha", "Este paciente não está no dados.json."); return; }
   const nome = p ? p.nome : (evs[0] || {}).paciente || "";
 
-  $("#peekId").textContent = (pid || "").slice(0, 12);
+  peekCrumb("Paciente", "Ficha");
   const body = $("#peekBody");
   body.innerHTML = "";
   if (voltar) {
@@ -5610,7 +5705,8 @@ function relListaEventos(titulo, subtitulo, eventos) {
 
 /** Detalhe de um evento, com volta para a lista de onde veio. */
 function relDetalheEvento(ev, voltar) {
-  $("#peekId").textContent = (ev.id || "").slice(0, 12);
+  peekCrumb(ev.card_novo && ev.card_novo !== "?" ? ev.card_novo + " " + (CARDS[ev.card_novo] ? CARDS[ev.card_novo].nome : "") : "Registro",
+            ev.nps ? "NPS" : "Detalhe");
   const body = $("#peekBody");
   body.innerHTML = "";
 
