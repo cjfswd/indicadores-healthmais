@@ -292,8 +292,10 @@
     border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
     transition:border-color .12s; }
   .mel-campo:focus-within { border-color:var(--accent); }
-  .mel-lapis { flex:none; display:grid; place-items:center; width:30px; color:var(--ink-3); }
+  .mel-lapis { flex:none; display:grid; place-items:center; width:32px; height:32px;
+    color:var(--ink-3); cursor:pointer; transition:color .12s; }
   .mel-lapis svg { width:14px; height:14px; }
+  .mel-lapis:hover { color:var(--accent); }
   .mel-campo:focus-within .mel-lapis { color:var(--accent); }
   .mel-campo input { flex:1; border:none; background:none; outline:none;
     font:inherit; font-size:13px; color:var(--ink); padding:8px 4px 8px 0; }
@@ -3064,8 +3066,11 @@ function montarListaMelhorias(container, nps) {
   const criarLinha = (i) => {
     const linha = el("div", "mel-item");
     const campo = el("div", "mel-campo");
-    campo.insertAdjacentHTML("beforeend",
-      '<span class="mel-lapis" title="Campo editável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>');
+    const lapis = el("button", "mel-lapis");
+    lapis.type = "button";
+    lapis.title = "Editar este item";
+    lapis.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    campo.append(lapis);
     const inp = document.createElement("input");
     inp.type = "text"; inp.value = nps.melhorias[i];
     inp.placeholder = "Ex.: retorno de ligação mais rápido";
@@ -3074,6 +3079,15 @@ function montarListaMelhorias(container, nps) {
     chev.innerHTML = MEL_CHEV;
     const pop = el("div", "mel-pop");
     campo.append(inp, chev, pop);
+
+    // O lapis coloca o cursor no fim do texto para editar -- clicar nele e
+    // um atalho para o mesmo que clicar no campo, mas explicito.
+    lapis.addEventListener("click", ev => {
+      ev.stopPropagation();
+      inp.focus();
+      const n = inp.value.length;
+      try { inp.setSelectionRange(n, n); } catch (e) {}
+    });
 
     const fecha = () => { pop.classList.remove("on"); document.removeEventListener("click", fora); };
     const fora = ev => { if (!campo.contains(ev.target)) fecha(); };
