@@ -284,20 +284,18 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
-  /* Q4: lista aberta de melhorias -- combobox editavel + remover, e adicionar. */
-  .mel-lista { display:flex; flex-direction:column; gap:7px; }
-  .mel-item { display:flex; align-items:center; gap:7px; }
-  .mel-item .cbx { flex:1; }
+  /* Q4: lista aberta de melhorias -- campo editavel por item + remover. */
+  .mel-lista { display:flex; flex-direction:column; gap:6px; }
+  .mel-item { display:flex; align-items:center; gap:6px; }
   .mel-item > input[type=text] { flex:1; }
-  .mel-rem, .mel-editar, .mel-ok { flex:none; width:28px; height:28px;
-    border:1px solid var(--line); border-radius:6px; color:var(--ink-3); font-size:12px; }
+  .mel-rem { flex:none; width:32px; height:32px; border:1px solid var(--line);
+    border-radius:7px; color:var(--ink-3); font-size:12px; line-height:1;
+    display:grid; place-items:center; transition:color .12s, border-color .12s, background .12s; }
   .mel-rem:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
-  .mel-editar:hover { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
-  .mel-ok { border-color:var(--done); color:var(--done); }
-  .mel-ok:hover { background:var(--done-soft); }
-  .mel-add { align-self:flex-start; font-size:12.5px; color:var(--accent);
-    padding:4px 2px; }
-  .mel-add:hover { text-decoration:underline; }
+  .mel-add { align-self:flex-start; display:inline-flex; align-items:center; gap:6px;
+    font-size:12.5px; color:var(--accent); padding:6px 10px; border:1px dashed var(--line);
+    border-radius:7px; margin-top:1px; transition:border-color .12s, background .12s; }
+  .mel-add:hover { border-color:var(--accent); background:var(--surface-hi); }
   /* Barra de areas citadas no painel NPS. */
   .nps-areas-ct { display:flex; flex-direction:column; gap:5px; }
   .nps-areas-ct .lin { display:flex; align-items:center; gap:8px; font-size:12px; }
@@ -3025,19 +3023,21 @@ function sugestoesMelhorias() {
   return [...vistas].sort((a, b) => a.localeCompare(b));
 }
 
-// Lista aberta de melhorias. Cada item tem dois modos:
-//  - vazio, ou em edicao: campo de texto editavel (com sugestoes via datalist),
-//    para digitar ou corrigir a melhoria livremente;
-//  - preenchido: o combobox mostra o valor (reabre para trocar por outro ja
-//    existente) e ganha um lapis ao lado, que entra no modo de texto para
-//    editar o proprio texto do item selecionado -- que era o que faltava.
-// Rerenderiza so o proprio container; `editando` guarda o item em edicao.
+// Lista aberta de melhorias. Um so modo, previsivel: cada item e um campo de
+// texto sempre editavel, com as melhorias ja usadas como sugestao (datalist --
+// um combobox editavel nativo). Sem alternar entre combobox e texto, sem lapis
+// nem check: digitar edita, o X remove. Foi a confusao que motivou este ajuste.
+//
+// Rerenderiza so em adicionar/remover (cliques discretos); digitar nao recria
+// o campo, entao o foco fica.
 function montarListaMelhorias(container, nps) {
-  let editando = -1;
+  // Comeca com um campo pronto para digitar, em vez de so o botao de adicionar
+  // -- o vazio e descartado no salvar, entao nao custa nada.
+  if (!nps.melhorias.length) nps.melhorias.push("");
+  const foco = { i: -1 };   // qual campo focar apos rerender (item recem-criado)
   const render = () => {
     container.innerHTML = "";
     const sugestoes = sugestoesMelhorias();
-    // datalist unico para as sugestoes dos campos de texto em edicao.
     const dlId = "mel-sug-" + Math.random().toString(36).slice(2, 7);
     const dl = document.createElement("datalist");
     dl.id = dlId;
@@ -3046,45 +3046,36 @@ function montarListaMelhorias(container, nps) {
 
     nps.melhorias.forEach((item, i) => {
       const linha = el("div", "mel-item");
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.value = item;
+      inp.placeholder = "Ex.: retorno de ligação mais rápido";
+      inp.setAttribute("list", dlId);   // sugere as ja usadas, mas aceita novas
+      inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; });
+      // Enter adiciona a proxima -- fluxo rapido para quem cita varias.
+      inp.addEventListener("keydown", ev => {
+        if (ev.key === "Enter") { ev.preventDefault(); adicionar(); }
+      });
       const rem = el("button", "mel-rem", "✕");
       rem.type = "button"; rem.title = "Remover";
-      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); if (editando === i) editando = -1; render(); });
-
-      if (!item || editando === i) {
-        // Modo texto: digita/edita livremente, com sugestoes.
-        const inp = document.createElement("input");
-        inp.type = "text"; inp.value = item; inp.placeholder = "Digite a melhoria…";
-        inp.setAttribute("list", dlId);
-        inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; });
-        inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); editando = -1; render(); } });
-        const ok = el("button", "mel-ok", "✓");
-        ok.type = "button"; ok.title = "Concluir";
-        ok.addEventListener("click", () => { editando = -1; render(); });
-        linha.append(inp, ok, rem);
-        container.append(linha);
-        if (editando === i) setTimeout(() => inp.focus(), 0);
-        return;
-      }
-
-      // Modo selecionado: combobox (troca por outra existente) + lapis (edita o texto).
-      const opcoes = sugestoes.map(s => ({ valor: s, rotulo: s }));
-      if (!sugestoes.includes(item)) opcoes.unshift({ valor: item, rotulo: item });
-      const cbx = combobox(
-        opcoes, item,
-        v => { nps.melhorias[i] = v; },
-        "Trocar por outra…",
-        texto => { nps.melhorias[i] = texto; return texto; });
-      const editar = el("button", "mel-editar", "✎");
-      editar.type = "button"; editar.title = "Editar o texto deste item";
-      editar.addEventListener("click", () => { editando = i; render(); });
-      linha.append(cbx, editar, rem);
+      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
+      linha.append(inp, rem);
       container.append(linha);
+      if (foco.i === i) setTimeout(() => inp.focus(), 0);
     });
+    foco.i = -1;
 
     const add = el("button", "mel-add", "+ Adicionar melhoria");
     add.type = "button";
-    add.addEventListener("click", () => { nps.melhorias.push(""); editando = nps.melhorias.length - 1; render(); });
+    add.addEventListener("click", adicionar);
     container.append(add);
+  };
+  const adicionar = () => {
+    // Evita empilhar linhas vazias: se a ultima ainda esta em branco, foca ela.
+    const ultima = nps.melhorias.length - 1;
+    if (ultima >= 0 && !(nps.melhorias[ultima] || "").trim()) { foco.i = ultima; render(); return; }
+    nps.melhorias.push("");
+    foco.i = nps.melhorias.length - 1;
+    render();
   };
   render();
 }
