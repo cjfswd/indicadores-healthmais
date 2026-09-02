@@ -3154,11 +3154,11 @@ function montarListaMelhorias(container, nps) {
     confirma = botao("mel-confirmar", MEL_ICON.check,
       l.salvo && !l.editando ? "Já confirmado" : (l.salvo ? "Confirmar edição" : "Confirmar adição"),
       editavel && !!l.texto.trim(), confirmar);
-    // Remover: rascunho descarta; salvo pede confirmacao.
+    // Remover: rascunho descarta; salvo pede confirmacao. A lista PODE ficar
+    // vazia -- "algo a melhorar" e opcional; entao nao readiciona rascunho.
     const remover = botao("mel-rem", MEL_ICON.x, "Remover", true, () => {
       if (l.salvo && !confirm("Remover “" + (l.texto || "este item") + "”?")) return;
       linhas.splice(linhas.indexOf(l), 1);
-      if (!linhas.length) linhas.push({ texto: "", salvo: false, editando: false });
       sync(); render();
     });
     acoes.append(editar, confirma, remover);
