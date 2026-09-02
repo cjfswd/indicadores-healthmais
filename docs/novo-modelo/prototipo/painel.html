@@ -305,9 +305,25 @@
     background:var(--surface); border:1px solid var(--line); border-radius:9px;
     box-shadow:var(--shadow-pop); padding:4px; max-height:220px; overflow-y:auto; display:none; }
   .mel-pop.on { display:block; }
-  .mel-op { display:block; width:100%; text-align:left; padding:6px 8px; border-radius:6px;
-    font-size:13px; color:var(--ink); }
-  .mel-op:hover { background:var(--surface-hi); color:var(--accent); }
+  /* Cada sugestao: escolher (texto) + lapis para renomear no catalogo. */
+  .mel-op-row { display:flex; align-items:center; gap:2px; border-radius:6px; }
+  .mel-op-row:hover { background:var(--surface-hi); }
+  .mel-op-row.edit { background:none; gap:4px; padding:2px; }
+  .mel-op { flex:1; min-width:0; text-align:left; padding:6px 8px; border-radius:6px;
+    font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mel-op:hover { color:var(--accent); }
+  .mel-op-edit { flex:none; width:28px; height:28px; display:grid; place-items:center;
+    color:var(--ink-3); border-radius:6px; opacity:0; transition:opacity .12s, color .12s; }
+  .mel-op-row:hover .mel-op-edit { opacity:1; }
+  .mel-op-edit:hover { color:var(--accent); background:var(--surface-2); }
+  .mel-op-edit svg { width:13px; height:13px; }
+  .mel-op-inp { flex:1; min-width:0; border:1px solid var(--accent); border-radius:6px;
+    background:var(--surface-2); color:var(--ink); font:inherit; font-size:13px; padding:5px 8px; outline:none; }
+  .mel-op-ok, .mel-op-no { flex:none; width:28px; height:28px; display:grid; place-items:center;
+    border:1px solid var(--line); border-radius:6px; color:var(--ink-3); }
+  .mel-op-ok:hover { border-color:var(--done); color:var(--done); background:var(--done-soft); }
+  .mel-op-no:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .mel-op-ok svg, .mel-op-no svg { width:14px; height:14px; }
   /* Trio de acoes: editar, confirmar, remover. Botoes iguais; estado desabilita. */
   .mel-acoes { flex:none; display:flex; gap:4px; }
   .mel-bt { width:32px; height:32px; border:1px solid var(--line); border-radius:7px;
@@ -3087,6 +3103,36 @@ function montarListaMelhorias(container, nps) {
     nps.melhorias = linhas.map(l => l.texto.trim()).filter(Boolean);
   };
 
+  // Renomeia uma melhoria em TODOS os registros que a usaram -- e um item de
+  // catalogo, nao so desta ficha. Atualiza cada evento afetado no banco e
+  // tambem as linhas em edicao aqui. Pede confirmacao: mexe em varios registros.
+  const renomearSugestao = async (antigo, bruto) => {
+    const novo = (bruto || "").trim();
+    if (!novo || novo === antigo) { render(); return; }
+    const afetados = (OP.eventos || []).filter(e =>
+      e.nps && (e.nps.melhorias || []).includes(antigo));
+    if (!confirm("Renomear “" + antigo + "” para “" + novo + "” em "
+      + afetados.length + " registro(s)?")) return;
+    try {
+      for (const e of afetados) {
+        const novas = [...new Set((e.nps.melhorias || []).map(m => m === antigo ? novo : m))];
+        await apiDb("update", "patients", {
+          id: e.paciente_id,
+          data: { __op: "eventUpdate", eventId: e.id, event: { nps: { ...e.nps, melhorias: novas } } },
+        });
+      }
+      // Reflete nas linhas abertas nesta ficha.
+      linhas.forEach(l => { if (l.texto === antigo) l.texto = novo; });
+      if (afetados.length) await recarregarDados();
+      sync(); render();
+      toast("Melhoria renomeada", afetados.length
+        ? afetados.length + " registro(s) atualizados" : "aplicada nesta lista");
+    } catch (err) {
+      toast("Não foi possível renomear", err.message);
+      render();
+    }
+  };
+
   const botao = (cls, icone, titulo, ligado, aoClicar) => {
     const b = el("button", "mel-bt " + cls);
     b.type = "button"; b.title = titulo; b.innerHTML = icone;
@@ -3126,11 +3172,40 @@ function montarListaMelhorias(container, nps) {
       pop.innerHTML = "";
       if (!usadas.length) { fecha(); return; }
       usadas.forEach(s => {
+        const row = el("div", "mel-op-row");
+        // Escolher a sugestao para esta linha.
         const b = el("button", "mel-op", s);
         b.type = "button";
-        b.addEventListener("click", ev => { ev.stopPropagation(); l.texto = s; inp.value = s; fecha(); inp.focus(); });
-        pop.append(b);
+        b.addEventListener("click", ev => { ev.stopPropagation(); l.texto = s; inp.value = s; if (confirma) confirma.disabled = false; sync(); fecha(); inp.focus(); });
+        // Lapis: edita a propria melhoria da lista -- renomeia em todos os
+        // registros que a usaram.
+        const ed = el("button", "mel-op-edit");
+        ed.type = "button"; ed.title = "Editar esta melhoria em todos os registros";
+        ed.innerHTML = MEL_ICON.lapis;
+        ed.addEventListener("click", ev => { ev.stopPropagation(); editarSugestao(row, s); });
+        row.append(b, ed);
+        pop.append(row);
       });
+    };
+    // Edicao inline de uma melhoria da lista de sugestoes.
+    const editarSugestao = (row, antigo) => {
+      row.innerHTML = "";
+      row.classList.add("edit");
+      const ie = document.createElement("input");
+      ie.type = "text"; ie.value = antigo; ie.className = "mel-op-inp";
+      const ok = el("button", "mel-op-ok"); ok.type = "button"; ok.title = "Salvar em todos"; ok.innerHTML = MEL_ICON.check;
+      const no = el("button", "mel-op-no"); no.type = "button"; no.title = "Cancelar"; no.innerHTML = MEL_ICON.x;
+      const cancela = ev => { if (ev) ev.stopPropagation(); desenhaPop(); };
+      ok.addEventListener("click", async ev => { ev.stopPropagation(); await renomearSugestao(antigo, ie.value); });
+      no.addEventListener("click", cancela);
+      ie.addEventListener("click", ev => ev.stopPropagation());
+      ie.addEventListener("keydown", ev => {
+        ev.stopPropagation();
+        if (ev.key === "Enter") { ev.preventDefault(); renomearSugestao(antigo, ie.value); }
+        if (ev.key === "Escape") cancela();
+      });
+      row.append(ie, ok, no);
+      setTimeout(() => ie.focus(), 0);
     };
     const abre = () => { desenhaPop(); if (pop.children.length) { pop.classList.add("on"); setTimeout(() => document.addEventListener("click", fora), 0); } };
 
