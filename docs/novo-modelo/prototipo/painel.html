@@ -284,10 +284,30 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
-  /* Q4: lista aberta de melhorias -- campo editavel por item + remover. */
+  /* Q4: lista aberta de melhorias -- combobox editavel proprio por item. */
   .mel-lista { display:flex; flex-direction:column; gap:6px; }
   .mel-item { display:flex; align-items:center; gap:6px; }
-  .mel-item > input[type=text] { flex:1; }
+  /* Campo: parece um input, com o lapis (editavel) e a seta (sugestoes) dentro. */
+  .mel-campo { flex:1; position:relative; display:flex; align-items:center;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
+    transition:border-color .12s; }
+  .mel-campo:focus-within { border-color:var(--accent); }
+  .mel-lapis { flex:none; display:grid; place-items:center; width:30px; color:var(--ink-3); }
+  .mel-lapis svg { width:14px; height:14px; }
+  .mel-campo:focus-within .mel-lapis { color:var(--accent); }
+  .mel-campo input { flex:1; border:none; background:none; outline:none;
+    font:inherit; font-size:13px; color:var(--ink); padding:8px 4px 8px 0; }
+  .mel-campo input::placeholder { color:var(--ink-3); }
+  .mel-chev { flex:none; width:30px; height:100%; display:grid; place-items:center; color:var(--ink-3); }
+  .mel-chev svg { width:15px; height:15px; }
+  .mel-chev:hover { color:var(--accent); }
+  .mel-pop { position:absolute; z-index:35; left:0; right:0; top:calc(100% + 4px);
+    background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    box-shadow:var(--shadow-pop); padding:4px; max-height:220px; overflow-y:auto; display:none; }
+  .mel-pop.on { display:block; }
+  .mel-op { display:block; width:100%; text-align:left; padding:6px 8px; border-radius:6px;
+    font-size:13px; color:var(--ink); }
+  .mel-op:hover { background:var(--surface-hi); color:var(--accent); }
   .mel-rem { flex:none; width:32px; height:32px; border:1px solid var(--line);
     border-radius:7px; color:var(--ink-3); font-size:12px; line-height:1;
     display:grid; place-items:center; transition:color .12s, border-color .12s, background .12s; }
@@ -3030,47 +3050,86 @@ function sugestoesMelhorias() {
 //
 // Rerenderiza so em adicionar/remover (cliques discretos); digitar nao recria
 // o campo, entao o foco fica.
+// Chevron do combobox de melhoria (mesmo tracado do resto do painel).
+const MEL_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+// Lista aberta de melhorias. Cada item e um combobox editavel proprio (nao o
+// datalist nativo, que trazia seta e lista com cara de sistema): campo sempre
+// editavel, um lapis indicando que da para escrever, uma seta que abre as
+// sugestoes num dropdown estilizado, e o X para remover.
 function montarListaMelhorias(container, nps) {
-  // Comeca com um campo pronto para digitar, em vez de so o botao de adicionar
-  // -- o vazio e descartado no salvar, entao nao custa nada.
   if (!nps.melhorias.length) nps.melhorias.push("");
-  const foco = { i: -1 };   // qual campo focar apos rerender (item recem-criado)
+  const foco = { i: -1 };
+
+  const criarLinha = (i) => {
+    const linha = el("div", "mel-item");
+    const campo = el("div", "mel-campo");
+    campo.insertAdjacentHTML("beforeend",
+      '<span class="mel-lapis" title="Campo editável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>');
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.value = nps.melhorias[i];
+    inp.placeholder = "Ex.: retorno de ligação mais rápido";
+    const chev = el("button", "mel-chev");
+    chev.type = "button"; chev.title = "Ver melhorias já usadas";
+    chev.innerHTML = MEL_CHEV;
+    const pop = el("div", "mel-pop");
+    campo.append(inp, chev, pop);
+
+    const fecha = () => { pop.classList.remove("on"); document.removeEventListener("click", fora); };
+    const fora = ev => { if (!campo.contains(ev.target)) fecha(); };
+    const desenhaPop = () => {
+      const q = inp.value.trim().toLowerCase();
+      const usadas = sugestoesMelhorias().filter(s =>
+        s.toLowerCase() !== q && s.toLowerCase().includes(q));
+      pop.innerHTML = "";
+      if (!usadas.length) { fecha(); return; }
+      usadas.forEach(s => {
+        const b = el("button", "mel-op", s);
+        b.type = "button";
+        b.addEventListener("click", ev => {
+          ev.stopPropagation();
+          nps.melhorias[i] = s; inp.value = s; fecha(); inp.focus();
+        });
+        pop.append(b);
+      });
+    };
+    const abre = () => {
+      desenhaPop();
+      if (pop.children.length) {
+        pop.classList.add("on");
+        setTimeout(() => document.addEventListener("click", fora), 0);
+      }
+    };
+
+    inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; if (pop.classList.contains("on")) desenhaPop(); });
+    inp.addEventListener("keydown", ev => {
+      if (ev.key === "Enter") { ev.preventDefault(); fecha(); adicionar(); }
+      if (ev.key === "Escape") fecha();
+    });
+    chev.addEventListener("click", ev => {
+      ev.stopPropagation();
+      pop.classList.contains("on") ? fecha() : abre();
+    });
+
+    const rem = el("button", "mel-rem", "✕");
+    rem.type = "button"; rem.title = "Remover";
+    rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
+
+    linha.append(campo, rem);
+    if (foco.i === i) setTimeout(() => inp.focus(), 0);
+    return linha;
+  };
+
   const render = () => {
     container.innerHTML = "";
-    const sugestoes = sugestoesMelhorias();
-    const dlId = "mel-sug-" + Math.random().toString(36).slice(2, 7);
-    const dl = document.createElement("datalist");
-    dl.id = dlId;
-    sugestoes.forEach(s => { const o = document.createElement("option"); o.value = s; dl.append(o); });
-    container.append(dl);
-
-    nps.melhorias.forEach((item, i) => {
-      const linha = el("div", "mel-item");
-      const inp = document.createElement("input");
-      inp.type = "text"; inp.value = item;
-      inp.placeholder = "Ex.: retorno de ligação mais rápido";
-      inp.setAttribute("list", dlId);   // sugere as ja usadas, mas aceita novas
-      inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; });
-      // Enter adiciona a proxima -- fluxo rapido para quem cita varias.
-      inp.addEventListener("keydown", ev => {
-        if (ev.key === "Enter") { ev.preventDefault(); adicionar(); }
-      });
-      const rem = el("button", "mel-rem", "✕");
-      rem.type = "button"; rem.title = "Remover";
-      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
-      linha.append(inp, rem);
-      container.append(linha);
-      if (foco.i === i) setTimeout(() => inp.focus(), 0);
-    });
+    nps.melhorias.forEach((_, i) => container.append(criarLinha(i)));
     foco.i = -1;
-
     const add = el("button", "mel-add", "+ Adicionar melhoria");
     add.type = "button";
     add.addEventListener("click", adicionar);
     container.append(add);
   };
   const adicionar = () => {
-    // Evita empilhar linhas vazias: se a ultima ainda esta em branco, foca ela.
     const ultima = nps.melhorias.length - 1;
     if (ultima >= 0 && !(nps.melhorias[ultima] || "").trim()) { foco.i = ultima; render(); return; }
     nps.melhorias.push("");
