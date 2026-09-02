@@ -67,6 +67,11 @@ SELECT e.id,
             ELSE '' END AS cod,
        coalesce(pr.nome, '') AS responsavel,
        regexp_replace(btrim(coalesce(e.observations, '')), '\s+', ' ', 'g') AS observacoes,
+       -- Classe da Ouvidoria e o instrumento NPS (quando qualitativo). Saem
+       -- iguais aos que o Mongo guarda no evento, para a tela nao distinguir a
+       -- fonte. O nps ja e jsonb; a API o devolve como objeto.
+       coalesce(e.classe, '') AS classe,
+       e.nps,
        EXISTS (SELECT 1 FROM anexos a WHERE a.evento_id = e.id) AS anexo
 FROM patient_events e
 JOIN patients p ON p.id = e.patient_id
