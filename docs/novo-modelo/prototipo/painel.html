@@ -380,6 +380,35 @@
   .nps-qual .cell .d { font-size:10.5px; color:var(--ink-3); }
   .nps-aviso { font-size:12px; padding:9px 11px; border-radius:8px;
     background:var(--sev-2-soft); color:var(--sev-2); }
+  /* Respondentes: filtro por classificacao + lista clicavel de eventos. */
+  .nps-resp { display:flex; flex-direction:column; gap:8px; }
+  .nps-resp-hd { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .nps-filtros { display:flex; gap:6px; flex-wrap:wrap; }
+  .nps-fil { font-size:11.5px; padding:4px 9px; border:1px solid var(--line); border-radius:14px;
+    color:var(--ink-2); display:inline-flex; align-items:center; gap:5px; transition:all .12s; }
+  .nps-fil .n { font-family:"IBM Plex Mono", monospace; color:var(--ink-3); font-size:11px; }
+  .nps-fil:hover { border-color:var(--accent-line); }
+  .nps-fil.on { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
+  .nps-fil.on .n { color:var(--accent); }
+  .nps-fil.promotor.on { border-color:var(--done); color:var(--done); background:var(--done-soft); }
+  .nps-fil.passivo.on { border-color:var(--sev-2); color:var(--sev-2); background:var(--sev-2-soft); }
+  .nps-fil.detrator.on { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .nps-resp-lista { display:flex; flex-direction:column; gap:4px; }
+  .nps-resp-item { display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
+    transition:border-color .12s, background .12s; }
+  .nps-resp-item:hover { border-color:var(--accent-line); background:var(--surface-hi); }
+  .nps-nota { flex:none; width:30px; height:26px; display:grid; place-items:center; border-radius:6px;
+    font-family:"IBM Plex Mono", monospace; font-weight:600; font-size:13px; color:#fff; }
+  :root[data-theme="dark"] .nps-nota, :root:not([data-theme="light"]) .nps-nota { color:#0E141C; }
+  .nps-nota.promotor { background:var(--done); }
+  .nps-nota.passivo { background:var(--sev-2); }
+  .nps-nota.detrator { background:var(--flag); }
+  .nps-resp-item .quem { flex:1; font-size:13px; color:var(--ink); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .nps-resp-item .quem .dt, .nps-resp-item .quem .mel { color:var(--ink-3); font-size:12px; }
+  .nps-resp-item .cls { flex:none; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--ink-3); }
   .nps-detr { display:flex; flex-direction:column; gap:8px; }
   .nps-detr-linha { display:flex; align-items:center; gap:10px; }
   .nps-detr-linha .nota { font-weight:600; color:var(--flag); font-family:"IBM Plex Mono", monospace;
@@ -1905,6 +1934,9 @@ function elegiveisNps() {
   return (OP.pacientes || []).filter(p => p.situacao === "ativo" && empresaDe(p) === F.emp).length;
 }
 
+// Filtro da lista de respondentes do NPS: "" (todos) | promotor | passivo | detrator.
+let npsFiltro = "";
+
 function desenharPainelNps(codigo) {
   const box = $("#npsPainel");
   const cardCfg = CARDS[codigo] || {};
@@ -1981,6 +2013,47 @@ function desenharPainelNps(codigo) {
       + " respostas no período: registre, leia pelo trimestre, não decida isolado.";
     box.append(a);
   }
+
+  // Respondentes: quem e promotor, passivo e detrator, e cada evento na
+  // integra -- igual aos outros indicadores, so que classificado pela nota.
+  const secR = el("div", "nps-resp");
+  const hd = el("div", "nps-resp-hd");
+  hd.append(el("span", "sec-h", "Respondentes"));
+  const fil = el("div", "nps-filtros");
+  [["", "Todos", ap.n], ["promotor", "Promotores", ap.contagem.promotor],
+   ["passivo", "Passivos", ap.contagem.passivo], ["detrator", "Detratores", ap.contagem.detrator]]
+    .forEach(([k, rot, n]) => {
+      const b = el("button", "nps-fil " + (k || "todos") + (npsFiltro === k ? " on" : ""));
+      b.type = "button";
+      b.append(document.createTextNode(rot + " "), el("span", "n", String(n)));
+      b.addEventListener("click", () => { npsFiltro = npsFiltro === k ? "" : k; desenharPainelNps(codigo); });
+      fil.append(b);
+    });
+  hd.append(fil);
+  secR.append(hd);
+
+  const lista = el("div", "nps-resp-lista");
+  const itens = ap.validos
+    .filter(e => !npsFiltro || e.nps.classe === npsFiltro)
+    .sort((a, b) => (a.nps.q5 - b.nps.q5) || (b.data || "").localeCompare(a.data || ""));
+  itens.forEach(e => {
+    const row = el("button", "nps-resp-item");
+    row.type = "button";
+    row.title = "Abrir o registro na íntegra";
+    row.append(el("span", "nps-nota " + e.nps.classe, String(e.nps.q5)));
+    const quem = el("span", "quem");
+    quem.append(document.createTextNode(e.paciente));
+    if (e.data) quem.append(el("span", "dt", " · " + dbr(e.data)));
+    if (e.nps.melhorias && e.nps.melhorias.length)
+      quem.append(el("span", "mel", " · " + e.nps.melhorias.length + " melhoria(s)"));
+    row.append(quem, el("span", "cls " + e.nps.classe, e.nps.classe));
+    // Abre o mesmo detalhe dos outros indicadores, com volta para o card.
+    row.addEventListener("click", () => relDetalheEvento(e, () => irPara(codigo)));
+    lista.append(row);
+  });
+  if (!itens.length) lista.append(el("div", "nps-vazio", "Nenhum respondente nesta classificação."));
+  secR.append(lista);
+  box.append(secR);
 
   // Areas de melhoria mais citadas -- o quantitativo da Q4. Um envio conta em
   // todas as areas que marcou, entao o total pode passar de n respostas.
