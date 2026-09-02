@@ -3080,10 +3080,11 @@ function montarListaMelhorias(container, nps) {
   if (!linhas.length) linhas.push({ texto: "", salvo: false, editando: false });
   const foco = { l: null };
 
-  // So os itens confirmados e nao-vazios contam -- honra a "confirmacao de
-  // adicao": um rascunho nao entra no NPS ate ser confirmado.
+  // Tempo real para todos: qualquer item com texto conta na hora, novo ou
+  // salvo. O confirmar deixou de ser porteiro dos dados -- e o gesto que trava
+  // o item e libera o lapis. Vazios ficam de fora.
   const sync = () => {
-    nps.melhorias = linhas.filter(l => l.salvo && l.texto.trim()).map(l => l.texto.trim());
+    nps.melhorias = linhas.map(l => l.texto.trim()).filter(Boolean);
   };
 
   const botao = (cls, icone, titulo, ligado, aoClicar) => {
@@ -3114,7 +3115,14 @@ function montarListaMelhorias(container, nps) {
     const fora = ev => { if (!campo.contains(ev.target)) fecha(); };
     const desenhaPop = () => {
       const q = inp.value.trim().toLowerCase();
-      const usadas = sugestoesMelhorias().filter(s => s.toLowerCase() !== q && s.toLowerCase().includes(q));
+      // Nao sugere o que ja esta na lista (em qualquer outra linha): item ja
+      // incluido nao precisa aparecer de novo.
+      const naLista = new Set(linhas.filter(x => x !== l)
+        .map(x => (x.texto || "").trim().toLowerCase()).filter(Boolean));
+      const usadas = sugestoesMelhorias().filter(s => {
+        const sl = s.toLowerCase();
+        return sl !== q && sl.includes(q) && !naLista.has(sl);
+      });
       pop.innerHTML = "";
       if (!usadas.length) { fecha(); return; }
       usadas.forEach(s => {
