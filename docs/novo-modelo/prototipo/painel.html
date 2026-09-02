@@ -284,25 +284,23 @@
   .nps-selo.promotor { color:var(--done); }
   .nps-selo.passivo { color:var(--sev-2); }
   .nps-selo.detrator, .nps-selo.erro { color:var(--flag); }
-  /* Q4: lista aberta de melhorias -- combobox editavel proprio por item. */
+  /* Q4: lista de melhorias -- combobox editavel + trio de acoes por linha. */
   .mel-lista { display:flex; flex-direction:column; gap:6px; }
   .mel-item { display:flex; align-items:center; gap:6px; }
-  /* Campo: parece um input, com o lapis (editavel) e a seta (sugestoes) dentro. */
+  /* Campo combobox: input + seta de sugestoes. Em leitura, ganha `.lock`. */
   .mel-campo { flex:1; position:relative; display:flex; align-items:center;
     border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
     transition:border-color .12s; }
   .mel-campo:focus-within { border-color:var(--accent); }
-  .mel-lapis { flex:none; display:grid; place-items:center; width:32px; height:32px;
-    color:var(--ink-3); cursor:pointer; transition:color .12s; }
-  .mel-lapis svg { width:14px; height:14px; }
-  .mel-lapis:hover { color:var(--accent); }
-  .mel-campo:focus-within .mel-lapis { color:var(--accent); }
+  .mel-campo.lock { background:var(--surface); }
   .mel-campo input { flex:1; border:none; background:none; outline:none;
-    font:inherit; font-size:13px; color:var(--ink); padding:8px 4px 8px 0; }
+    font:inherit; font-size:13px; color:var(--ink); padding:8px 6px 8px 11px; }
+  .mel-campo.lock input { color:var(--ink-2); }
   .mel-campo input::placeholder { color:var(--ink-3); }
-  .mel-chev { flex:none; width:30px; height:100%; display:grid; place-items:center; color:var(--ink-3); }
+  .mel-chev { flex:none; width:32px; align-self:stretch; display:grid; place-items:center; color:var(--ink-3); }
   .mel-chev svg { width:15px; height:15px; }
-  .mel-chev:hover { color:var(--accent); }
+  .mel-chev:hover:not(:disabled) { color:var(--accent); }
+  .mel-chev:disabled { opacity:0; pointer-events:none; }
   .mel-pop { position:absolute; z-index:35; left:0; right:0; top:calc(100% + 4px);
     background:var(--surface); border:1px solid var(--line); border-radius:9px;
     box-shadow:var(--shadow-pop); padding:4px; max-height:220px; overflow-y:auto; display:none; }
@@ -310,10 +308,17 @@
   .mel-op { display:block; width:100%; text-align:left; padding:6px 8px; border-radius:6px;
     font-size:13px; color:var(--ink); }
   .mel-op:hover { background:var(--surface-hi); color:var(--accent); }
-  .mel-rem { flex:none; width:32px; height:32px; border:1px solid var(--line);
-    border-radius:7px; color:var(--ink-3); font-size:12px; line-height:1;
-    display:grid; place-items:center; transition:color .12s, border-color .12s, background .12s; }
-  .mel-rem:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  /* Trio de acoes: editar, confirmar, remover. Botoes iguais; estado desabilita. */
+  .mel-acoes { flex:none; display:flex; gap:4px; }
+  .mel-bt { width:32px; height:32px; border:1px solid var(--line); border-radius:7px;
+    color:var(--ink-3); display:grid; place-items:center;
+    transition:color .12s, border-color .12s, background .12s; }
+  .mel-bt svg { width:15px; height:15px; }
+  .mel-editar:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
+  .mel-confirmar:hover:not(:disabled) { border-color:var(--done); color:var(--done); background:var(--done-soft); }
+  .mel-rem:hover:not(:disabled) { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  /* Desativado (ex.: editar num rascunho): fica no lugar, sem quebrar layout. */
+  .mel-bt:disabled { opacity:.35; pointer-events:none; }
   .mel-add { align-self:flex-start; display:inline-flex; align-items:center; gap:6px;
     font-size:12.5px; color:var(--accent); padding:6px 10px; border:1px dashed var(--line);
     border-radius:7px; margin-top:1px; transition:border-color .12s, background .12s; }
@@ -3052,104 +3057,133 @@ function sugestoesMelhorias() {
 //
 // Rerenderiza so em adicionar/remover (cliques discretos); digitar nao recria
 // o campo, entao o foco fica.
-// Chevron do combobox de melhoria (mesmo tracado do resto do painel).
-const MEL_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+// Icones do combobox de melhoria (mesmo tracado do resto do painel).
+const MEL_ICON = {
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+};
 
-// Lista aberta de melhorias. Cada item e um combobox editavel proprio (nao o
-// datalist nativo, que trazia seta e lista com cara de sistema): campo sempre
-// editavel, um lapis indicando que da para escrever, uma seta que abre as
-// sugestoes num dropdown estilizado, e o X para remover.
+// Lista de melhorias com estados por linha:
+//  - rascunho (a inserir): combobox editavel; confirmar (adicao) salva; editar
+//    fica DESATIVADO -- so vale para item ja salvo, e o botao continua no lugar
+//    para nao quebrar o layout;
+//  - salvo: campo em leitura; editar liga a edicao; remover pede confirmacao;
+//  - salvo em edicao: combobox editavel de novo; confirmar guarda a alteracao.
+// Cada linha tem sempre o mesmo trio [editar][confirmar][remover], habilitado
+// conforme o estado -- layout estavel.
 function montarListaMelhorias(container, nps) {
-  if (!nps.melhorias.length) nps.melhorias.push("");
-  const foco = { i: -1 };
+  // Estado local do widget: texto + se ja foi salvo + se esta em edicao.
+  // Itens que ja vieram preenchidos entram como salvos.
+  const linhas = (nps.melhorias || []).map(t => ({ texto: t, salvo: true, editando: false }));
+  if (!linhas.length) linhas.push({ texto: "", salvo: false, editando: false });
+  const foco = { l: null };
 
-  const criarLinha = (i) => {
+  // So os itens confirmados e nao-vazios contam -- honra a "confirmacao de
+  // adicao": um rascunho nao entra no NPS ate ser confirmado.
+  const sync = () => {
+    nps.melhorias = linhas.filter(l => l.salvo && l.texto.trim()).map(l => l.texto.trim());
+  };
+
+  const botao = (cls, icone, titulo, ligado, aoClicar) => {
+    const b = el("button", "mel-bt " + cls);
+    b.type = "button"; b.title = titulo; b.innerHTML = icone;
+    b.disabled = !ligado;
+    // Sempre anexa: um botao disabled nao dispara clique, e o estado pode ser
+    // religado ao vivo (ex.: confirmar habilita quando o campo deixa de vazio).
+    b.addEventListener("click", aoClicar);
+    return b;
+  };
+
+  const criarLinha = (l) => {
+    const editavel = !l.salvo || l.editando;
     const linha = el("div", "mel-item");
-    const campo = el("div", "mel-campo");
-    const lapis = el("button", "mel-lapis");
-    lapis.type = "button";
-    lapis.title = "Editar este item";
-    lapis.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-    campo.append(lapis);
+    const campo = el("div", "mel-campo" + (editavel ? "" : " lock"));
     const inp = document.createElement("input");
-    inp.type = "text"; inp.value = nps.melhorias[i];
+    inp.type = "text"; inp.value = l.texto;
     inp.placeholder = "Ex.: retorno de ligação mais rápido";
+    inp.readOnly = !editavel;
     const chev = el("button", "mel-chev");
-    chev.type = "button"; chev.title = "Ver melhorias já usadas";
-    chev.innerHTML = MEL_CHEV;
+    chev.type = "button"; chev.title = "Ver melhorias já usadas"; chev.innerHTML = MEL_ICON.chev;
+    chev.disabled = !editavel;
     const pop = el("div", "mel-pop");
     campo.append(inp, chev, pop);
-
-    // O lapis coloca o cursor no fim do texto para editar -- clicar nele e
-    // um atalho para o mesmo que clicar no campo, mas explicito.
-    lapis.addEventListener("click", ev => {
-      ev.stopPropagation();
-      inp.focus();
-      const n = inp.value.length;
-      try { inp.setSelectionRange(n, n); } catch (e) {}
-    });
 
     const fecha = () => { pop.classList.remove("on"); document.removeEventListener("click", fora); };
     const fora = ev => { if (!campo.contains(ev.target)) fecha(); };
     const desenhaPop = () => {
       const q = inp.value.trim().toLowerCase();
-      const usadas = sugestoesMelhorias().filter(s =>
-        s.toLowerCase() !== q && s.toLowerCase().includes(q));
+      const usadas = sugestoesMelhorias().filter(s => s.toLowerCase() !== q && s.toLowerCase().includes(q));
       pop.innerHTML = "";
       if (!usadas.length) { fecha(); return; }
       usadas.forEach(s => {
         const b = el("button", "mel-op", s);
         b.type = "button";
-        b.addEventListener("click", ev => {
-          ev.stopPropagation();
-          nps.melhorias[i] = s; inp.value = s; fecha(); inp.focus();
-        });
+        b.addEventListener("click", ev => { ev.stopPropagation(); l.texto = s; inp.value = s; fecha(); inp.focus(); });
         pop.append(b);
       });
     };
-    const abre = () => {
-      desenhaPop();
-      if (pop.children.length) {
-        pop.classList.add("on");
-        setTimeout(() => document.addEventListener("click", fora), 0);
-      }
+    const abre = () => { desenhaPop(); if (pop.children.length) { pop.classList.add("on"); setTimeout(() => document.addEventListener("click", fora), 0); } };
+
+    let confirma;   // referenciado pelo input para ligar/desligar ao vivo
+    const confirmar = () => {
+      if (!l.texto.trim()) { toast("Melhoria vazia", "Escreva a melhoria antes de confirmar."); return; }
+      l.salvo = true; l.editando = false; fecha(); sync(); render();
     };
 
-    inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; if (pop.classList.contains("on")) desenhaPop(); });
-    inp.addEventListener("keydown", ev => {
-      if (ev.key === "Enter") { ev.preventDefault(); fecha(); adicionar(); }
-      if (ev.key === "Escape") fecha();
-    });
-    chev.addEventListener("click", ev => {
-      ev.stopPropagation();
-      pop.classList.contains("on") ? fecha() : abre();
-    });
+    if (editavel) {
+      inp.addEventListener("input", () => {
+        l.texto = inp.value;
+        if (confirma) confirma.disabled = !inp.value.trim();   // confirmar segue o campo
+        if (pop.classList.contains("on")) desenhaPop();
+      });
+      inp.addEventListener("keydown", ev => {
+        if (ev.key === "Enter") { ev.preventDefault(); confirmar(); }
+        if (ev.key === "Escape") fecha();
+      });
+      chev.addEventListener("click", ev => { ev.stopPropagation(); pop.classList.contains("on") ? fecha() : abre(); });
+    }
 
-    const rem = el("button", "mel-rem", "✕");
-    rem.type = "button"; rem.title = "Remover";
-    rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
+    // Trio de acoes, sempre presente. Habilita conforme o estado.
+    const acoes = el("div", "mel-acoes");
+    // Editar: SO em item ja salvo e fora de edicao. Nos demais, desativado.
+    const editar = botao("mel-editar", MEL_ICON.lapis, "Editar este item",
+      l.salvo && !l.editando, () => { l.editando = true; foco.l = l; render(); });
+    // Confirmar: adiciona (rascunho) ou guarda a edicao (salvo em edicao).
+    confirma = botao("mel-confirmar", MEL_ICON.check,
+      l.salvo && !l.editando ? "Já confirmado" : (l.salvo ? "Confirmar edição" : "Confirmar adição"),
+      editavel && !!l.texto.trim(), confirmar);
+    // Remover: rascunho descarta; salvo pede confirmacao.
+    const remover = botao("mel-rem", MEL_ICON.x, "Remover", true, () => {
+      if (l.salvo && !confirm("Remover “" + (l.texto || "este item") + "”?")) return;
+      linhas.splice(linhas.indexOf(l), 1);
+      if (!linhas.length) linhas.push({ texto: "", salvo: false, editando: false });
+      sync(); render();
+    });
+    acoes.append(editar, confirma, remover);
 
-    linha.append(campo, rem);
-    if (foco.i === i) setTimeout(() => inp.focus(), 0);
+    linha.append(campo, acoes);
+    if (foco.l === l) setTimeout(() => inp.focus(), 0);
     return linha;
   };
 
   const render = () => {
     container.innerHTML = "";
-    nps.melhorias.forEach((_, i) => container.append(criarLinha(i)));
-    foco.i = -1;
+    linhas.forEach(l => container.append(criarLinha(l)));
+    foco.l = null;
     const add = el("button", "mel-add", "+ Adicionar melhoria");
     add.type = "button";
-    add.addEventListener("click", adicionar);
+    add.addEventListener("click", () => {
+      // Nao empilha rascunhos vazios: se ja ha um, foca ele.
+      const rascunho = linhas.find(l => !l.salvo && !l.texto.trim());
+      if (rascunho) { foco.l = rascunho; render(); return; }
+      const nova = { texto: "", salvo: false, editando: false };
+      linhas.push(nova); foco.l = nova; render();
+    });
     container.append(add);
   };
-  const adicionar = () => {
-    const ultima = nps.melhorias.length - 1;
-    if (ultima >= 0 && !(nps.melhorias[ultima] || "").trim()) { foco.i = ultima; render(); return; }
-    nps.melhorias.push("");
-    foco.i = nps.melhorias.length - 1;
-    render();
-  };
+  sync();
   render();
 }
 
