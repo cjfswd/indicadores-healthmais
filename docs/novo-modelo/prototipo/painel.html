@@ -288,9 +288,13 @@
   .mel-lista { display:flex; flex-direction:column; gap:7px; }
   .mel-item { display:flex; align-items:center; gap:7px; }
   .mel-item .cbx { flex:1; }
-  .mel-rem { flex:none; width:28px; height:28px; border:1px solid var(--line);
-    border-radius:6px; color:var(--ink-3); font-size:12px; }
+  .mel-item > input[type=text] { flex:1; }
+  .mel-rem, .mel-editar, .mel-ok { flex:none; width:28px; height:28px;
+    border:1px solid var(--line); border-radius:6px; color:var(--ink-3); font-size:12px; }
   .mel-rem:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .mel-editar:hover { border-color:var(--accent); color:var(--accent); background:var(--surface-hi); }
+  .mel-ok { border-color:var(--done); color:var(--done); }
+  .mel-ok:hover { background:var(--done-soft); }
   .mel-add { align-self:flex-start; font-size:12.5px; color:var(--accent);
     padding:4px 2px; }
   .mel-add:hover { text-decoration:underline; }
@@ -3021,34 +3025,65 @@ function sugestoesMelhorias() {
   return [...vistas].sort((a, b) => a.localeCompare(b));
 }
 
-// Lista aberta de melhorias: cada item e um combobox editavel (sugere as ja
-// usadas, cria novas) com um botao de remover; e um botao adiciona itens.
-// Rerenderiza so o proprio container -- os comboboxes sao acoes discretas,
-// entao nao ha foco de digitacao a perder aqui.
+// Lista aberta de melhorias. Cada item tem dois modos:
+//  - vazio, ou em edicao: campo de texto editavel (com sugestoes via datalist),
+//    para digitar ou corrigir a melhoria livremente;
+//  - preenchido: o combobox mostra o valor (reabre para trocar por outro ja
+//    existente) e ganha um lapis ao lado, que entra no modo de texto para
+//    editar o proprio texto do item selecionado -- que era o que faltava.
+// Rerenderiza so o proprio container; `editando` guarda o item em edicao.
 function montarListaMelhorias(container, nps) {
+  let editando = -1;
   const render = () => {
     container.innerHTML = "";
     const sugestoes = sugestoesMelhorias();
+    // datalist unico para as sugestoes dos campos de texto em edicao.
+    const dlId = "mel-sug-" + Math.random().toString(36).slice(2, 7);
+    const dl = document.createElement("datalist");
+    dl.id = dlId;
+    sugestoes.forEach(s => { const o = document.createElement("option"); o.value = s; dl.append(o); });
+    container.append(dl);
+
     nps.melhorias.forEach((item, i) => {
       const linha = el("div", "mel-item");
+      const rem = el("button", "mel-rem", "✕");
+      rem.type = "button"; rem.title = "Remover";
+      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); if (editando === i) editando = -1; render(); });
+
+      if (!item || editando === i) {
+        // Modo texto: digita/edita livremente, com sugestoes.
+        const inp = document.createElement("input");
+        inp.type = "text"; inp.value = item; inp.placeholder = "Digite a melhoria…";
+        inp.setAttribute("list", dlId);
+        inp.addEventListener("input", () => { nps.melhorias[i] = inp.value; });
+        inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); editando = -1; render(); } });
+        const ok = el("button", "mel-ok", "✓");
+        ok.type = "button"; ok.title = "Concluir";
+        ok.addEventListener("click", () => { editando = -1; render(); });
+        linha.append(inp, ok, rem);
+        container.append(linha);
+        if (editando === i) setTimeout(() => inp.focus(), 0);
+        return;
+      }
+
+      // Modo selecionado: combobox (troca por outra existente) + lapis (edita o texto).
       const opcoes = sugestoes.map(s => ({ valor: s, rotulo: s }));
-      // Garante que o valor atual apareca mesmo se nao estiver nas sugestoes.
-      if (item && !sugestoes.includes(item)) opcoes.unshift({ valor: item, rotulo: item });
+      if (!sugestoes.includes(item)) opcoes.unshift({ valor: item, rotulo: item });
       const cbx = combobox(
         opcoes, item,
         v => { nps.melhorias[i] = v; },
-        "Digite a melhoria…",
-        texto => { nps.melhorias[i] = texto; return texto; });   // criar = usar o texto
-      const rem = el("button", "mel-rem", "✕");
-      rem.type = "button";
-      rem.title = "Remover";
-      rem.addEventListener("click", () => { nps.melhorias.splice(i, 1); render(); });
-      linha.append(cbx, rem);
+        "Trocar por outra…",
+        texto => { nps.melhorias[i] = texto; return texto; });
+      const editar = el("button", "mel-editar", "✎");
+      editar.type = "button"; editar.title = "Editar o texto deste item";
+      editar.addEventListener("click", () => { editando = i; render(); });
+      linha.append(cbx, editar, rem);
       container.append(linha);
     });
+
     const add = el("button", "mel-add", "+ Adicionar melhoria");
     add.type = "button";
-    add.addEventListener("click", () => { nps.melhorias.push(""); render(); });
+    add.addEventListener("click", () => { nps.melhorias.push(""); editando = nps.melhorias.length - 1; render(); });
     container.append(add);
   };
   render();
