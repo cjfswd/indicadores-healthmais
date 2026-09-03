@@ -182,6 +182,29 @@ async function rodar() {
       c2.col === "feito" && !!c2.concluidoEm && (c2.historico || []).length === h0 + 1);
   } catch (e) { checar("Kanban: mover para Feito registra conclusão e histórico", false, e.message); }
 
+  // Cartão tem descrição.
+  clicaAba("Kanban"); await espera(150);
+  checar("Kanban: cartão tem campo de descrição", !!wd.querySelector(".qld-kb-card textarea.desc-in"));
+
+  // '+ cartão' cria sem prompt do browser (se usasse prompt, travaria aqui).
+  const cardsAntes = wd.querySelectorAll(".qld-kb-card").length;
+  const addC = [...wd.querySelectorAll(".qld-kb-add")][0]; if (addC) addC.click(); await espera(150);
+  checar("Kanban: '+ cartão' cria sem prompt do browser",
+    wd.querySelectorAll(".qld-kb-card").length === cardsAntes + 1);
+  checar("Kanban: prioridade é um select no cartão", !!wd.querySelector(".qld-kb-card .linha-in select"));
+
+  // Remover usa confirmação inline (não o confirm do browser).
+  const xBtn = wd.querySelector(".qld-kb-card .btn-ghost");
+  if (xBtn) xBtn.click(); await espera(120);
+  checar("remoção usa confirmação inline (sem alert do browser)", !!wd.querySelector(".qld-confirmar"));
+
+  // Inputs no padrão do painel: borda e raio como os demais campos.
+  const inp = wd.querySelector("#qualWrap input, #qualWrap textarea");
+  const estilo = inp && w.getComputedStyle(inp);
+  checar("inputs da Qualidade seguem o padrão (borda + raio)",
+    !!estilo && parseFloat(estilo.borderTopWidth) >= 1 && parseFloat(estilo.borderTopLeftRadius) >= 1,
+    estilo && (estilo.borderTopWidth + " / " + estilo.borderTopLeftRadius));
+
   // Isolamento: sair da página limpa o #qualWrap; voltar recria.
   w.abrirPaginaOp("eventos"); await espera(200);
   checar("sair da página limpa o #qualWrap", !wd.querySelector("#qualWrap"));
