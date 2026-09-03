@@ -1,0 +1,424 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  try { var t = localStorage.getItem("tema") || "claro";
+    if (t !== "auto") document.documentElement.setAttribute("data-theme", t === "claro" ? "light" : "dark");
+  } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+</script>
+<title>Qualidade — HealthMais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
+<style>
+  :root {
+    --ground:#F4F6F9; --surface:#fff; --surface-2:#fbfcfe; --surface-hi:#eef2f7;
+    --ink:#0E141C; --ink-2:#3B475A; --ink-3:#78859B; --line:#E2E8F1;
+    --accent:#1E5EFF; --accent-line:#9DBAFF;
+    --done:#2E7D32; --done-soft:#E6F1E7; --sev-2:#B45309; --sev-2-soft:#FBEBDD;
+    --flag:#B00020; --flag-soft:#FAE6E9; --radius:9px;
+    --shadow:0 8px 24px rgba(15,23,42,.10);
+  }
+  :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --ground:#0B0F16; --surface:#121824; --surface-2:#0F1520; --surface-hi:#1C2534;
+    --ink:#EAF0F8; --ink-2:#AEBACD; --ink-3:#6B7A92; --line:#222C3C;
+    --accent:#5B8CFF; --accent-line:#2E3E63;
+    --done:#6FBF73; --done-soft:#1A2A1C; --sev-2:#DE9059; --sev-2-soft:#32241A;
+    --flag:#E88A8A; --flag-soft:#33191C;
+    --shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif; font-size:14px; }
+  .wrap { max-width:1160px; margin:0 auto; padding:22px 20px 60px; }
+  header.top { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .crumb { font-size:12px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em;
+    font-family:"IBM Plex Mono", monospace; }
+  h1 { margin:2px 0 2px; font-size:24px; letter-spacing:-.02em; font-weight:600; }
+  .lead { color:var(--ink-3); font-size:13px; margin:0 0 18px; max-width:70ch; }
+  /* Abas das ferramentas */
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); margin-bottom:20px; }
+  .tab { padding:9px 14px; font-size:13.5px; color:var(--ink-3); border-bottom:2px solid transparent;
+    margin-bottom:-1px; font-weight:500; }
+  .tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab:hover { color:var(--ink); }
+  .painel { display:none; }
+  .painel.on { display:block; }
+  .sec-desc { font-size:12.5px; color:var(--ink-3); margin:0 0 16px; max-width:74ch; }
+  .btn { border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:13px;
+    color:var(--ink); background:var(--surface); font-family:inherit; cursor:pointer; }
+  .btn:hover { border-color:var(--accent-line); }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn-ghost { border:none; color:var(--ink-3); padding:4px 6px; }
+  .btn-ghost:hover { color:var(--flag); }
+  input, textarea, select { font-family:inherit; font-size:13px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:7px 9px; outline:none; width:100%; }
+  input:focus, textarea:focus, select:focus { border-color:var(--accent); }
+  textarea { resize:vertical; min-height:38px; }
+
+  /* ---- 5W2H ---- */
+  .w2h-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  table.w2h { border-collapse:collapse; width:100%; min-width:900px; }
+  table.w2h th { background:var(--surface-hi); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-3); text-align:left; padding:9px 10px; font-weight:600; white-space:nowrap; }
+  table.w2h th .q { color:var(--accent); font-weight:700; }
+  table.w2h td { border-top:1px solid var(--line); padding:6px 8px; vertical-align:top; }
+  table.w2h td textarea { min-height:34px; }
+  table.w2h .colnum { width:34px; text-align:center; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  table.w2h .coldel { width:34px; text-align:center; }
+
+  /* ---- Ishikawa ---- */
+  .ishk-topo { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .ishk-topo label { font-size:12px; color:var(--ink-3); }
+  .ishk-topo input { max-width:340px; }
+  .fish { width:100%; height:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+  .fish .espinha { stroke:var(--ink-3); stroke-width:2; }
+  .fish .galho { stroke:var(--accent-line); stroke-width:1.6; }
+  .fish .cat { fill:var(--surface-hi); stroke:var(--line); }
+  .fish text { font-family:"IBM Plex Sans", sans-serif; fill:var(--ink); }
+  .fish .catnome { font-weight:600; font-size:12px; }
+  .fish .causa { font-size:11px; fill:var(--ink-2); }
+  .fish .cabeca { fill:var(--accent); }
+  .fish .cabeca-txt { fill:#fff; font-weight:600; font-size:12px; }
+  .ishk-edit { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-top:16px; }
+  .ishk-cat { border:1px solid var(--line); border-radius:9px; padding:11px; background:var(--surface); }
+  .ishk-cat h4 { margin:0 0 8px; font-size:12.5px; }
+  .ishk-cat .causa-linha { display:flex; gap:6px; margin-bottom:5px; }
+  .ishk-cat .add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
+    border-radius:6px; padding:4px 8px; cursor:pointer; }
+
+  /* ---- SWOT ---- */
+  .swot { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .swot-q { border:1px solid var(--line); border-radius:10px; padding:14px; background:var(--surface); }
+  .swot-q.forcas { border-top:3px solid var(--done); }
+  .swot-q.fraquezas { border-top:3px solid var(--flag); }
+  .swot-q.oportunidades { border-top:3px solid var(--accent); }
+  .swot-q.ameacas { border-top:3px solid var(--sev-2); }
+  .swot-q h3 { margin:0 0 3px; font-size:14px; }
+  .swot-q .sub { font-size:11px; color:var(--ink-3); margin-bottom:10px; }
+  .swot-item { display:flex; gap:6px; align-items:flex-start; margin-bottom:6px; }
+  .swot-item .dot { flex:none; width:7px; height:7px; border-radius:2px; margin-top:6px; }
+  .forcas .dot { background:var(--done); } .fraquezas .dot { background:var(--flag); }
+  .oportunidades .dot { background:var(--accent); } .ameacas .dot { background:var(--sev-2); }
+  .swot-add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
+    border-radius:6px; padding:5px 9px; cursor:pointer; margin-top:4px; }
+
+  /* ---- Kanban ---- */
+  .kanban { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:start; }
+  .kb-col { background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px;
+    min-height:120px; }
+  .kb-col h3 { margin:0 0 4px; font-size:12.5px; display:flex; align-items:center; gap:7px; }
+  .kb-col h3 .ct { font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink-3);
+    background:var(--surface-hi); border-radius:10px; padding:1px 7px; }
+  .kb-col.fazer h3::before, .kb-col.fazendo h3::before, .kb-col.feito h3::before, .kb-col.backlog h3::before {
+    content:""; width:9px; height:9px; border-radius:3px; }
+  .kb-col.backlog h3::before { background:var(--ink-3); }
+  .kb-col.fazer h3::before { background:var(--accent); }
+  .kb-col.fazendo h3::before { background:var(--sev-2); }
+  .kb-col.feito h3::before { background:var(--done); }
+  .kb-cards { display:flex; flex-direction:column; gap:8px; margin-top:8px; min-height:20px; }
+  .kb-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    box-shadow:0 1px 2px rgba(0,0,0,.03); cursor:grab; }
+  .kb-card.dragging { opacity:.4; }
+  .kb-card .tit { font-size:13px; font-weight:500; }
+  .kb-card .meta { font-size:11px; color:var(--ink-3); margin-top:4px; display:flex; gap:8px; flex-wrap:wrap; }
+  .kb-card .tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:10px; }
+  .kb-card .tag.alta { background:var(--flag-soft); color:var(--flag); }
+  .kb-card .tag.media { background:var(--sev-2-soft); color:var(--sev-2); }
+  .kb-card .tag.baixa { background:var(--surface-hi); color:var(--ink-3); }
+  .kb-col.over { border-color:var(--accent); background:var(--surface-hi); }
+  .kb-add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
+    border-radius:6px; padding:5px 9px; cursor:pointer; width:100%; margin-top:8px; }
+  .origem { font-size:11.5px; color:var(--ink-3); background:var(--surface-hi); border-radius:8px;
+    padding:8px 11px; margin-bottom:14px; display:inline-block; }
+  .origem b { color:var(--ink-2); }
+  @media (max-width:820px){ .swot { grid-template-columns:1fr; } .kanban { grid-template-columns:1fr 1fr; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="crumb">Qualidade / Planos de ação</div>
+      <h1 id="tituloFerr">Ferramentas da qualidade</h1>
+    </div>
+  </header>
+  <p class="lead">Análise de causa e plano de ação sobre um evento — uma queda, um evento adverso,
+    um detrator do NPS. Cada ferramenta parte do mesmo caso e leva a ações no Kanban.</p>
+
+  <div class="origem">Caso em análise: <b id="casoNome">Detrator NPS — nota 4</b> ·
+    <span id="casoDet">paciente reclamou de demora no retorno de ligação (09/2026)</span></div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <section class="painel" id="p-5w2h"></section>
+  <section class="painel" id="p-ishikawa"></section>
+  <section class="painel" id="p-swot"></section>
+  <section class="painel" id="p-kanban"></section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, c, txt) => { const n = document.createElement(t); if (c) n.className = c; if (txt != null) n.textContent = txt; return n; };
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+// Persistencia local do prototipo. Cada ferramenta tem sua chave.
+const CHAVE = "qualidade-v1";
+let dados = {};
+try { dados = JSON.parse(localStorage.getItem(CHAVE) || "null") || null; } catch (e) {}
+const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(dados)); } catch (e) {} };
+
+// Semente: um caso real de home care, do detrator ao plano de acao.
+if (!dados) dados = {
+  w2h: [
+    { oque:"Padronizar retorno de ligação da ouvidoria", porque:"Detrator apontou demora no retorno",
+      onde:"Central de atendimento", quando:"Até 30/09", quem:"Coord. de Enfermagem",
+      como:"SLA de 24h com registro no sistema", quanto:"Sem custo — reorganização" },
+    { oque:"Treinar equipe no fluxo do detrator", porque:"Contato em até 5 dias úteis não cumprido",
+      onde:"Reunião multiprofissional", quando:"Próxima quinzena", quem:"Qualidade",
+      como:"Capacitação de 1h + material", quanto:"2h/equipe" },
+  ],
+  ishikawa: {
+    "Método":["Sem SLA definido para retorno","Fluxo do detrator não documentado"],
+    "Mão de obra":["Equipe não treinada no prazo de 5 dias"],
+    "Máquina":["Sistema não alerta pendência de contato"],
+    "Material":[],
+    "Medição":["Pendências de contato não monitoradas"],
+    "Meio ambiente":["Alto volume no fim do mês"],
+  },
+  swot: {
+    forcas:["Relação próxima com o paciente","Equipe multiprofissional"],
+    fraquezas:["Retorno de ligação sem prazo","Baixa taxa de resposta do NPS (3%)"],
+    oportunidades:["NPS agora mede percepção","Automação de alertas no painel"],
+    ameacas:["Reincidência gera risco reputacional","Operadora acompana indicadores"],
+  },
+  kanban: [
+    { id:uid(), tit:"Definir SLA de 24h para retorno", col:"fazer", resp:"Coord.", prio:"alta" },
+    { id:uid(), tit:"Documentar fluxo do detrator", col:"fazendo", resp:"Qualidade", prio:"media" },
+    { id:uid(), tit:"Alerta de pendência no painel", col:"backlog", resp:"TI", prio:"media" },
+    { id:uid(), tit:"Capacitação da equipe (1h)", col:"fazer", resp:"Qualidade", prio:"baixa" },
+    { id:uid(), tit:"Materializar NPS por classe", col:"feito", resp:"TI", prio:"baixa" },
+  ],
+};
+salvar();
+
+// ---- Abas ----
+const FERR = [["5w2h","5W2H"],["ishikawa","Ishikawa"],["swot","SWOT"],["kanban","Kanban"]];
+const TITULO = { "5w2h":"5W2H — plano de ação", ishikawa:"Ishikawa — causa e efeito",
+  swot:"SWOT — forças, fraquezas, oportunidades, ameaças", kanban:"Kanban — execução das ações" };
+let atual = "5w2h";
+const tabsBox = $("#tabs");
+FERR.forEach(([k, rot]) => {
+  const b = el("button", "tab" + (k === atual ? " on" : ""), rot);
+  b.addEventListener("click", () => mostrar(k));
+  tabsBox.append(b);
+});
+function mostrar(k) {
+  atual = k;
+  [...tabsBox.children].forEach((b, i) => b.classList.toggle("on", FERR[i][0] === k));
+  ["5w2h","ishikawa","swot","kanban"].forEach(x => $("#p-" + x).classList.toggle("on", x === k));
+  $("#tituloFerr").textContent = TITULO[k];
+  ({ "5w2h":render5w2h, ishikawa:renderIshikawa, swot:renderSwot, kanban:renderKanban }[k])();
+}
+
+// ===================== 5W2H =====================
+const W2H_COLS = [["oque","O quê","What"],["porque","Por quê","Why"],["onde","Onde","Where"],
+  ["quando","Quando","When"],["quem","Quem","Who"],["como","Como","How"],["quanto","Quanto","How much"]];
+function render5w2h() {
+  const p = $("#p-5w2h"); p.innerHTML = "";
+  p.append(elDesc("Cada linha é uma ação: o quê, por quê, onde, quando, quem, como e quanto. "
+    + "É o plano de ação que sai da análise de causa."));
+  const scroll = el("div", "w2h-scroll");
+  const t = el("table", "w2h");
+  const thead = el("tr");
+  thead.append(el("th", "colnum", "#"));
+  W2H_COLS.forEach(([, rot, en]) => {
+    const th = el("th");
+    th.innerHTML = "<span class='q'>" + en + "</span><br><span style='color:var(--ink-2);font-weight:600'>" + rot + "</span>";
+    thead.append(th);
+  });
+  thead.append(el("th", "coldel"));
+  t.append(thead);
+  dados.w2h.forEach((linha, i) => {
+    const tr = el("tr");
+    tr.append(el("td", "colnum", String(i + 1)));
+    W2H_COLS.forEach(([campo]) => {
+      const td = el("td");
+      const ta = el("textarea"); ta.value = linha[campo] || "";
+      ta.addEventListener("input", () => { linha[campo] = ta.value; salvar(); });
+      td.append(ta); tr.append(td);
+    });
+    const del = el("td", "coldel");
+    const x = el("button", "btn-ghost", "✕");
+    x.title = "Remover ação";
+    x.addEventListener("click", () => { dados.w2h.splice(i, 1); salvar(); render5w2h(); });
+    del.append(x); tr.append(del);
+    t.append(tr);
+  });
+  scroll.append(t); p.append(scroll);
+  const add = el("button", "btn", "+ Adicionar ação");
+  add.style.marginTop = "12px";
+  add.addEventListener("click", () => {
+    dados.w2h.push({ oque:"", porque:"", onde:"", quando:"", quem:"", como:"", quanto:"" });
+    salvar(); render5w2h();
+  });
+  p.append(add);
+}
+
+// ===================== Ishikawa =====================
+const ISHK_CATS = ["Método","Máquina","Material","Mão de obra","Medição","Meio ambiente"];
+function renderIshikawa() {
+  const p = $("#p-ishikawa"); p.innerHTML = "";
+  if (!dados.ishikawaEfeito) { dados.ishikawaEfeito = "Demora no retorno ao paciente"; salvar(); }
+  p.append(elDesc("Espinha de peixe: o efeito à direita, as causas agrupadas nos 6 M. "
+    + "Edite as causas abaixo e o diagrama se redesenha."));
+  // topo: efeito
+  const topo = el("div", "ishk-topo");
+  topo.append(el("label", null, "Efeito (problema):"));
+  const efe = el("input"); efe.value = dados.ishikawaEfeito || "Demora no retorno ao paciente";
+  efe.addEventListener("input", () => { dados.ishikawaEfeito = efe.value; salvar(); desenhaFish(); });
+  topo.append(efe);
+  p.append(topo);
+  const svgWrap = el("div"); svgWrap.id = "fishWrap"; p.append(svgWrap);
+  // edicao das causas
+  const edit = el("div", "ishk-edit");
+  ISHK_CATS.forEach(cat => {
+    const c = el("div", "ishk-cat");
+    c.append(el("h4", null, cat));
+    (dados.ishikawa[cat] || []).forEach((causa, i) => {
+      const linha = el("div", "causa-linha");
+      const inp = el("input"); inp.value = causa;
+      inp.addEventListener("input", () => { dados.ishikawa[cat][i] = inp.value; salvar(); desenhaFish(); });
+      const x = el("button", "btn-ghost", "✕");
+      x.addEventListener("click", () => { dados.ishikawa[cat].splice(i, 1); salvar(); renderIshikawa(); });
+      linha.append(inp, x); c.append(linha);
+    });
+    const add = el("button", "add", "+ causa");
+    add.addEventListener("click", () => { (dados.ishikawa[cat] = dados.ishikawa[cat] || []).push(""); salvar(); renderIshikawa(); });
+    c.append(add);
+    edit.append(c);
+  });
+  p.append(edit);
+  desenhaFish();
+}
+function desenhaFish() {
+  const wrap = $("#fishWrap"); if (!wrap) return;
+  const W = 900, H = 380, cy = H / 2;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const efeito = dados.ishikawaEfeito || "Efeito";
+  let s = `<svg class="fish" viewBox="0 0 ${W} ${H}" xmlns="${svgNS}">`;
+  // espinha central
+  s += `<line class="espinha" x1="40" y1="${cy}" x2="${W-150}" y2="${cy}"/>`;
+  // cabeça (efeito)
+  s += `<rect class="cabeca" x="${W-150}" y="${cy-34}" width="140" height="68" rx="9"/>`;
+  s += wrapText(efeito, W-80, cy, 16, "cabeca-txt", "middle");
+  // 6 galhos: 3 em cima, 3 embaixo
+  const topo = ISHK_CATS.filter((_, i) => i % 2 === 0);
+  const base = ISHK_CATS.filter((_, i) => i % 2 === 1);
+  const drawSide = (cats, up) => {
+    const n = cats.length;
+    cats.forEach((cat, i) => {
+      const bx = 130 + i * ((W - 320) / n);   // onde encosta na espinha
+      const ty = up ? 40 : H - 40;
+      const tipx = bx - 70;
+      s += `<line class="galho" x1="${bx}" y1="${cy}" x2="${tipx}" y2="${ty}"/>`;
+      // caixa do nome da categoria na ponta
+      s += `<rect class="cat" x="${tipx-64}" y="${up ? ty-20 : ty}" width="128" height="20" rx="5"/>`;
+      s += `<text class="catnome" x="${tipx}" y="${up ? ty-6 : ty+14}" text-anchor="middle">${esc(cat)}</text>`;
+      // causas ao longo do galho
+      const causas = (dados.ishikawa[cat] || []).filter(Boolean).slice(0, 4);
+      causas.forEach((cau, j) => {
+        const f = (j + 1) / (causas.length + 1);
+        const px = bx + (tipx - bx) * f, py = cy + (ty - cy) * f;
+        s += `<circle cx="${px}" cy="${py}" r="2.4" fill="var(--accent)"/>`;
+        s += `<text class="causa" x="${px + 6}" y="${py + (up ? -3 : 11)}">${esc(cau.slice(0, 26))}</text>`;
+      });
+    });
+  };
+  drawSide(topo, true); drawSide(base, false);
+  s += `</svg>`;
+  wrap.innerHTML = s;
+}
+function wrapText(txt, x, y, size, cls, anchor) {
+  const linhas = []; let cur = "";
+  txt.split(" ").forEach(w => { if ((cur + " " + w).trim().length > 16) { linhas.push(cur.trim()); cur = w; } else cur += " " + w; });
+  if (cur.trim()) linhas.push(cur.trim());
+  const off = (linhas.length - 1) * 8;
+  return linhas.map((l, i) => `<text class="${cls}" x="${x}" y="${y - off + i * 16}" text-anchor="${anchor}">${esc(l)}</text>`).join("");
+}
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[c]));
+
+// ===================== SWOT =====================
+const SWOT_Q = [["forcas","Forças","Internas · positivas"],["fraquezas","Fraquezas","Internas · negativas"],
+  ["oportunidades","Oportunidades","Externas · positivas"],["ameacas","Ameaças","Externas · negativas"]];
+function renderSwot() {
+  const p = $("#p-swot"); p.innerHTML = "";
+  p.append(elDesc("Quatro quadrantes: o que está sob controle (forças, fraquezas) e o que vem de fora "
+    + "(oportunidades, ameaças). Clique para adicionar."));
+  const grid = el("div", "swot");
+  SWOT_Q.forEach(([k, rot, sub]) => {
+    const q = el("div", "swot-q " + k);
+    q.append(el("h3", null, rot), el("div", "sub", sub));
+    (dados.swot[k] || []).forEach((item, i) => {
+      const linha = el("div", "swot-item");
+      linha.append(el("span", "dot"));
+      const inp = el("input"); inp.value = item;
+      inp.addEventListener("input", () => { dados.swot[k][i] = inp.value; salvar(); });
+      const x = el("button", "btn-ghost", "✕");
+      x.addEventListener("click", () => { dados.swot[k].splice(i, 1); salvar(); renderSwot(); });
+      linha.append(inp, x); q.append(linha);
+    });
+    const add = el("button", "swot-add", "+ item");
+    add.addEventListener("click", () => { (dados.swot[k] = dados.swot[k] || []).push(""); salvar(); renderSwot(); });
+    q.append(add);
+    grid.append(q);
+  });
+  p.append(grid);
+}
+
+// ===================== Kanban =====================
+const KB_COLS = [["backlog","Backlog"],["fazer","A fazer"],["fazendo","Fazendo"],["feito","Feito"]];
+function renderKanban() {
+  const p = $("#p-kanban"); p.innerHTML = "";
+  p.append(elDesc("As ações do 5W2H viram cartões. Arraste entre as colunas conforme andam."));
+  const board = el("div", "kanban");
+  KB_COLS.forEach(([col, rot]) => {
+    const c = el("div", "kb-col " + col);
+    const cards = dados.kanban.filter(k => k.col === col);
+    const h = el("h3"); h.append(document.createTextNode(rot), el("span", "ct", String(cards.length)));
+    c.append(h);
+    const lista = el("div", "kb-cards");
+    cards.forEach(card => lista.append(cartao(card)));
+    c.append(lista);
+    const add = el("button", "kb-add", "+ cartão");
+    add.addEventListener("click", () => {
+      const tit = prompt("Título do cartão:");
+      if (tit && tit.trim()) { dados.kanban.push({ id:uid(), tit:tit.trim(), col, resp:"", prio:"media" }); salvar(); renderKanban(); }
+    });
+    c.append(add);
+    // drop
+    c.addEventListener("dragover", ev => { ev.preventDefault(); c.classList.add("over"); });
+    c.addEventListener("dragleave", () => c.classList.remove("over"));
+    c.addEventListener("drop", ev => {
+      ev.preventDefault(); c.classList.remove("over");
+      const id = ev.dataTransfer.getData("id");
+      const card = dados.kanban.find(k => k.id === id);
+      if (card && card.col !== col) { card.col = col; salvar(); renderKanban(); }
+    });
+    board.append(c);
+  });
+  p.append(board);
+}
+function cartao(card) {
+  const d = el("div", "kb-card"); d.draggable = true;
+  d.addEventListener("dragstart", ev => { ev.dataTransfer.setData("id", card.id); d.classList.add("dragging"); });
+  d.addEventListener("dragend", () => d.classList.remove("dragging"));
+  d.append(el("div", "tit", card.tit));
+  const meta = el("div", "meta");
+  meta.append(el("span", "tag " + (card.prio || "media"), (card.prio || "media")));
+  if (card.resp) meta.append(el("span", null, "· " + card.resp));
+  d.append(meta);
+  return d;
+}
+
+function elDesc(t) { return el("p", "sec-desc", t); }
+mostrar("5w2h");
+</script>
