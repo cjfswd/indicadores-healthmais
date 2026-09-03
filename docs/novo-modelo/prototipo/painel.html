@@ -1016,7 +1016,28 @@
     margin-bottom:-1px; font-weight:500; }
   .qld-aba.on { color:var(--accent); border-bottom-color:var(--accent); }
   .qld-aba:hover { color:var(--ink); }
-  .qld-desc { font-size:12.5px; color:var(--ink-3); margin:0 0 14px; max-width:74ch; }
+  .qld-desc { font-size:12.5px; color:var(--ink-3); margin:0; max-width:74ch; }
+  /* Barra de documentos: seletor + titulo + excluir + novo */
+  .qld-docbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0 16px;
+    padding:10px 12px; background:var(--surface-hi); border-radius:10px; }
+  .qld-docsel { width:auto; min-width:150px; max-width:220px; }
+  .qld-doctit { flex:1; min-width:160px; font-weight:600; }
+  .qld-docdel { border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:12.5px;
+    background:var(--surface); color:var(--ink-3); }
+  .qld-docdel:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .qld-docnovo { border:1px solid var(--accent); border-radius:8px; padding:7px 12px; font-size:12.5px;
+    background:var(--accent); color:#fff; margin-left:auto; }
+  .qld-vazio { font-size:13px; color:var(--ink-3); padding:20px 0; }
+  /* Topo de cada ferramenta: descricao + exportar A4 */
+  .qld-ferr-topo { display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    margin-bottom:14px; flex-wrap:wrap; }
+  .qld-a4 { flex:none; font-size:12.5px; padding:6px 12px; }
+  /* Setas de reordenar */
+  .qld-setas { display:inline-flex; align-items:center; gap:2px; }
+  .qld-set { width:22px; height:22px; border:1px solid var(--line); border-radius:5px; background:var(--surface);
+    color:var(--ink-3); font-size:11px; line-height:1; padding:0; cursor:pointer; }
+  .qld-set:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  .qld-set:disabled { opacity:.3; cursor:default; }
   /* 5W2H */
   .qld-w2h-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
   table.qld-w2h { border-collapse:collapse; width:100%; min-width:880px; }
@@ -1044,7 +1065,9 @@
   .qld-ishk-edit { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin-top:16px; }
   .qld-ishk-cat { border:1px solid var(--line); border-radius:9px; padding:11px; background:var(--surface); }
   .qld-ishk-cat h4 { margin:0 0 8px; font-size:12.5px; }
-  .qld-ishk-linha { display:flex; gap:6px; margin-bottom:5px; }
+  .qld-ishk-cathd { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .qld-catnome { flex:1; font-weight:600; font-size:12.5px; }
+  .qld-ishk-linha { display:flex; gap:6px; margin-bottom:5px; align-items:center; }
   .qld-add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
     border-radius:6px; padding:4px 9px; cursor:pointer; }
   .qld-add:hover { border-color:var(--accent); background:var(--surface-hi); }
@@ -1076,7 +1099,13 @@
   .qld-kb-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:9px 10px; cursor:grab; }
   .qld-kb-card.dragging { opacity:.4; }
   .qld-kb-card .tit { font-size:13px; font-weight:500; }
-  .qld-kb-card .meta { font-size:11px; color:var(--ink-3); margin-top:5px; display:flex; align-items:center; gap:7px; }
+  .qld-kb-datas { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .qld-kb-datas label { font-size:10.5px; color:var(--ink-3); display:inline-flex; align-items:center; gap:4px; }
+  .qld-kb-datas input[type=date] { font-size:11px; padding:2px 5px; width:auto; }
+  .qld-kb-ok { font-size:10.5px; color:var(--done); font-weight:600; }
+  .qld-kb-atraso { font-size:10.5px; color:var(--flag); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  .qld-kb-hist { font-family:"IBM Plex Mono", monospace; font-size:10.5px; color:var(--ink-3); cursor:help; }
+  .qld-kb-card .meta { font-size:11px; color:var(--ink-3); margin-top:5px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
   .qld-kb-card .tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:10px; }
   .qld-kb-card .tag.alta { background:var(--flag-soft); color:var(--flag); }
   .qld-kb-card .tag.media { background:var(--sev-2-soft); color:var(--sev-2); }
@@ -6407,51 +6436,109 @@ function opRelatoriosNovo() {
 // Pagina de Operacao, como Certificados: renderiza no #pageLegacy, reusando os
 // componentes e tokens do painel. Estado por empresa em localStorage -- ainda
 // nao vai ao banco (ver qualidade-SDD.md, secao 6).
-const QLD_CHAVE = "qualidade-v1";
+// ═══ Qualidade — 5W2H, Ishikawa, SWOT, Kanban ════════════════════
+// Pagina de Operacao, no layout do painel. Cada ferramenta guarda VARIOS
+// documentos identificaveis por titulo; estado por empresa em localStorage
+// (ainda sem banco -- ver qualidade-SDD.md).
+const QLD_CHAVE = "qualidade-v2";
+const QLD_ISHK = ["Método", "Máquina", "Material", "Mão de obra", "Medição", "Meio ambiente"];
+const QLD_KB = [["backlog", "Backlog"], ["fazer", "A fazer"], ["fazendo", "Fazendo"], ["feito", "Feito"]];
 let _qldTudo = {};
 try { _qldTudo = JSON.parse(localStorage.getItem(QLD_CHAVE) || "{}") || {}; } catch (e) { _qldTudo = {}; }
 const qldSalvar = () => { try { localStorage.setItem(QLD_CHAVE, JSON.stringify(_qldTudo)); } catch (e) {} };
-const QLD_ISHK = ["Método", "Máquina", "Material", "Mão de obra", "Medição", "Meio ambiente"];
+const qid = () => (typeof novoId === "function" ? novoId() : Math.random().toString(36).slice(2, 10));
+const hoje = () => new Date().toISOString().slice(0, 10);
+// Move item i de um array na direcao dir (-1/+1), com salvar+redesenho.
+function qldMover(arr, i, dir) {
+  const j = i + dir; if (j < 0 || j >= arr.length) return;
+  const t = arr[i]; arr[i] = arr[j]; arr[j] = t; qldSalvar(); opQualidade();
+}
+function qldSetas(arr, i, extra) {
+  const box = el("div", "qld-setas");
+  const up = el("button", "qld-set", "↑"); up.type = "button"; up.title = "Subir"; up.disabled = i === 0;
+  up.addEventListener("click", () => qldMover(arr, i, -1));
+  const dn = el("button", "qld-set", "↓"); dn.type = "button"; dn.title = "Descer"; dn.disabled = i === arr.length - 1;
+  dn.addEventListener("click", () => qldMover(arr, i, 1));
+  box.append(up, dn);
+  if (extra) box.append(extra);
+  return box;
+}
+
+// Documentos-semente (so na HealthMais; a Cordiva comeca vazia por ferramenta).
+function qldSemente(emp) {
+  const cats6 = () => QLD_ISHK.map(n => ({ id: qid(), nome: n, causas: [] }));
+  if (emp !== EMPRESAS[0].id) return { w2h: [], ishikawa: [], swot: [], kanban: [] };
+  const cats = cats6();
+  cats[0].causas = [{ id: qid(), texto: "Sem SLA para retorno" }, { id: qid(), texto: "Fluxo do detrator não documentado" }];
+  cats[3].causas = [{ id: qid(), texto: "Equipe não treinada no prazo" }];
+  cats[4].causas = [{ id: qid(), texto: "Pendências não monitoradas" }];
+  return {
+    w2h: [{ id: qid(), titulo: "Detrator NPS — nota 4", criadoEm: hoje(), linhas: [
+      { id: qid(), oque: "Padronizar retorno da ouvidoria", porque: "Detrator apontou demora", onde: "Central de atendimento", quando: "Até 30/09", quem: "Coord. de Enfermagem", como: "SLA de 24h com registro", quanto: "Sem custo" },
+      { id: qid(), oque: "Treinar equipe no fluxo do detrator", porque: "Contato em 5 dias úteis não cumprido", onde: "Reunião multiprofissional", quando: "Próxima quinzena", quem: "Qualidade", como: "Capacitação de 1h", quanto: "2h/equipe" },
+    ] }],
+    ishikawa: [{ id: qid(), titulo: "Demora no retorno", criadoEm: hoje(), efeito: "Demora no retorno ao paciente", categorias: cats }],
+    swot: [{ id: qid(), titulo: "Ouvidoria 09/2026", criadoEm: hoje(),
+      forcas: [{ id: qid(), texto: "Relação próxima com o paciente" }, { id: qid(), texto: "Equipe multiprofissional" }],
+      fraquezas: [{ id: qid(), texto: "Retorno sem prazo" }, { id: qid(), texto: "Baixa taxa de resposta do NPS" }],
+      oportunidades: [{ id: qid(), texto: "NPS agora mede percepção" }, { id: qid(), texto: "Alertas automáticos no painel" }],
+      ameacas: [{ id: qid(), texto: "Reincidência é risco reputacional" }, { id: qid(), texto: "Operadora acompanha indicadores" }] }],
+    kanban: [{ id: qid(), titulo: "Plano de ação — detrator", criadoEm: hoje(), cartoes: [
+      { id: qid(), tit: "Definir SLA de 24h", col: "fazer", resp: "Coord.", prio: "alta", estimativa: "", concluidoEm: "", historico: [{ col: "fazer", em: hoje() }] },
+      { id: qid(), tit: "Documentar fluxo do detrator", col: "fazendo", resp: "Qualidade", prio: "media", estimativa: "", concluidoEm: "", historico: [{ col: "fazendo", em: hoje() }] },
+      { id: qid(), tit: "Alerta de pendência no painel", col: "backlog", resp: "TI", prio: "media", estimativa: "", concluidoEm: "", historico: [{ col: "backlog", em: hoje() }] },
+    ] }],
+  };
+}
+
+// Migra o formato antigo (v1, documento unico) para a lista de documentos (v2).
+function qldMigrarV1() {
+  let v1 = null;
+  try { v1 = JSON.parse(localStorage.getItem("qualidade-v1") || "null"); } catch (e) {}
+  if (!v1) return;
+  // O prototipo standalone antigo gravava qualidade-v1 como PLANO unico
+  // ({w2h, ishikawa, ...}), nao um mapa por empresa. Nesse formato as chaves de
+  // topo sao nomes de ferramenta -- migrar como se fossem empresas poluiria o
+  // v2. So migra o formato por-empresa; o standalone (descartavel) e ignorado.
+  const nomesFerr = ["w2h", "ishikawa", "swot", "kanban", "caso", "ishikawaEfeito"];
+  if (nomesFerr.some(k => k in v1)) return;
+  Object.entries(v1).forEach(([emp, d]) => {
+    if (_qldTudo[emp] || !d || typeof d !== "object") return;
+    const cats = Object.entries((d.ishikawa || {}).categorias || {}).map(([nome, cs]) =>
+      ({ id: qid(), nome, causas: (cs || []).map(t => ({ id: qid(), texto: t })) }));
+    const swotL = k => (d.swot && d.swot[k] || []).map(t => ({ id: qid(), texto: t }));
+    _qldTudo[emp] = {
+      w2h: (d.w2h && d.w2h.length) ? [{ id: qid(), titulo: (d.caso && d.caso.titulo) || "Importado", criadoEm: hoje(), linhas: d.w2h.map(l => ({ id: qid(), ...l })) }] : [],
+      ishikawa: cats.length ? [{ id: qid(), titulo: (d.ishikawa && d.ishikawa.efeito) || "Importado", criadoEm: hoje(), efeito: (d.ishikawa && d.ishikawa.efeito) || "", categorias: cats }] : [],
+      swot: (d.swot ? [{ id: qid(), titulo: "Importado", criadoEm: hoje(), forcas: swotL("forcas"), fraquezas: swotL("fraquezas"), oportunidades: swotL("oportunidades"), ameacas: swotL("ameacas") }] : []),
+      kanban: (d.kanban && d.kanban.length) ? [{ id: qid(), titulo: "Importado", criadoEm: hoje(), cartoes: d.kanban.map(c => ({ id: qid(), tit: c.tit, col: c.col, resp: c.resp || "", prio: c.prio || "media", estimativa: "", concluidoEm: "", historico: [{ col: c.col, em: hoje() }] })) }] : [],
+    };
+  });
+  qldSalvar();
+}
+qldMigrarV1();
 
 function qldDados() {
   const emp = F.emp;
-  if (!_qldTudo[emp]) {
-    // Semente so na HealthMais (tem os dados reais); a Cordiva comeca vazia.
-    _qldTudo[emp] = emp === EMPRESAS[0].id ? {
-      caso: { titulo: "Detrator NPS — nota 4", descricao: "Paciente apontou demora no retorno de ligação (09/2026)." },
-      w2h: [
-        { oque: "Padronizar retorno da ouvidoria", porque: "Detrator apontou demora", onde: "Central de atendimento", quando: "Até 30/09", quem: "Coord. de Enfermagem", como: "SLA de 24h com registro", quanto: "Sem custo" },
-        { oque: "Treinar equipe no fluxo do detrator", porque: "Contato em 5 dias úteis não cumprido", onde: "Reunião multiprofissional", quando: "Próxima quinzena", quem: "Qualidade", como: "Capacitação de 1h", quanto: "2h/equipe" },
-      ],
-      ishikawa: { efeito: "Demora no retorno ao paciente", categorias: {
-        "Método": ["Sem SLA para retorno", "Fluxo do detrator não documentado"],
-        "Máquina": ["Sistema não alerta pendência"], "Material": [],
-        "Mão de obra": ["Equipe não treinada no prazo"], "Medição": ["Pendências não monitoradas"],
-        "Meio ambiente": ["Alto volume no fim do mês"] } },
-      swot: {
-        forcas: ["Relação próxima com o paciente", "Equipe multiprofissional"],
-        fraquezas: ["Retorno sem prazo", "Baixa taxa de resposta do NPS"],
-        oportunidades: ["NPS agora mede percepção", "Alertas automáticos no painel"],
-        ameacas: ["Reincidência é risco reputacional", "Operadora acompanha indicadores"] },
-      kanban: [
-        { id: novoId(), tit: "Definir SLA de 24h", col: "fazer", resp: "Coord.", prio: "alta" },
-        { id: novoId(), tit: "Documentar fluxo do detrator", col: "fazendo", resp: "Qualidade", prio: "media" },
-        { id: novoId(), tit: "Alerta de pendência no painel", col: "backlog", resp: "TI", prio: "media" },
-        { id: novoId(), tit: "Capacitação da equipe (1h)", col: "fazer", resp: "Qualidade", prio: "baixa" },
-      ],
-    } : {
-      caso: { titulo: "", descricao: "" },
-      w2h: [], ishikawa: { efeito: "", categorias: {} },
-      swot: { forcas: [], fraquezas: [], oportunidades: [], ameacas: [] }, kanban: [],
-    };
-    qldSalvar();
-  }
+  if (!_qldTudo[emp]) { _qldTudo[emp] = qldSemente(emp); qldSalvar(); }
   const d = _qldTudo[emp];
-  QLD_ISHK.forEach(c => { if (!d.ishikawa.categorias[c]) d.ishikawa.categorias[c] = []; });
+  ["w2h", "ishikawa", "swot", "kanban"].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
   return d;
 }
 
 let qldAba = "w2h";
+const qldSel = { w2h: null, ishikawa: null, swot: null, kanban: null };  // id do doc escolhido
+
+function qldNovoDoc(tipo, d) {
+  const base = { id: qid(), titulo: "", criadoEm: hoje() };
+  if (tipo === "w2h") base.linhas = [{ id: qid(), oque: "", porque: "", onde: "", quando: "", quem: "", como: "", quanto: "" }];
+  if (tipo === "ishikawa") { base.efeito = ""; base.categorias = QLD_ISHK.map(n => ({ id: qid(), nome: n, causas: [] })); }
+  if (tipo === "swot") { base.forcas = []; base.fraquezas = []; base.oportunidades = []; base.ameacas = []; }
+  if (tipo === "kanban") base.cartoes = [];
+  base.titulo = { w2h: "Novo 5W2H", ishikawa: "Novo Ishikawa", swot: "Nova SWOT", kanban: "Novo Kanban" }[tipo];
+  d[tipo].unshift(base); qldSel[tipo] = base.id; qldSalvar(); opQualidade();
+}
+
 function opQualidade() {
   $("#opStats").innerHTML = "";
   $("#opFiltros").classList.add("hidden");
@@ -6461,104 +6548,158 @@ function opQualidade() {
   const wrap = el("div", "qld-wrap"); wrap.id = "qualWrap";
   const d = qldDados();
 
-  // Caso em analise.
-  const caso = el("div", "qld-caso");
-  const ct = el("input"); ct.className = "qld-caso-tit"; ct.value = d.caso.titulo;
-  ct.placeholder = "Caso em análise (ex.: Detrator NPS — nota 4)";
-  ct.addEventListener("input", () => { d.caso.titulo = ct.value; qldSalvar(); });
-  const cd = el("input"); cd.className = "qld-caso-desc"; cd.value = d.caso.descricao;
-  cd.placeholder = "Descrição do caso";
-  cd.addEventListener("input", () => { d.caso.descricao = cd.value; qldSalvar(); });
-  caso.append(el("span", "qld-caso-lb", "Caso"), ct, cd);
-  wrap.append(caso);
-
-  // Abas das ferramentas.
   const abas = el("div", "qld-abas");
   [["w2h", "5W2H"], ["ishikawa", "Ishikawa"], ["swot", "SWOT"], ["kanban", "Kanban"]].forEach(([k, rot]) => {
-    const b = el("button", "qld-aba" + (qldAba === k ? " on" : "")); b.type = "button"; b.textContent = rot;
+    const b = el("button", "qld-aba" + (qldAba === k ? " on" : "")); b.type = "button";
+    b.append(document.createTextNode(rot + " "), el("span", "n", String(d[k].length)));
     b.addEventListener("click", () => { qldAba = k; opQualidade(); });
     abas.append(b);
   });
   wrap.append(abas);
-  const corpo = el("div", "qld-corpo"); wrap.append(corpo);
-  ({ w2h: qldW2H, ishikawa: qldIshikawa, swot: qldSwot, kanban: qldKanban }[qldAba])(corpo, d);
 
+  const corpo = el("div", "qld-corpo"); wrap.append(corpo);
+  qldSeletorDoc(corpo, d);   // barra de documentos (escolher/criar/renomear/excluir)
+  const doc = qldDocAtual(d);
+  if (!doc) {
+    corpo.append(el("p", "qld-vazio", "Nenhum documento ainda. Crie o primeiro com “+ Novo”."));
+  } else {
+    ({ w2h: qldW2H, ishikawa: qldIshikawa, swot: qldSwot, kanban: qldKanban }[qldAba])(corpo, doc, d);
+  }
   $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
 }
 
+function qldDocAtual(d) {
+  const lista = d[qldAba];
+  if (!lista.length) return null;
+  let doc = lista.find(x => x.id === qldSel[qldAba]);
+  if (!doc) { doc = lista[0]; qldSel[qldAba] = doc.id; }
+  return doc;
+}
+
+function qldSeletorDoc(box, d) {
+  const lista = d[qldAba];
+  const bar = el("div", "qld-docbar");
+  const rotulo = { w2h: "5W2H", ishikawa: "Ishikawa", swot: "SWOT", kanban: "Kanban" }[qldAba];
+  if (lista.length) {
+    const sel = document.createElement("select"); sel.className = "qld-docsel";
+    lista.forEach(doc => {
+      const o = document.createElement("option"); o.value = doc.id; o.textContent = doc.titulo || "(sem título)";
+      if (doc.id === qldSel[qldAba]) o.selected = true;
+      sel.append(o);
+    });
+    sel.addEventListener("change", () => { qldSel[qldAba] = sel.value; opQualidade(); });
+    bar.append(sel);
+    // titulo editavel do doc atual
+    const doc = qldDocAtual(d);
+    const tit = document.createElement("input"); tit.className = "qld-doctit"; tit.value = doc.titulo || "";
+    tit.placeholder = "Título do " + rotulo;
+    tit.addEventListener("input", () => { doc.titulo = tit.value; qldSalvar();
+      const opt = [...sel.options].find(o => o.value === doc.id); if (opt) opt.textContent = tit.value || "(sem título)"; });
+    bar.append(tit);
+    const del = el("button", "qld-docdel", "Excluir"); del.type = "button";
+    del.addEventListener("click", () => {
+      if (!confirm("Excluir “" + (doc.titulo || "este " + rotulo) + "”?")) return;
+      d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(); opQualidade();
+    });
+    bar.append(del);
+  }
+  const nv = el("button", "qld-docnovo", "+ Novo " + rotulo); nv.type = "button";
+  nv.addEventListener("click", () => qldNovoDoc(qldAba, d));
+  bar.append(nv);
+  box.append(bar);
+}
+
+// ---- 5W2H ----
 const QLD_W2H = [["oque", "O quê", "What"], ["porque", "Por quê", "Why"], ["onde", "Onde", "Where"],
   ["quando", "Quando", "When"], ["quem", "Quem", "Who"], ["como", "Como", "How"], ["quanto", "Quanto", "How much"]];
-function qldW2H(box, d) {
-  box.append(el("p", "qld-desc", "Cada linha é uma ação: o quê, por quê, onde, quando, quem, como e quanto."));
+function qldW2H(box, doc) {
+  const topo = el("div", "qld-ferr-topo");
+  topo.append(el("p", "qld-desc", "Cada linha é uma ação: o quê, por quê, onde, quando, quem, como e quanto."));
+  topo.append(qldBotaoA4("Exportar A4", () => qldExportW2H(doc)));
+  box.append(topo);
   const scroll = el("div", "qld-w2h-scroll");
   const t = el("table", "qld-w2h");
   const thead = el("tr"); thead.append(el("th", "num", "#"));
-  QLD_W2H.forEach(([, rot, en]) => {
-    const th = el("th"); th.innerHTML = "<span class='q'>" + en + "</span><br>" + rot; thead.append(th);
-  });
-  thead.append(el("th", "del")); t.append(thead);
-  d.w2h.forEach((linha, i) => {
+  QLD_W2H.forEach(([, rot, en]) => { const th = el("th"); th.innerHTML = "<span class='q'>" + en + "</span><br>" + rot; thead.append(th); });
+  thead.append(el("th", "acoes")); t.append(thead);
+  doc.linhas.forEach((linha, i) => {
     const tr = el("tr"); tr.append(el("td", "num", String(i + 1)));
     QLD_W2H.forEach(([campo]) => {
-      const td = el("td"); const ta = el("textarea"); ta.value = linha[campo] || "";
+      const td = el("td"); const ta = el("textarea"); ta.value = linha[campo] || ""; ta.rows = 2;
       ta.addEventListener("input", () => { linha[campo] = ta.value; qldSalvar(); });
       td.append(ta); tr.append(td);
     });
-    const del = el("td", "del"); const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
-    x.addEventListener("click", () => { d.w2h.splice(i, 1); qldSalvar(); opQualidade(); });
-    del.append(x); tr.append(del); t.append(tr);
+    const acoes = el("td", "acoes");
+    const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
+    x.addEventListener("click", () => { doc.linhas.splice(i, 1); qldSalvar(); opQualidade(); });
+    acoes.append(qldSetas(doc.linhas, i, x)); tr.append(acoes); t.append(tr);
   });
   scroll.append(t); box.append(scroll);
   const add = el("button", "btn", "+ Adicionar ação"); add.type = "button"; add.style.marginTop = "12px";
-  add.addEventListener("click", () => { d.w2h.push({ oque: "", porque: "", onde: "", quando: "", quem: "", como: "", quanto: "" }); qldSalvar(); opQualidade(); });
+  add.addEventListener("click", () => { doc.linhas.push({ id: qid(), oque: "", porque: "", onde: "", quando: "", quem: "", como: "", quanto: "" }); qldSalvar(); opQualidade(); });
   box.append(add);
 }
 
-function qldIshikawa(box, d) {
-  box.append(el("p", "qld-desc", "Espinha de peixe: o efeito à direita, as causas nos 6 M. Editar as causas redesenha o diagrama."));
-  const topo = el("div", "qld-ishk-topo");
-  topo.append(el("label", null, "Efeito:"));
-  const ef = el("input"); ef.value = d.ishikawa.efeito || ""; ef.placeholder = "Problema a analisar";
-  ef.addEventListener("input", () => { d.ishikawa.efeito = ef.value; qldSalvar(); box.querySelector("#qldFish").innerHTML = qldFishSVG(d); });
-  topo.append(ef); box.append(topo);
-  const fishWrap = el("div"); fishWrap.id = "qldFish"; fishWrap.innerHTML = qldFishSVG(d); box.append(fishWrap);
+// ---- Ishikawa ----
+function qldIshikawa(box, doc) {
+  const topo = el("div", "qld-ferr-topo");
+  topo.append(el("p", "qld-desc", "Espinha de peixe: o efeito à direita, as causas por categoria. Edite as categorias e causas; o diagrama redesenha."));
+  topo.append(qldBotaoA4("Exportar A4", () => qldExportIshikawa(doc)));
+  box.append(topo);
+  const cx = el("div", "qld-ishk-topo");
+  cx.append(el("label", null, "Efeito:"));
+  const ef = el("input"); ef.value = doc.efeito || ""; ef.placeholder = "Problema a analisar";
+  ef.addEventListener("input", () => { doc.efeito = ef.value; qldSalvar(); const f = box.querySelector("#qldFish"); if (f) f.innerHTML = qldFishSVG(doc); });
+  cx.append(ef); box.append(cx);
+  const fw = el("div"); fw.id = "qldFish"; fw.innerHTML = qldFishSVG(doc); box.append(fw);
   const edit = el("div", "qld-ishk-edit");
-  QLD_ISHK.forEach(cat => {
-    const c = el("div", "qld-ishk-cat"); c.append(el("h4", null, cat));
-    d.ishikawa.categorias[cat].forEach((causa, i) => {
-      const linha = el("div", "qld-ishk-linha"); const inp = el("input"); inp.value = causa;
-      inp.addEventListener("input", () => { d.ishikawa.categorias[cat][i] = inp.value; qldSalvar(); box.querySelector("#qldFish").innerHTML = qldFishSVG(d); });
+  doc.categorias.forEach((cat, ci) => {
+    const c = el("div", "qld-ishk-cat");
+    const ch = el("div", "qld-ishk-cathd");
+    const nome = document.createElement("input"); nome.className = "qld-catnome"; nome.value = cat.nome; nome.placeholder = "Categoria (ex.: Método)";
+    nome.addEventListener("input", () => { cat.nome = nome.value; qldSalvar(); const f = box.querySelector("#qldFish"); if (f) f.innerHTML = qldFishSVG(doc); });
+    const delC = el("button", "btn-ghost", "✕"); delC.type = "button"; delC.title = "Remover categoria";
+    delC.addEventListener("click", () => { doc.categorias.splice(ci, 1); qldSalvar(); opQualidade(); });
+    ch.append(nome, qldSetas(doc.categorias, ci, delC)); c.append(ch);
+    cat.causas.forEach((causa, i) => {
+      const linha = el("div", "qld-ishk-linha");
+      const inp = el("input"); inp.value = causa.texto;
+      inp.addEventListener("input", () => { causa.texto = inp.value; qldSalvar(); const f = box.querySelector("#qldFish"); if (f) f.innerHTML = qldFishSVG(doc); });
       const x = el("button", "btn-ghost", "✕"); x.type = "button";
-      x.addEventListener("click", () => { d.ishikawa.categorias[cat].splice(i, 1); qldSalvar(); opQualidade(); });
-      linha.append(inp, x); c.append(linha);
+      x.addEventListener("click", () => { cat.causas.splice(i, 1); qldSalvar(); opQualidade(); });
+      linha.append(inp, qldSetas(cat.causas, i, x)); c.append(linha);
     });
     const add = el("button", "qld-add", "+ causa"); add.type = "button";
-    add.addEventListener("click", () => { d.ishikawa.categorias[cat].push(""); qldSalvar(); opQualidade(); });
+    add.addEventListener("click", () => { cat.causas.push({ id: qid(), texto: "" }); qldSalvar(); opQualidade(); });
     c.append(add); edit.append(c);
   });
   box.append(edit);
+  const addCat = el("button", "btn", "+ Adicionar categoria"); addCat.type = "button"; addCat.style.marginTop = "12px";
+  addCat.addEventListener("click", () => { doc.categorias.push({ id: qid(), nome: "", causas: [] }); qldSalvar(); opQualidade(); });
+  box.append(addCat);
 }
-function qldFishSVG(d) {
-  const W = 900, H = 360, cy = H / 2, efeito = d.ishikawa.efeito || "Efeito";
+function qldFishSVG(doc) {
+  const cats = doc.categorias.filter(c => (c.nome || "").trim());
+  const W = 900, H = Math.max(280, 120 + Math.ceil(cats.length / 2) * 90), cy = H / 2;
+  const efeito = doc.efeito || "Efeito";
   const esc2 = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   let s = `<svg class="qld-fish" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
   s += `<line class="espinha" x1="40" y1="${cy}" x2="${W - 150}" y2="${cy}"/>`;
   s += `<rect class="cabeca" x="${W - 150}" y="${cy - 32}" width="140" height="64" rx="9"/>`;
-  // efeito na cabeca, quebrado em ate 3 linhas
   const pal = efeito.split(" "); const ln = []; let cur = "";
   pal.forEach(w => { if ((cur + " " + w).trim().length > 15) { ln.push(cur.trim()); cur = w; } else cur += " " + w; });
   if (cur.trim()) ln.push(cur.trim());
   const off = (ln.length - 1) * 7;
   s += ln.slice(0, 3).map((l, i) => `<text class="cabeca-txt" x="${W - 80}" y="${cy - off + i * 15}" text-anchor="middle">${esc2(l)}</text>`).join("");
-  const topo = QLD_ISHK.filter((_, i) => i % 2 === 0), base = QLD_ISHK.filter((_, i) => i % 2 === 1);
-  const lado = (cats, up) => {
-    const n = cats.length;
-    cats.forEach((cat, i) => {
+  const topo = cats.filter((_, i) => i % 2 === 0), base = cats.filter((_, i) => i % 2 === 1);
+  const lado = (cs, up) => {
+    const n = cs.length || 1;
+    cs.forEach((cat, i) => {
       const bx = 130 + i * ((W - 320) / n), ty = up ? 38 : H - 38, tipx = bx - 66;
       s += `<line class="galho" x1="${bx}" y1="${cy}" x2="${tipx}" y2="${ty}"/>`;
       s += `<rect class="cat" x="${tipx - 62}" y="${up ? ty - 20 : ty}" width="124" height="20" rx="5"/>`;
-      s += `<text class="catnome" x="${tipx}" y="${up ? ty - 6 : ty + 14}" text-anchor="middle">${esc2(cat)}</text>`;
-      (d.ishikawa.categorias[cat] || []).filter(Boolean).slice(0, 4).forEach((cau, j, arr) => {
+      s += `<text class="catnome" x="${tipx}" y="${up ? ty - 6 : ty + 14}" text-anchor="middle">${esc2(cat.nome)}</text>`;
+      (cat.causas || []).map(c => c.texto).filter(Boolean).slice(0, 4).forEach((cau, j, arr) => {
         const f = (j + 1) / (arr.length + 1), px = bx + (tipx - bx) * f, py = cy + (ty - cy) * f;
         s += `<circle cx="${px}" cy="${py}" r="2.2" fill="var(--accent)"/>`;
         s += `<text class="causa" x="${px + 6}" y="${py + (up ? -3 : 11)}">${esc2(cau.slice(0, 24))}</text>`;
@@ -6569,68 +6710,131 @@ function qldFishSVG(d) {
   return s + "</svg>";
 }
 
+// ---- SWOT ----
 const QLD_SWOT = [["forcas", "Forças", "Internas · positivas"], ["fraquezas", "Fraquezas", "Internas · negativas"],
   ["oportunidades", "Oportunidades", "Externas · positivas"], ["ameacas", "Ameaças", "Externas · negativas"]];
-function qldSwot(box, d) {
-  box.append(el("p", "qld-desc", "Quatro quadrantes: o que está sob controle (forças, fraquezas) e o que vem de fora (oportunidades, ameaças)."));
+function qldSwot(box, doc) {
+  const topo = el("div", "qld-ferr-topo");
+  topo.append(el("p", "qld-desc", "Quatro quadrantes: o que está sob controle (forças, fraquezas) e o que vem de fora (oportunidades, ameaças)."));
+  topo.append(qldBotaoA4("Exportar A4", () => qldExportSwot(doc)));
+  box.append(topo);
   const grid = el("div", "qld-swot");
   QLD_SWOT.forEach(([k, rot, sub]) => {
     const q = el("div", "qld-swot-q " + k); q.append(el("h3", null, rot), el("div", "sub", sub));
-    d.swot[k].forEach((item, i) => {
+    (doc[k] || []).forEach((item, i) => {
       const linha = el("div", "qld-swot-item"); linha.append(el("span", "dot"));
-      const inp = el("input"); inp.value = item;
-      inp.addEventListener("input", () => { d.swot[k][i] = inp.value; qldSalvar(); });
+      const inp = el("input"); inp.value = item.texto;
+      inp.addEventListener("input", () => { item.texto = inp.value; qldSalvar(); });
       const x = el("button", "btn-ghost", "✕"); x.type = "button";
-      x.addEventListener("click", () => { d.swot[k].splice(i, 1); qldSalvar(); opQualidade(); });
-      linha.append(inp, x); q.append(linha);
+      x.addEventListener("click", () => { doc[k].splice(i, 1); qldSalvar(); opQualidade(); });
+      linha.append(inp, qldSetas(doc[k], i, x)); q.append(linha);
     });
     const add = el("button", "qld-add", "+ item"); add.type = "button";
-    add.addEventListener("click", () => { d.swot[k].push(""); qldSalvar(); opQualidade(); });
+    add.addEventListener("click", () => { doc[k].push({ id: qid(), texto: "" }); qldSalvar(); opQualidade(); });
     q.append(add); grid.append(q);
   });
   box.append(grid);
 }
 
-const QLD_KB = [["backlog", "Backlog"], ["fazer", "A fazer"], ["fazendo", "Fazendo"], ["feito", "Feito"]];
-function qldKanban(box, d) {
-  box.append(el("p", "qld-desc", "As ações do 5W2H viram cartões. Arraste entre as colunas conforme andam."));
+// ---- Kanban ----
+function qldKanban(box, doc) {
+  box.append(el("p", "qld-desc", "Cartões com estimativa de conclusão, data de conclusão e histórico por coluna. Arraste entre colunas; use ↑/↓ para ordenar."));
   const board = el("div", "qld-kanban");
   QLD_KB.forEach(([col, rot]) => {
     const c = el("div", "qld-kb-col " + col);
-    const cards = d.kanban.filter(k => k.col === col);
+    const cards = doc.cartoes.filter(k => k.col === col);
     const h = el("h3"); h.append(document.createTextNode(rot), el("span", "ct", String(cards.length))); c.append(h);
     const lista = el("div", "qld-kb-cards");
-    cards.forEach(card => lista.append(qldCartao(card, d)));
+    cards.forEach((card, idxNaCol) => lista.append(qldCartao(card, doc, cards, idxNaCol)));
     c.append(lista);
     const add = el("button", "qld-kb-add", "+ cartão"); add.type = "button";
     add.addEventListener("click", () => {
       const tit = prompt("Título do cartão:");
-      if (tit && tit.trim()) { d.kanban.push({ id: novoId(), tit: tit.trim(), col, resp: "", prio: "media" }); qldSalvar(); opQualidade(); }
+      if (tit && tit.trim()) { doc.cartoes.push({ id: qid(), tit: tit.trim(), col, resp: "", prio: "media", estimativa: "", concluidoEm: "", historico: [{ col, em: hoje() }] }); qldSalvar(); opQualidade(); }
     });
     c.append(add);
     c.addEventListener("dragover", ev => { ev.preventDefault(); c.classList.add("over"); });
     c.addEventListener("dragleave", () => c.classList.remove("over"));
     c.addEventListener("drop", ev => {
       ev.preventDefault(); c.classList.remove("over");
-      const id = ev.dataTransfer.getData("id"); const card = d.kanban.find(k => k.id === id);
-      if (card && card.col !== col) { card.col = col; qldSalvar(); opQualidade(); }
+      const id = ev.dataTransfer.getData("id"); const card = doc.cartoes.find(k => k.id === id);
+      if (card && card.col !== col) {
+        card.col = col;
+        (card.historico = card.historico || []).push({ col, em: hoje() });
+        card.concluidoEm = col === "feito" ? hoje() : "";
+        qldSalvar(); opQualidade();
+      }
     });
     board.append(c);
   });
   box.append(board);
 }
-function qldCartao(card, d) {
+function qldCartao(card, doc, cards, idxNaCol) {
   const n = el("div", "qld-kb-card"); n.draggable = true;
   n.addEventListener("dragstart", ev => { ev.dataTransfer.setData("id", card.id); n.classList.add("dragging"); });
   n.addEventListener("dragend", () => n.classList.remove("dragging"));
   const tit = el("div", "tit", card.tit); n.append(tit);
+  // estimativa
+  const datas = el("div", "qld-kb-datas");
+  const lab = el("label", null, "Prev.:");
+  const est = document.createElement("input"); est.type = "date"; est.value = card.estimativa || "";
+  est.addEventListener("change", () => { card.estimativa = est.value; qldSalvar(); opQualidade(); });
+  lab.append(est); datas.append(lab);
+  if (card.concluidoEm) datas.append(el("span", "qld-kb-ok", "✓ " + dbr(card.concluidoEm)));
+  else if (card.estimativa && card.estimativa < hoje()) datas.append(el("span", "qld-kb-atraso", "atrasado"));
+  n.append(datas);
   const meta = el("div", "meta");
   meta.append(el("span", "tag " + (card.prio || "media"), card.prio || "media"));
   if (card.resp) meta.append(el("span", null, "· " + card.resp));
-  const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover"; x.style.marginLeft = "auto";
-  x.addEventListener("click", () => { d.kanban.splice(d.kanban.indexOf(card), 1); qldSalvar(); opQualidade(); });
+  const hist = (card.historico || []).length;
+  if (hist) { const hb = el("span", "qld-kb-hist", "⧉ " + hist); hb.title = (card.historico || []).map(h => h.col + " · " + dbr(h.em)).join("\n"); meta.append(hb); }
+  meta.append(qldSetas(cards, idxNaCol));   // reordenar dentro da coluna
+  const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
+  x.addEventListener("click", () => { doc.cartoes.splice(doc.cartoes.indexOf(card), 1); qldSalvar(); opQualidade(); });
   meta.append(x); n.append(meta);
   return n;
+}
+
+// ---- Exportação A4 (impressão / PDF) ----
+function qldBotaoA4(rot, aoClicar) {
+  const b = el("button", "btn qld-a4", rot); b.type = "button";
+  b.addEventListener("click", aoClicar); return b;
+}
+const QLD_A4_CSS = ":root{--accent:#1E5EFF;--accent-line:#9DBAFF;--ink:#0E141C;--ink-2:#3B475A;"
+  + "--ink-3:#78859B;--line:#E2E8F1;--surface:#fff;--surface-hi:#eef2f7;--done:#2E7D32;--flag:#B00020;--sev-2:#B45309;}"
+  + "*{box-sizing:border-box}body{font-family:'IBM Plex Sans',Arial,sans-serif;color:var(--ink);margin:0;padding:14mm}"
+  + "h1{font-size:18px;margin:0 0 3mm}.meta{color:var(--ink-3);font-size:12px;margin:0 0 8mm}"
+  + ".qld-fish{width:100%;height:auto;border:1px solid var(--line);border-radius:8px}"
+  + ".qld-fish .espinha{stroke:var(--ink-3);stroke-width:2}.qld-fish .galho{stroke:var(--accent-line);stroke-width:1.6}"
+  + ".qld-fish .cat{fill:var(--surface-hi);stroke:var(--line)}.qld-fish text{fill:var(--ink);font-family:'IBM Plex Sans',Arial}"
+  + ".qld-fish .catnome{font-weight:600;font-size:12px}.qld-fish .causa{font-size:11px;fill:var(--ink-2)}"
+  + ".qld-fish .cabeca{fill:var(--accent)}.qld-fish .cabeca-txt{fill:#fff;font-weight:600;font-size:12px}"
+  + "table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}"
+  + "th{background:var(--surface-hi)}.sw{display:grid;grid-template-columns:1fr 1fr;gap:8mm}"
+  + ".sw .q{border:1px solid var(--line);border-radius:8px;padding:6mm}.sw h3{margin:0 0 3mm;font-size:14px}"
+  + ".sw ul{margin:0;padding-left:5mm}.sw li{font-size:12px;margin-bottom:2mm}"
+  + "@page{size:A4 landscape;margin:10mm}";
+function qldImprimir(titulo, corpoHtml, orient) {
+  const w = window.open("", "_blank", "width=1100,height=800");
+  if (!w) { toast("Bloqueado", "Permita pop-ups para exportar."); return; }
+  const css = QLD_A4_CSS + (orient === "retrato" ? "@page{size:A4 portrait;margin:12mm}" : "");
+  w.document.write("<!doctype html><meta charset='utf-8'><title>" + titulo + "</title><style>" + css + "</style>"
+    + "<h1>" + titulo + "</h1><div class='meta'>HealthMais · Qualidade · " + dbr(hoje()) + "</div>" + corpoHtml);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 350);
+}
+function qldExportIshikawa(doc) { qldImprimir("Ishikawa — " + (doc.titulo || doc.efeito || ""), qldFishSVG(doc), "paisagem"); }
+function qldExportW2H(doc) {
+  const esc2 = s => String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let h = "<table><tr><th>#</th>" + QLD_W2H.map(([, r]) => "<th>" + r + "</th>").join("") + "</tr>";
+  doc.linhas.forEach((l, i) => { h += "<tr><td>" + (i + 1) + "</td>" + QLD_W2H.map(([c]) => "<td>" + esc2(l[c]) + "</td>").join("") + "</tr>"; });
+  qldImprimir("5W2H — " + (doc.titulo || ""), h + "</table>", "paisagem");
+}
+function qldExportSwot(doc) {
+  const esc2 = s => String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const bloco = ([k, rot]) => "<div class='q'><h3>" + rot + "</h3><ul>"
+    + (doc[k] || []).map(it => "<li>" + esc2(it.texto) + "</li>").join("") + "</ul></div>";
+  qldImprimir("SWOT — " + (doc.titulo || ""), "<div class='sw'>" + QLD_SWOT.map(bloco).join("") + "</div>", "retrato");
 }
 
 // Troca as duas telas pelas versões novas.
