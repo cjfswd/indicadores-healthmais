@@ -1017,6 +1017,18 @@
   .qld-aba.on { color:var(--accent); border-bottom-color:var(--accent); }
   .qld-aba:hover { color:var(--ink); }
   .qld-desc { font-size:12.5px; color:var(--ink-3); margin:0; max-width:74ch; }
+  /* Inputs da Qualidade no padrao do painel (mesmo de .form-novo). */
+  #qualWrap input, #qualWrap textarea, #qualWrap select {
+    font:inherit; font-size:13px; color:var(--ink); background:var(--surface-2);
+    border:1px solid var(--line); border-radius:var(--radius); padding:7px 9px; width:100%; outline:none; }
+  #qualWrap textarea { resize:vertical; line-height:1.4; }
+  #qualWrap input:focus, #qualWrap textarea:focus, #qualWrap select:focus { border-color:var(--accent); }
+  #qualWrap input[type="date"] { width:auto; min-width:132px; }
+  /* Confirmação inline (substitui o confirm do browser). */
+  .qld-confirmar { display:inline-flex; align-items:center; gap:4px; }
+  .qld-conf-sim, .qld-conf-nao { width:auto; font-size:11.5px; padding:4px 9px; border-radius:6px; border:1px solid var(--line); cursor:pointer; }
+  .qld-conf-sim { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
+  .qld-conf-nao { color:var(--ink-3); background:var(--surface); }
   /* Barra de documentos: seletor + titulo + excluir + novo */
   .qld-docbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0 16px;
     padding:10px 12px; background:var(--surface-hi); border-radius:10px; }
@@ -1099,6 +1111,10 @@
   .qld-kb-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:9px 10px; cursor:grab; }
   .qld-kb-card.dragging { opacity:.4; }
   .qld-kb-card .tit { font-size:13px; font-weight:500; }
+  .qld-kb-card input.tit-in { font-weight:600; padding:5px 7px; margin-bottom:5px; }
+  .qld-kb-card textarea.desc-in { font-size:12px; min-height:34px; margin-bottom:5px; }
+  .qld-kb-card .linha-in { display:flex; gap:5px; margin-bottom:5px; }
+  .qld-kb-card .linha-in select, .qld-kb-card .linha-in input { padding:4px 6px; font-size:11.5px; }
   .qld-kb-datas { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
   .qld-kb-datas label { font-size:10.5px; color:var(--ink-3); display:inline-flex; align-items:center; gap:4px; }
   .qld-kb-datas input[type=date] { font-size:11px; padding:2px 5px; width:auto; }
@@ -6597,10 +6613,9 @@ function qldSeletorDoc(box, d) {
       const opt = [...sel.options].find(o => o.value === doc.id); if (opt) opt.textContent = tit.value || "(sem título)"; });
     bar.append(tit);
     const del = el("button", "qld-docdel", "Excluir"); del.type = "button";
-    del.addEventListener("click", () => {
-      if (!confirm("Excluir “" + (doc.titulo || "este " + rotulo) + "”?")) return;
+    del.addEventListener("click", () => qldConfirmar(del, () => {
       d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(); opQualidade();
-    });
+    }));
     bar.append(del);
   }
   const nv = el("button", "qld-docnovo", "+ Novo " + rotulo); nv.type = "button";
@@ -6737,8 +6752,21 @@ function qldSwot(box, doc) {
 }
 
 // ---- Kanban ----
+// Confirmacao inline no lugar do confirm() do browser: troca o botao por um
+// par Confirmar/Cancelar. Cancelar devolve o botao original.
+function qldConfirmar(botao, aoConfirmar) {
+  const conf = el("span", "qld-confirmar");
+  const sim = el("button", "qld-conf-sim", "Confirmar"); sim.type = "button";
+  const nao = el("button", "qld-conf-nao", "Cancelar"); nao.type = "button";
+  sim.addEventListener("click", ev => { ev.stopPropagation(); aoConfirmar(); });
+  nao.addEventListener("click", ev => { ev.stopPropagation(); conf.replaceWith(botao); });
+  conf.append(sim, nao);
+  botao.replaceWith(conf);
+}
+let qldFocoCartao = null;   // cartao recem-criado, para focar o titulo
+
 function qldKanban(box, doc) {
-  box.append(el("p", "qld-desc", "Cartões com estimativa de conclusão, data de conclusão e histórico por coluna. Arraste entre colunas; use ↑/↓ para ordenar."));
+  box.append(el("p", "qld-desc", "Cada cartão tem título, descrição, responsável, prioridade e estimativa de conclusão; data de conclusão e histórico por coluna. Arraste entre colunas; ↑/↓ ordena."));
   const board = el("div", "qld-kanban");
   QLD_KB.forEach(([col, rot]) => {
     const c = el("div", "qld-kb-col " + col);
@@ -6749,8 +6777,8 @@ function qldKanban(box, doc) {
     c.append(lista);
     const add = el("button", "qld-kb-add", "+ cartão"); add.type = "button";
     add.addEventListener("click", () => {
-      const tit = prompt("Título do cartão:");
-      if (tit && tit.trim()) { doc.cartoes.push({ id: qid(), tit: tit.trim(), col, resp: "", prio: "media", estimativa: "", concluidoEm: "", historico: [{ col, em: hoje() }] }); qldSalvar(); opQualidade(); }
+      const novo = { id: qid(), tit: "", desc: "", col, resp: "", prio: "media", estimativa: "", concluidoEm: "", historico: [{ col, em: hoje() }] };
+      doc.cartoes.push(novo); qldFocoCartao = novo.id; qldSalvar(); opQualidade();
     });
     c.append(add);
     c.addEventListener("dragover", ev => { ev.preventDefault(); c.classList.add("over"); });
@@ -6773,8 +6801,29 @@ function qldCartao(card, doc, cards, idxNaCol) {
   const n = el("div", "qld-kb-card"); n.draggable = true;
   n.addEventListener("dragstart", ev => { ev.dataTransfer.setData("id", card.id); n.classList.add("dragging"); });
   n.addEventListener("dragend", () => n.classList.remove("dragging"));
-  const tit = el("div", "tit", card.tit); n.append(tit);
-  // estimativa
+  // Titulo editavel (sem prompt): cartao novo nasce com o campo em foco.
+  const tit = document.createElement("input"); tit.className = "tit-in"; tit.value = card.tit; tit.placeholder = "Título do cartão";
+  tit.draggable = true; tit.addEventListener("dragstart", ev => ev.preventDefault());
+  tit.addEventListener("input", () => { card.tit = tit.value; qldSalvar(); });
+  n.append(tit);
+  // Descricao.
+  const desc = document.createElement("textarea"); desc.className = "desc-in"; desc.rows = 2;
+  desc.value = card.desc || ""; desc.placeholder = "Descrição";
+  desc.draggable = true; desc.addEventListener("dragstart", ev => ev.preventDefault());
+  desc.addEventListener("input", () => { card.desc = desc.value; qldSalvar(); });
+  n.append(desc);
+  // Responsavel + prioridade.
+  const linha = el("div", "linha-in");
+  const resp = document.createElement("input"); resp.value = card.resp || ""; resp.placeholder = "Responsável";
+  resp.draggable = true; resp.addEventListener("dragstart", ev => ev.preventDefault());
+  resp.addEventListener("input", () => { card.resp = resp.value; qldSalvar(); });
+  const prio = document.createElement("select");
+  [["alta", "Alta"], ["media", "Média"], ["baixa", "Baixa"]].forEach(([v, r]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = r; if ((card.prio || "media") === v) o.selected = true; prio.append(o);
+  });
+  prio.addEventListener("change", () => { card.prio = prio.value; qldSalvar(); opQualidade(); });
+  linha.append(resp, prio); n.append(linha);
+  // Estimativa + conclusao/atraso.
   const datas = el("div", "qld-kb-datas");
   const lab = el("label", null, "Prev.:");
   const est = document.createElement("input"); est.type = "date"; est.value = card.estimativa || "";
@@ -6783,15 +6832,16 @@ function qldCartao(card, doc, cards, idxNaCol) {
   if (card.concluidoEm) datas.append(el("span", "qld-kb-ok", "✓ " + dbr(card.concluidoEm)));
   else if (card.estimativa && card.estimativa < hoje()) datas.append(el("span", "qld-kb-atraso", "atrasado"));
   n.append(datas);
+  // Meta: tag de prioridade, historico, reordenar e remover (confirmacao inline).
   const meta = el("div", "meta");
   meta.append(el("span", "tag " + (card.prio || "media"), card.prio || "media"));
-  if (card.resp) meta.append(el("span", null, "· " + card.resp));
   const hist = (card.historico || []).length;
   if (hist) { const hb = el("span", "qld-kb-hist", "⧉ " + hist); hb.title = (card.historico || []).map(h => h.col + " · " + dbr(h.em)).join("\n"); meta.append(hb); }
-  meta.append(qldSetas(cards, idxNaCol));   // reordenar dentro da coluna
-  const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
-  x.addEventListener("click", () => { doc.cartoes.splice(doc.cartoes.indexOf(card), 1); qldSalvar(); opQualidade(); });
+  meta.append(qldSetas(cards, idxNaCol));
+  const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover"; x.style.marginLeft = "auto";
+  x.addEventListener("click", () => qldConfirmar(x, () => { doc.cartoes.splice(doc.cartoes.indexOf(card), 1); qldSalvar(); opQualidade(); }));
   meta.append(x); n.append(meta);
+  if (qldFocoCartao === card.id) { qldFocoCartao = null; setTimeout(() => tit.focus(), 0); }
   return n;
 }
 
