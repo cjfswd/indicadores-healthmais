@@ -1,0 +1,151 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste — Qualidade</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root { color-scheme: light dark; }
+  body { margin:0; font-family:"IBM Plex Sans",system-ui,sans-serif; background:#f4f6f9; color:#0e141c;
+    padding:22px; }
+  @media (prefers-color-scheme:dark){ body{ background:#0b0f16; color:#eaf0f8; } }
+  h1 { font-size:20px; letter-spacing:-.02em; margin:0 0 4px; }
+  .sub { color:#78859b; font-size:13px; margin:0 0 16px; }
+  #resumo { font-family:"IBM Plex Mono",monospace; font-size:14px; font-weight:600; padding:10px 14px;
+    border-radius:9px; margin-bottom:14px; display:inline-block; }
+  #resumo.ok { background:#e6f1e7; color:#2e7d32; } #resumo.no { background:#fae6e9; color:#b00020; }
+  #resumo.run { background:#eef2f7; color:#3b475a; }
+  ul { list-style:none; padding:0; margin:0 0 20px; max-width:760px; }
+  li { display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border-bottom:1px solid #e2e8f1;
+    font-size:13.5px; }
+  @media (prefers-color-scheme:dark){ li{ border-color:#222c3c; } }
+  li .mk { flex:none; width:18px; font-weight:700; }
+  li.ok .mk { color:#2e7d32; } li.no .mk { color:#b00020; }
+  li .det { color:#78859b; font-size:12px; margin-top:2px; }
+  iframe { width:100%; height:520px; border:1px solid #e2e8f1; border-radius:12px; background:#fff; }
+  .lbl { font-size:12px; color:#78859b; margin:18px 0 6px; text-transform:uppercase; letter-spacing:.06em; }
+  button { font:inherit; font-size:13px; padding:7px 12px; border-radius:8px; border:1px solid #cbd5e6;
+    background:#fff; cursor:pointer; }
+</style>
+
+<h1>Teste — Ferramentas da Qualidade</h1>
+<p class="sub">Carrega o <b>painel.html</b> de verdade num iframe e exercita a página de Qualidade
+  (menu, abas, 5W2H, Ishikawa, SWOT, Kanban). Verde = passou.</p>
+
+<div id="resumo" class="run">rodando…</div>
+<button onclick="location.reload()">Rodar de novo</button>
+<ul id="lista"></ul>
+
+<div class="lbl">Painel sob teste (a página abre em Qualidade ao final)</div>
+<iframe id="alvo" src="painel.html"></iframe>
+
+<script>
+const lista = document.getElementById("lista");
+const resumo = document.getElementById("resumo");
+let falhas = 0, total = 0;
+function checar(titulo, cond, detalhe) {
+  total++; const ok = !!cond; if (!ok) falhas++;
+  const li = document.createElement("li"); li.className = ok ? "ok" : "no";
+  const mk = document.createElement("span"); mk.className = "mk"; mk.textContent = ok ? "✓" : "✗";
+  const txt = document.createElement("div");
+  txt.append(Object.assign(document.createElement("div"), { textContent: titulo }));
+  if (!ok && detalhe != null) txt.append(Object.assign(document.createElement("div"), { className: "det", textContent: String(detalhe) }));
+  li.append(mk, txt); lista.append(li);
+}
+const espera = ms => new Promise(r => setTimeout(r, ms));
+
+async function rodar() {
+  const frame = document.getElementById("alvo");
+  const w = frame.contentWindow, wd = frame.contentDocument;
+
+  // Estado limpo: sem sessao/clientId (abre em modo prototipo) e sem plano
+  // antigo, para a semente rodar. Mesma origem, entao da para mexer.
+  try {
+    w.localStorage.removeItem("painel.sessao");
+    w.localStorage.removeItem("painel.clientId");
+    w.localStorage.removeItem("qualidade-v1");
+  } catch (e) {}
+
+  // Espera o script do painel definir as funcoes.
+  for (let i = 0; i < 60 && typeof w.opQualidade !== "function"; i++) await espera(100);
+
+  // Nota: PAGES/ESPECIAIS/F sao `const`/`let` no painel, entao nao viram
+  // propriedade de window -- o teste os verifica pelo DOM e pelo comportamento,
+  // nao pelo objeto interno. So `function`/`var` (opQualidade, abrirPaginaOp)
+  // ficam acessiveis por w.
+  checar("painel.html carregou e expõe opQualidade", typeof w.opQualidade === "function");
+  const item = [...wd.querySelectorAll("#navOps .navitem")].find(b => /Qualidade/.test(b.textContent));
+  checar("aparece um item 'Qualidade' na barra lateral", !!item);
+
+  // Abre a página.
+  w.abrirPaginaOp("qualidade");
+  await espera(300);
+  checar("abre no layout do painel (título 'Qualidade')", (wd.querySelector("#opTitulo") || {}).textContent === "Qualidade");
+  checar("é página especial: injeta #qualWrap e esconde a tabela genérica",
+    !!wd.querySelector("#qualWrap") && wd.querySelector("#opTabela").classList.contains("hidden"));
+  const abas = [...wd.querySelectorAll(".qld-aba")].map(a => a.textContent);
+  checar("tem as 4 abas (5W2H, Ishikawa, SWOT, Kanban)",
+    ["5W2H", "Ishikawa", "SWOT", "Kanban"].every(x => abas.includes(x)), abas.join(", "));
+
+  // 5W2H: header + linhas semeadas.
+  const clicaAba = rot => { const a = [...wd.querySelectorAll(".qld-aba")].find(x => x.textContent === rot); if (a) a.click(); };
+  clicaAba("5W2H"); await espera(150);
+  checar("5W2H: tabela com 7 colunas", wd.querySelectorAll(".qld-w2h th .q").length === 7,
+    wd.querySelectorAll(".qld-w2h th .q").length);
+  const linhasAntes = wd.querySelectorAll(".qld-w2h tr").length;
+  const addW = [...wd.querySelectorAll("#qualWrap .btn")].find(b => /Adicionar ação/.test(b.textContent));
+  if (addW) addW.click(); await espera(150);
+  checar("5W2H: 'Adicionar ação' cria uma linha", wd.querySelectorAll(".qld-w2h tr").length === linhasAntes + 1,
+    "antes " + linhasAntes + ", depois " + wd.querySelectorAll(".qld-w2h tr").length);
+
+  // Ishikawa: 6 M + efeito na cabeca + redesenho ao editar.
+  clicaAba("Ishikawa"); await espera(200);
+  checar("Ishikawa: 6 categorias (6 M) no diagrama", wd.querySelectorAll(".qld-fish .catnome").length === 6,
+    wd.querySelectorAll(".qld-fish .catnome").length);
+  checar("Ishikawa: efeito aparece na cabeça", !!(wd.querySelector(".qld-fish .cabeca-txt") || {}).textContent);
+  const ef = wd.querySelector(".qld-ishk-topo input");
+  if (ef) { ef.value = "Efeito de teste XYZ"; ef.dispatchEvent(new w.Event("input", { bubbles: true })); }
+  await espera(150);
+  checar("Ishikawa: editar o efeito redesenha o SVG",
+    [...wd.querySelectorAll(".qld-fish .cabeca-txt")].map(t => t.textContent).join(" ").includes("teste"));
+
+  // SWOT: 4 quadrantes.
+  clicaAba("SWOT"); await espera(150);
+  checar("SWOT: 4 quadrantes", wd.querySelectorAll(".qld-swot-q").length === 4,
+    wd.querySelectorAll(".qld-swot-q").length);
+
+  // Kanban: 4 colunas com cartões semeados.
+  clicaAba("Kanban"); await espera(150);
+  checar("Kanban: 4 colunas", wd.querySelectorAll(".qld-kb-col").length === 4,
+    wd.querySelectorAll(".qld-kb-col").length);
+  checar("Kanban: cartões semeados aparecem", wd.querySelectorAll(".qld-kb-card").length >= 3,
+    wd.querySelectorAll(".qld-kb-card").length);
+
+  // Persistência: editar o caso grava em localStorage (o mesmo caminho que
+  // todas as edições usam). Prova o salvar sem depender de internals.
+  clicaAba("5W2H"); await espera(100);
+  const marca = "CASO TESTE " + Date.now();
+  const ct = wd.querySelector(".qld-caso-tit");
+  if (ct) { ct.value = marca; ct.dispatchEvent(new w.Event("input", { bubbles: true })); }
+  await espera(150);
+  let persistiu = false;
+  try {
+    const salvo = JSON.parse(w.localStorage.getItem("qualidade-v1"));
+    persistiu = Object.values(salvo).some(p => p.caso && p.caso.titulo === marca);
+  } catch (e) {}
+  checar("edições persistem no localStorage", persistiu);
+
+  // Isolamento: sair da página limpa o #qualWrap; voltar recria.
+  w.abrirPaginaOp("eventos"); await espera(200);
+  checar("sair da página limpa o #qualWrap", !wd.querySelector("#qualWrap"));
+  w.abrirPaginaOp("qualidade"); await espera(200);
+  checar("voltar recria o #qualWrap", !!wd.querySelector("#qualWrap"));
+
+  // Deixa o iframe mostrando a Qualidade para inspeção visual.
+  resumo.className = falhas ? "no" : "ok";
+  resumo.textContent = falhas ? (falhas + " de " + total + " FALHARAM")
+    : ("TODOS PASSARAM · " + total + " verificações");
+}
+
+document.getElementById("alvo").addEventListener("load", () => { rodar().catch(e => {
+  resumo.className = "no"; resumo.textContent = "erro no teste: " + e.message;
+}); });
+</script>
