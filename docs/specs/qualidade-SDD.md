@@ -103,6 +103,28 @@ do sistema: um botão abre uma janela de impressão com o diagrama e o título
 dimensionados para A4 paisagem e chama `print()`. O 5W2H e o SWOT também ganham
 exportação A4 (tabela e quadrantes).
 
+## 4.6 UX/UI no mesmo idioma do painel (inspiração Notion)
+
+A área reusa os componentes do restante do novo layout, em vez de inventar os
+próprios, para ler como os módulos de Indicadores, NPS e Certificados:
+
+- **Abas** com o mesmo componente das visões (`.views`/`.tab`), com um contador
+  discreto por ferramenta (nº de documentos).
+- **Estatísticas** do documento nas células padrão (`#opStats` → `.split`/
+  `.cell`): 5W2H (ações · definidas · responsáveis); Ishikawa (categorias ·
+  causas); SWOT (itens por eixo); Kanban (cartões · concluídos · atrasados ·
+  % concluído). Espelham o cabeçalho das demais páginas.
+- **Cabeçalho do documento à la Notion**: o título é um campo editável em
+  destaque (não um input numa barra cinza); a troca entre documentos usa o
+  `combobox` do painel (aparece a partir de 2 documentos); "Excluir" é
+  secundário e "+ Novo" é primário.
+- **Estado vazio** com alvo claro e ação ("Nenhum … ainda. Crie o primeiro").
+- **SWOT** sem faixa colorida na borda: cada quadrante é rotulado por um ponto
+  colorido no título (mesmo vocabulário dos marcadores do painel).
+- **5W2H**: os campos crescem com o conteúdo e, ao crescer um, os demais da
+  mesma linha acompanham a altura, mantendo a linha alinhada.
+- Tudo tematizado por tokens (claro/escuro) — nenhuma cor fixa nova.
+
 ## 5. Critérios de aceitação
 
 - A página abre pelo menu de Operação, no mesmo layout das demais (título,
