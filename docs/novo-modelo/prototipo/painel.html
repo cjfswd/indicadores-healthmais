@@ -1000,6 +1000,91 @@
     :root:not([data-theme="light"]) .side { box-shadow:18px 0 44px rgba(0,0,0,.5); }
   }
   :root[data-theme="dark"] .side { box-shadow:18px 0 44px rgba(0,0,0,.5); }
+  /* ═══ Qualidade — 5W2H, Ishikawa, SWOT, Kanban ═══ */
+  .qld-wrap { display:flex; flex-direction:column; gap:16px; margin-top:6px; }
+  .qld-caso { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    background:var(--surface-hi); border-radius:10px; padding:9px 12px; }
+  .qld-caso-lb { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3);
+    font-family:"IBM Plex Mono", monospace; flex:none; }
+  .qld-caso-tit { flex:none; width:min(280px,100%); font-weight:600; }
+  .qld-caso-desc { flex:1; min-width:180px; }
+  .qld-caso input { border:1px solid transparent; background:transparent; border-radius:6px; padding:5px 7px; }
+  .qld-caso input:hover { border-color:var(--line); background:var(--surface-2); }
+  .qld-caso input:focus { border-color:var(--accent); background:var(--surface-2); }
+  .qld-abas { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  .qld-aba { padding:8px 14px; font-size:13.5px; color:var(--ink-3); border-bottom:2px solid transparent;
+    margin-bottom:-1px; font-weight:500; }
+  .qld-aba.on { color:var(--accent); border-bottom-color:var(--accent); }
+  .qld-aba:hover { color:var(--ink); }
+  .qld-desc { font-size:12.5px; color:var(--ink-3); margin:0 0 14px; max-width:74ch; }
+  /* 5W2H */
+  .qld-w2h-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  table.qld-w2h { border-collapse:collapse; width:100%; min-width:880px; }
+  table.qld-w2h th { background:var(--surface-hi); font-size:10.5px; text-align:left; padding:8px 9px;
+    color:var(--ink-2); font-weight:600; white-space:nowrap; }
+  table.qld-w2h th .q { color:var(--accent); font-weight:700; font-size:11px; }
+  table.qld-w2h td { border-top:1px solid var(--line); padding:5px 7px; vertical-align:top; }
+  table.qld-w2h td textarea { min-height:34px; font-size:12.5px; }
+  table.qld-w2h .num { width:30px; text-align:center; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
+  table.qld-w2h .del { width:30px; text-align:center; }
+  /* Ishikawa */
+  .qld-ishk-topo { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .qld-ishk-topo label { font-size:12px; color:var(--ink-3); }
+  .qld-ishk-topo input { max-width:340px; }
+  .qld-fish { width:100%; height:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+  .qld-fish .espinha { stroke:var(--ink-3); stroke-width:2; }
+  .qld-fish .galho { stroke:var(--accent-line); stroke-width:1.6; }
+  .qld-fish .cat { fill:var(--surface-hi); stroke:var(--line); }
+  .qld-fish text { font-family:"IBM Plex Sans", sans-serif; fill:var(--ink); }
+  .qld-fish .catnome { font-weight:600; font-size:12px; }
+  .qld-fish .causa { font-size:11px; fill:var(--ink-2); }
+  .qld-fish .cabeca { fill:var(--accent); }
+  .qld-fish .cabeca-txt { fill:#fff; font-weight:600; font-size:12px; }
+  :root[data-theme="dark"] .qld-fish .cabeca-txt, :root:not([data-theme="light"]) .qld-fish .cabeca-txt { fill:#0E141C; }
+  .qld-ishk-edit { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin-top:16px; }
+  .qld-ishk-cat { border:1px solid var(--line); border-radius:9px; padding:11px; background:var(--surface); }
+  .qld-ishk-cat h4 { margin:0 0 8px; font-size:12.5px; }
+  .qld-ishk-linha { display:flex; gap:6px; margin-bottom:5px; }
+  .qld-add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
+    border-radius:6px; padding:4px 9px; cursor:pointer; }
+  .qld-add:hover { border-color:var(--accent); background:var(--surface-hi); }
+  /* SWOT */
+  .qld-swot { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .qld-swot-q { border:1px solid var(--line); border-radius:10px; padding:14px; background:var(--surface); }
+  .qld-swot-q.forcas { border-top:3px solid var(--done); }
+  .qld-swot-q.fraquezas { border-top:3px solid var(--flag); }
+  .qld-swot-q.oportunidades { border-top:3px solid var(--accent); }
+  .qld-swot-q.ameacas { border-top:3px solid var(--sev-2); }
+  .qld-swot-q h3 { margin:0 0 2px; font-size:14px; }
+  .qld-swot-q .sub { font-size:11px; color:var(--ink-3); margin-bottom:10px; }
+  .qld-swot-item { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .qld-swot-item .dot { flex:none; width:7px; height:7px; border-radius:2px; }
+  .qld-swot-q.forcas .dot { background:var(--done); } .qld-swot-q.fraquezas .dot { background:var(--flag); }
+  .qld-swot-q.oportunidades .dot { background:var(--accent); } .qld-swot-q.ameacas .dot { background:var(--sev-2); }
+  /* Kanban */
+  .qld-kanban { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:start; }
+  .qld-kb-col { background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px; min-height:110px; }
+  .qld-kb-col h3 { margin:0; font-size:12.5px; display:flex; align-items:center; gap:7px; }
+  .qld-kb-col h3::before { content:""; width:9px; height:9px; border-radius:3px; }
+  .qld-kb-col.backlog h3::before { background:var(--ink-3); }
+  .qld-kb-col.fazer h3::before { background:var(--accent); }
+  .qld-kb-col.fazendo h3::before { background:var(--sev-2); }
+  .qld-kb-col.feito h3::before { background:var(--done); }
+  .qld-kb-col h3 .ct { font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink-3);
+    background:var(--surface-hi); border-radius:10px; padding:1px 7px; }
+  .qld-kb-cards { display:flex; flex-direction:column; gap:8px; margin-top:8px; min-height:16px; }
+  .qld-kb-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:9px 10px; cursor:grab; }
+  .qld-kb-card.dragging { opacity:.4; }
+  .qld-kb-card .tit { font-size:13px; font-weight:500; }
+  .qld-kb-card .meta { font-size:11px; color:var(--ink-3); margin-top:5px; display:flex; align-items:center; gap:7px; }
+  .qld-kb-card .tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:10px; }
+  .qld-kb-card .tag.alta { background:var(--flag-soft); color:var(--flag); }
+  .qld-kb-card .tag.media { background:var(--sev-2-soft); color:var(--sev-2); }
+  .qld-kb-card .tag.baixa { background:var(--surface-hi); color:var(--ink-3); }
+  .qld-kb-col.over { border-color:var(--accent); background:var(--surface-hi); }
+  .qld-kb-add { font-size:12px; color:var(--accent); background:none; border:1px dashed var(--line);
+    border-radius:6px; padding:5px 9px; cursor:pointer; width:100%; margin-top:8px; }
+  @media (max-width:820px){ .qld-swot { grid-template-columns:1fr; } .qld-kanban { grid-template-columns:1fr 1fr; } }
 </style>
 
 <div class="app">
@@ -1890,6 +1975,7 @@ const PAGES = {
   notificacoes: { nome: "Notificações", ct: " ", lead: "Avisos de registro novo e pendências, com marcação de lido.", itens: [["Mantido", "Sino com contador, marcação de lido e link para o registro."], ["Muda", "Deixa de ser só “novo evento”: as regras do documento viram alertas — óbito em 48h, antimicrobiano com 10 dias, SLA da ouvidoria, triagem de 7 dias."], ["Novo", "Alerta com destinatário definido por regra, como a revisão de caso que vai à diretoria médica."]] },
   operadoras: { nome: "Operadoras", ct: " ", lead: "Cadastro das operadoras e do vínculo de cada paciente.", itens: [["Mantido", "Nome da operadora e vínculo com o paciente."], ["Muda", "Paciente sem operadora deixa de existir: sem vínculo significa particular, e a operadora Particular já existe."], ["Novo", "Contrato passa a ser entidade própria, com vigência — hoje a operadora é só um nome no paciente."]] },
   fechamento: { nome: "Fechar competência", ct: "", lead: "Encerramento do mês: valida pendências, congela os números e libera a comparação entre períodos.", itens: [["Novo", "Não existe hoje. O fechamento recusa competência com caso em triagem, análise causal vencida ou campo obrigatório faltando."], ["Muda", "Depois de fechada, a competência vira leitura: correção exige registro de retificação com autor e motivo."]] },
+  qualidade: { nome: "Qualidade", ct: "", lead: "Análise de causa e plano de ação sobre um evento — uma queda, um evento adverso, um detrator do NPS. Quatro ferramentas partindo do mesmo caso: 5W2H, Ishikawa, SWOT e Kanban.", itens: [["Novo", "Não existe hoje — a análise vive fora do sistema (planilha, papel). Passa a ficar dentro do painel, junto do evento que a motivou."], ["Muda", "O plano de ação deixa de ser documento solto: cada ação vira cartão no Kanban e pode virar alerta com responsável e prazo."]] },
 };
 
 const navOps = $("#navOps");
@@ -6317,14 +6403,245 @@ function opRelatoriosNovo() {
   $("#opTabela").parentElement.insertBefore(cartas, $("#opTabela"));
 }
 
+// ═══ Qualidade — 5W2H, Ishikawa, SWOT, Kanban ════════════════════
+// Pagina de Operacao, como Certificados: renderiza no #pageLegacy, reusando os
+// componentes e tokens do painel. Estado por empresa em localStorage -- ainda
+// nao vai ao banco (ver qualidade-SDD.md, secao 6).
+const QLD_CHAVE = "qualidade-v1";
+let _qldTudo = {};
+try { _qldTudo = JSON.parse(localStorage.getItem(QLD_CHAVE) || "{}") || {}; } catch (e) { _qldTudo = {}; }
+const qldSalvar = () => { try { localStorage.setItem(QLD_CHAVE, JSON.stringify(_qldTudo)); } catch (e) {} };
+const QLD_ISHK = ["Método", "Máquina", "Material", "Mão de obra", "Medição", "Meio ambiente"];
+
+function qldDados() {
+  const emp = F.emp;
+  if (!_qldTudo[emp]) {
+    // Semente so na HealthMais (tem os dados reais); a Cordiva comeca vazia.
+    _qldTudo[emp] = emp === EMPRESAS[0].id ? {
+      caso: { titulo: "Detrator NPS — nota 4", descricao: "Paciente apontou demora no retorno de ligação (09/2026)." },
+      w2h: [
+        { oque: "Padronizar retorno da ouvidoria", porque: "Detrator apontou demora", onde: "Central de atendimento", quando: "Até 30/09", quem: "Coord. de Enfermagem", como: "SLA de 24h com registro", quanto: "Sem custo" },
+        { oque: "Treinar equipe no fluxo do detrator", porque: "Contato em 5 dias úteis não cumprido", onde: "Reunião multiprofissional", quando: "Próxima quinzena", quem: "Qualidade", como: "Capacitação de 1h", quanto: "2h/equipe" },
+      ],
+      ishikawa: { efeito: "Demora no retorno ao paciente", categorias: {
+        "Método": ["Sem SLA para retorno", "Fluxo do detrator não documentado"],
+        "Máquina": ["Sistema não alerta pendência"], "Material": [],
+        "Mão de obra": ["Equipe não treinada no prazo"], "Medição": ["Pendências não monitoradas"],
+        "Meio ambiente": ["Alto volume no fim do mês"] } },
+      swot: {
+        forcas: ["Relação próxima com o paciente", "Equipe multiprofissional"],
+        fraquezas: ["Retorno sem prazo", "Baixa taxa de resposta do NPS"],
+        oportunidades: ["NPS agora mede percepção", "Alertas automáticos no painel"],
+        ameacas: ["Reincidência é risco reputacional", "Operadora acompanha indicadores"] },
+      kanban: [
+        { id: novoId(), tit: "Definir SLA de 24h", col: "fazer", resp: "Coord.", prio: "alta" },
+        { id: novoId(), tit: "Documentar fluxo do detrator", col: "fazendo", resp: "Qualidade", prio: "media" },
+        { id: novoId(), tit: "Alerta de pendência no painel", col: "backlog", resp: "TI", prio: "media" },
+        { id: novoId(), tit: "Capacitação da equipe (1h)", col: "fazer", resp: "Qualidade", prio: "baixa" },
+      ],
+    } : {
+      caso: { titulo: "", descricao: "" },
+      w2h: [], ishikawa: { efeito: "", categorias: {} },
+      swot: { forcas: [], fraquezas: [], oportunidades: [], ameacas: [] }, kanban: [],
+    };
+    qldSalvar();
+  }
+  const d = _qldTudo[emp];
+  QLD_ISHK.forEach(c => { if (!d.ishikawa.categorias[c]) d.ishikawa.categorias[c] = []; });
+  return d;
+}
+
+let qldAba = "w2h";
+function opQualidade() {
+  $("#opStats").innerHTML = "";
+  $("#opFiltros").classList.add("hidden");
+  $("#opHead").innerHTML = ""; $("#opRows").innerHTML = "";
+  $("#opTabela").classList.add("hidden"); $("#opVazio").classList.add("hidden");
+  const antigo = $("#qualWrap"); if (antigo) antigo.remove();
+  const wrap = el("div", "qld-wrap"); wrap.id = "qualWrap";
+  const d = qldDados();
+
+  // Caso em analise.
+  const caso = el("div", "qld-caso");
+  const ct = el("input"); ct.className = "qld-caso-tit"; ct.value = d.caso.titulo;
+  ct.placeholder = "Caso em análise (ex.: Detrator NPS — nota 4)";
+  ct.addEventListener("input", () => { d.caso.titulo = ct.value; qldSalvar(); });
+  const cd = el("input"); cd.className = "qld-caso-desc"; cd.value = d.caso.descricao;
+  cd.placeholder = "Descrição do caso";
+  cd.addEventListener("input", () => { d.caso.descricao = cd.value; qldSalvar(); });
+  caso.append(el("span", "qld-caso-lb", "Caso"), ct, cd);
+  wrap.append(caso);
+
+  // Abas das ferramentas.
+  const abas = el("div", "qld-abas");
+  [["w2h", "5W2H"], ["ishikawa", "Ishikawa"], ["swot", "SWOT"], ["kanban", "Kanban"]].forEach(([k, rot]) => {
+    const b = el("button", "qld-aba" + (qldAba === k ? " on" : "")); b.type = "button"; b.textContent = rot;
+    b.addEventListener("click", () => { qldAba = k; opQualidade(); });
+    abas.append(b);
+  });
+  wrap.append(abas);
+  const corpo = el("div", "qld-corpo"); wrap.append(corpo);
+  ({ w2h: qldW2H, ishikawa: qldIshikawa, swot: qldSwot, kanban: qldKanban }[qldAba])(corpo, d);
+
+  $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
+}
+
+const QLD_W2H = [["oque", "O quê", "What"], ["porque", "Por quê", "Why"], ["onde", "Onde", "Where"],
+  ["quando", "Quando", "When"], ["quem", "Quem", "Who"], ["como", "Como", "How"], ["quanto", "Quanto", "How much"]];
+function qldW2H(box, d) {
+  box.append(el("p", "qld-desc", "Cada linha é uma ação: o quê, por quê, onde, quando, quem, como e quanto."));
+  const scroll = el("div", "qld-w2h-scroll");
+  const t = el("table", "qld-w2h");
+  const thead = el("tr"); thead.append(el("th", "num", "#"));
+  QLD_W2H.forEach(([, rot, en]) => {
+    const th = el("th"); th.innerHTML = "<span class='q'>" + en + "</span><br>" + rot; thead.append(th);
+  });
+  thead.append(el("th", "del")); t.append(thead);
+  d.w2h.forEach((linha, i) => {
+    const tr = el("tr"); tr.append(el("td", "num", String(i + 1)));
+    QLD_W2H.forEach(([campo]) => {
+      const td = el("td"); const ta = el("textarea"); ta.value = linha[campo] || "";
+      ta.addEventListener("input", () => { linha[campo] = ta.value; qldSalvar(); });
+      td.append(ta); tr.append(td);
+    });
+    const del = el("td", "del"); const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
+    x.addEventListener("click", () => { d.w2h.splice(i, 1); qldSalvar(); opQualidade(); });
+    del.append(x); tr.append(del); t.append(tr);
+  });
+  scroll.append(t); box.append(scroll);
+  const add = el("button", "btn", "+ Adicionar ação"); add.type = "button"; add.style.marginTop = "12px";
+  add.addEventListener("click", () => { d.w2h.push({ oque: "", porque: "", onde: "", quando: "", quem: "", como: "", quanto: "" }); qldSalvar(); opQualidade(); });
+  box.append(add);
+}
+
+function qldIshikawa(box, d) {
+  box.append(el("p", "qld-desc", "Espinha de peixe: o efeito à direita, as causas nos 6 M. Editar as causas redesenha o diagrama."));
+  const topo = el("div", "qld-ishk-topo");
+  topo.append(el("label", null, "Efeito:"));
+  const ef = el("input"); ef.value = d.ishikawa.efeito || ""; ef.placeholder = "Problema a analisar";
+  ef.addEventListener("input", () => { d.ishikawa.efeito = ef.value; qldSalvar(); box.querySelector("#qldFish").innerHTML = qldFishSVG(d); });
+  topo.append(ef); box.append(topo);
+  const fishWrap = el("div"); fishWrap.id = "qldFish"; fishWrap.innerHTML = qldFishSVG(d); box.append(fishWrap);
+  const edit = el("div", "qld-ishk-edit");
+  QLD_ISHK.forEach(cat => {
+    const c = el("div", "qld-ishk-cat"); c.append(el("h4", null, cat));
+    d.ishikawa.categorias[cat].forEach((causa, i) => {
+      const linha = el("div", "qld-ishk-linha"); const inp = el("input"); inp.value = causa;
+      inp.addEventListener("input", () => { d.ishikawa.categorias[cat][i] = inp.value; qldSalvar(); box.querySelector("#qldFish").innerHTML = qldFishSVG(d); });
+      const x = el("button", "btn-ghost", "✕"); x.type = "button";
+      x.addEventListener("click", () => { d.ishikawa.categorias[cat].splice(i, 1); qldSalvar(); opQualidade(); });
+      linha.append(inp, x); c.append(linha);
+    });
+    const add = el("button", "qld-add", "+ causa"); add.type = "button";
+    add.addEventListener("click", () => { d.ishikawa.categorias[cat].push(""); qldSalvar(); opQualidade(); });
+    c.append(add); edit.append(c);
+  });
+  box.append(edit);
+}
+function qldFishSVG(d) {
+  const W = 900, H = 360, cy = H / 2, efeito = d.ishikawa.efeito || "Efeito";
+  const esc2 = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let s = `<svg class="qld-fish" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<line class="espinha" x1="40" y1="${cy}" x2="${W - 150}" y2="${cy}"/>`;
+  s += `<rect class="cabeca" x="${W - 150}" y="${cy - 32}" width="140" height="64" rx="9"/>`;
+  // efeito na cabeca, quebrado em ate 3 linhas
+  const pal = efeito.split(" "); const ln = []; let cur = "";
+  pal.forEach(w => { if ((cur + " " + w).trim().length > 15) { ln.push(cur.trim()); cur = w; } else cur += " " + w; });
+  if (cur.trim()) ln.push(cur.trim());
+  const off = (ln.length - 1) * 7;
+  s += ln.slice(0, 3).map((l, i) => `<text class="cabeca-txt" x="${W - 80}" y="${cy - off + i * 15}" text-anchor="middle">${esc2(l)}</text>`).join("");
+  const topo = QLD_ISHK.filter((_, i) => i % 2 === 0), base = QLD_ISHK.filter((_, i) => i % 2 === 1);
+  const lado = (cats, up) => {
+    const n = cats.length;
+    cats.forEach((cat, i) => {
+      const bx = 130 + i * ((W - 320) / n), ty = up ? 38 : H - 38, tipx = bx - 66;
+      s += `<line class="galho" x1="${bx}" y1="${cy}" x2="${tipx}" y2="${ty}"/>`;
+      s += `<rect class="cat" x="${tipx - 62}" y="${up ? ty - 20 : ty}" width="124" height="20" rx="5"/>`;
+      s += `<text class="catnome" x="${tipx}" y="${up ? ty - 6 : ty + 14}" text-anchor="middle">${esc2(cat)}</text>`;
+      (d.ishikawa.categorias[cat] || []).filter(Boolean).slice(0, 4).forEach((cau, j, arr) => {
+        const f = (j + 1) / (arr.length + 1), px = bx + (tipx - bx) * f, py = cy + (ty - cy) * f;
+        s += `<circle cx="${px}" cy="${py}" r="2.2" fill="var(--accent)"/>`;
+        s += `<text class="causa" x="${px + 6}" y="${py + (up ? -3 : 11)}">${esc2(cau.slice(0, 24))}</text>`;
+      });
+    });
+  };
+  lado(topo, true); lado(base, false);
+  return s + "</svg>";
+}
+
+const QLD_SWOT = [["forcas", "Forças", "Internas · positivas"], ["fraquezas", "Fraquezas", "Internas · negativas"],
+  ["oportunidades", "Oportunidades", "Externas · positivas"], ["ameacas", "Ameaças", "Externas · negativas"]];
+function qldSwot(box, d) {
+  box.append(el("p", "qld-desc", "Quatro quadrantes: o que está sob controle (forças, fraquezas) e o que vem de fora (oportunidades, ameaças)."));
+  const grid = el("div", "qld-swot");
+  QLD_SWOT.forEach(([k, rot, sub]) => {
+    const q = el("div", "qld-swot-q " + k); q.append(el("h3", null, rot), el("div", "sub", sub));
+    d.swot[k].forEach((item, i) => {
+      const linha = el("div", "qld-swot-item"); linha.append(el("span", "dot"));
+      const inp = el("input"); inp.value = item;
+      inp.addEventListener("input", () => { d.swot[k][i] = inp.value; qldSalvar(); });
+      const x = el("button", "btn-ghost", "✕"); x.type = "button";
+      x.addEventListener("click", () => { d.swot[k].splice(i, 1); qldSalvar(); opQualidade(); });
+      linha.append(inp, x); q.append(linha);
+    });
+    const add = el("button", "qld-add", "+ item"); add.type = "button";
+    add.addEventListener("click", () => { d.swot[k].push(""); qldSalvar(); opQualidade(); });
+    q.append(add); grid.append(q);
+  });
+  box.append(grid);
+}
+
+const QLD_KB = [["backlog", "Backlog"], ["fazer", "A fazer"], ["fazendo", "Fazendo"], ["feito", "Feito"]];
+function qldKanban(box, d) {
+  box.append(el("p", "qld-desc", "As ações do 5W2H viram cartões. Arraste entre as colunas conforme andam."));
+  const board = el("div", "qld-kanban");
+  QLD_KB.forEach(([col, rot]) => {
+    const c = el("div", "qld-kb-col " + col);
+    const cards = d.kanban.filter(k => k.col === col);
+    const h = el("h3"); h.append(document.createTextNode(rot), el("span", "ct", String(cards.length))); c.append(h);
+    const lista = el("div", "qld-kb-cards");
+    cards.forEach(card => lista.append(qldCartao(card, d)));
+    c.append(lista);
+    const add = el("button", "qld-kb-add", "+ cartão"); add.type = "button";
+    add.addEventListener("click", () => {
+      const tit = prompt("Título do cartão:");
+      if (tit && tit.trim()) { d.kanban.push({ id: novoId(), tit: tit.trim(), col, resp: "", prio: "media" }); qldSalvar(); opQualidade(); }
+    });
+    c.append(add);
+    c.addEventListener("dragover", ev => { ev.preventDefault(); c.classList.add("over"); });
+    c.addEventListener("dragleave", () => c.classList.remove("over"));
+    c.addEventListener("drop", ev => {
+      ev.preventDefault(); c.classList.remove("over");
+      const id = ev.dataTransfer.getData("id"); const card = d.kanban.find(k => k.id === id);
+      if (card && card.col !== col) { card.col = col; qldSalvar(); opQualidade(); }
+    });
+    board.append(c);
+  });
+  box.append(board);
+}
+function qldCartao(card, d) {
+  const n = el("div", "qld-kb-card"); n.draggable = true;
+  n.addEventListener("dragstart", ev => { ev.dataTransfer.setData("id", card.id); n.classList.add("dragging"); });
+  n.addEventListener("dragend", () => n.classList.remove("dragging"));
+  const tit = el("div", "tit", card.tit); n.append(tit);
+  const meta = el("div", "meta");
+  meta.append(el("span", "tag " + (card.prio || "media"), card.prio || "media"));
+  if (card.resp) meta.append(el("span", null, "· " + card.resp));
+  const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover"; x.style.marginLeft = "auto";
+  x.addEventListener("click", () => { d.kanban.splice(d.kanban.indexOf(card), 1); qldSalvar(); opQualidade(); });
+  meta.append(x); n.append(meta);
+  return n;
+}
+
 // Troca as duas telas pelas versões novas.
 ESPECIAIS.certificados = opCertificadosNovo;
 ESPECIAIS.relatorios = opRelatoriosNovo;
+ESPECIAIS.qualidade = opQualidade;
 
-// Ao sair de Certificados ou Relatórios, o que eles injetaram tem que sumir.
+// Ao sair de Certificados, Relatórios ou Qualidade, o que injetaram tem que sumir.
 const _abrirPaginaOp = abrirPaginaOp;
 abrirPaginaOp = function (chave) {
-  ["certWrap", "relCartas"].forEach(id => { const n = $("#" + id); if (n) n.remove(); });
+  ["certWrap", "relCartas", "qualWrap"].forEach(id => { const n = $("#" + id); if (n) n.remove(); });
   _abrirPaginaOp(chave);
 };
 
