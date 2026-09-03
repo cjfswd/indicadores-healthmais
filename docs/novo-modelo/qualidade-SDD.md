@@ -59,21 +59,49 @@ coluna; adicionar/remover cartão. As ações do 5W2H podem virar cartões.
 
 ## 4. Estado e persistência (este passo)
 
-Objeto único `qualidade`, por empresa (recorte `F.emp`), em `localStorage`
-(mesma abordagem das decisões de triagem, que também ainda não vão ao banco):
+### 4.1 Vários documentos, identificáveis
+Cada ferramenta guarda **uma lista de documentos**, não um só. Cada documento
+tem `id`, `titulo` (como a pessoa o identifica no sistema) e `criadoEm`. Cada
+aba mostra um seletor de documento (escolher / criar / renomear / excluir) e,
+abaixo, o editor do documento escolhido.
+
+Por empresa (`F.emp`), em `localStorage`:
 
 ```
 qualidade[empresa] = {
-  caso:     { titulo, descricao },
-  w2h:      [ {oque,porque,onde,quando,quem,como,quanto} ],
-  ishikawa: { efeito, categorias: { "Método":[...], ... } },
-  swot:     { forcas:[], fraquezas:[], oportunidades:[], ameacas:[] },
-  kanban:   [ {id, tit, col, resp, prio} ],
+  w2h:      [ {id, titulo, criadoEm, linhas:[{id, oque,porque,onde,quando,quem,como,quanto}]} ],
+  ishikawa: [ {id, titulo, criadoEm, efeito, categorias:[{id, nome, causas:[{id, texto}]}]} ],
+  swot:     [ {id, titulo, criadoEm, forcas:[{id,texto}], fraquezas:[...], oportunidades:[...], ameacas:[...]} ],
+  kanban:   [ {id, titulo, criadoEm, cartoes:[
+                {id, tit, col, resp, prio, estimativa, concluidoEm, historico:[{col, em}]} ]} ],
 }
 ```
 
-Por empresa porque o painel é multiempresa e a Cordiva não deve ver o plano da
-HealthMais — a mesma regra de `empresaDe` das outras telas.
+Migração: o formato antigo (documento único por ferramenta) é convertido para
+uma lista de um documento na primeira carga.
+
+### 4.2 Categorias do Ishikawa editáveis
+As categorias (os 6 M — Método, Máquina, Material, Mão de obra, Medição, Meio
+ambiente) deixam de ser fixas: são uma lista `categorias[]` que a pessoa pode
+**criar, renomear, remover e reordenar**. O novo documento nasce com os 6 M
+como ponto de partida.
+
+### 4.3 Reordenar itens
+Toda lista permite mover item para cima/baixo (setas ↑/↓): linhas do 5W2H,
+causas e categorias do Ishikawa, itens do SWOT, e cartões do Kanban dentro da
+coluna. O Kanban também move entre colunas por arrastar.
+
+### 4.4 Datas no Kanban
+Cada cartão tem `estimativa` (data prevista de conclusão), `concluidoEm`
+(preenchida ao entrar em "Feito", limpa ao sair) e `historico` — a data de
+entrada em cada coluna, registrada a cada movimentação. O cartão mostra a
+estimativa e sinaliza atraso (estimativa vencida e não concluído).
+
+## 4.5 Exportação A4
+O Ishikawa é exportável para folha A4 (impressão / PDF), como os demais itens
+do sistema: um botão abre uma janela de impressão com o diagrama e o título
+dimensionados para A4 paisagem e chama `print()`. O 5W2H e o SWOT também ganham
+exportação A4 (tabela e quadrantes).
 
 ## 5. Critérios de aceitação
 
