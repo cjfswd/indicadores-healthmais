@@ -1001,22 +1001,13 @@
   }
   :root[data-theme="dark"] .side { box-shadow:18px 0 44px rgba(0,0,0,.5); }
   /* ═══ Qualidade — 5W2H, Ishikawa, SWOT, Kanban ═══ */
-  .qld-wrap { display:flex; flex-direction:column; gap:16px; margin-top:6px; }
-  .qld-caso { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    background:var(--surface-hi); border-radius:10px; padding:9px 12px; }
-  .qld-caso-lb { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3);
-    font-family:"IBM Plex Mono", monospace; flex:none; }
-  .qld-caso-tit { flex:none; width:min(280px,100%); font-weight:600; }
-  .qld-caso-desc { flex:1; min-width:180px; }
-  .qld-caso input { border:1px solid transparent; background:transparent; border-radius:6px; padding:5px 7px; }
-  .qld-caso input:hover { border-color:var(--line); background:var(--surface-2); }
-  .qld-caso input:focus { border-color:var(--accent); background:var(--surface-2); }
-  .qld-abas { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
-  .qld-aba { padding:8px 14px; font-size:13.5px; color:var(--ink-3); border-bottom:2px solid transparent;
-    margin-bottom:-1px; font-weight:500; }
-  .qld-aba.on { color:var(--accent); border-bottom-color:var(--accent); }
-  .qld-aba:hover { color:var(--ink); }
-  .qld-desc { font-size:12.5px; color:var(--ink-3); margin:0; max-width:74ch; }
+  .qld-wrap { display:flex; flex-direction:column; margin-top:2px; }
+  /* Abas: mesmo componente das visões do resto do painel (.views/.tab), só com contador. */
+  .qld-wrap .views { margin-top:0; }
+  .tab .qld-n { margin-left:6px; font-family:"IBM Plex Mono", monospace; font-size:10.5px;
+    color:var(--ink-3); background:var(--surface-hi); border-radius:9px; padding:1px 6px; }
+  .tab.on .qld-n { color:var(--accent); background:var(--accent-soft); }
+  .qld-desc { font-size:12.5px; color:var(--ink-2); margin:0; max-width:74ch; line-height:1.5; }
   /* Inputs da Qualidade no padrao do painel (mesmo de .form-novo). */
   #qualWrap input, #qualWrap textarea, #qualWrap select {
     font:inherit; font-size:13px; color:var(--ink); background:var(--surface-2);
@@ -1029,17 +1020,24 @@
   .qld-conf-sim, .qld-conf-nao { width:auto; font-size:11.5px; padding:4px 9px; border-radius:6px; border:1px solid var(--line); cursor:pointer; }
   .qld-conf-sim { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
   .qld-conf-nao { color:var(--ink-3); background:var(--surface); }
-  /* Barra de documentos: seletor + titulo + excluir + novo */
-  .qld-docbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0 16px;
-    padding:10px 12px; background:var(--surface-hi); border-radius:10px; }
-  .qld-docsel { width:auto; min-width:150px; max-width:220px; }
-  .qld-doctit { flex:1; min-width:160px; font-weight:600; }
-  .qld-docdel { border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:12.5px;
-    background:var(--surface); color:var(--ink-3); }
+  /* Cabeçalho do documento: título editável (à la Notion) + trocar + ações. */
+  .qld-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:20px 0 2px; }
+  .qld-titulo { flex:1; min-width:200px; font-size:20px!important; font-weight:600; letter-spacing:-.01em;
+    border:1px solid transparent!important; background:transparent!important; padding:4px 7px!important; border-radius:8px; }
+  .qld-titulo:hover { background:var(--surface-2)!important; }
+  .qld-titulo:focus { border-color:var(--line)!important; background:var(--surface-2)!important; }
+  .qld-head .qld-switch { width:auto; }
+  .qld-head .qld-switch .cbx-trigger { min-width:150px; }
+  .qld-head-acoes { display:flex; align-items:center; gap:6px; flex:none; }
+  .qld-docdel { border:1px solid var(--line); border-radius:8px; padding:7px 11px; font-size:12.5px;
+    background:var(--surface); color:var(--ink-3); width:auto; cursor:pointer; }
   .qld-docdel:hover { border-color:var(--flag); color:var(--flag); background:var(--flag-soft); }
-  .qld-docnovo { border:1px solid var(--accent); border-radius:8px; padding:7px 12px; font-size:12.5px;
-    background:var(--accent); color:#fff; margin-left:auto; }
-  .qld-vazio { font-size:13px; color:var(--ink-3); padding:20px 0; }
+  .qld-meta { font-size:11.5px; color:var(--ink-3); margin:2px 0 16px; }
+  /* Estado vazio (à la Notion: alvo claro + ação). */
+  .qld-vazio { text-align:center; padding:44px 22px; border:1px dashed var(--line); border-radius:12px;
+    background:var(--surface-2); color:var(--ink-3); display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:18px; }
+  .qld-vazio .ic { font-size:26px; opacity:.55; line-height:1; }
+  .qld-vazio p { margin:0; font-size:13px; max-width:42ch; }
   /* Topo de cada ferramenta: descricao + exportar A4 */
   .qld-ferr-topo { display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
     margin-bottom:14px; flex-wrap:wrap; }
@@ -1057,7 +1055,8 @@
     color:var(--ink-2); font-weight:600; white-space:nowrap; }
   table.qld-w2h th .q { color:var(--accent); font-weight:700; font-size:11px; }
   table.qld-w2h td { border-top:1px solid var(--line); padding:5px 7px; vertical-align:top; }
-  table.qld-w2h td textarea { min-height:34px; font-size:12.5px; }
+  table.qld-w2h tr:hover td { background:var(--surface-2); }
+  table.qld-w2h td textarea { min-height:38px; height:38px; font-size:12.5px; resize:none; overflow:hidden; }
   table.qld-w2h .num { width:30px; text-align:center; color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
   table.qld-w2h .del { width:30px; text-align:center; }
   /* Ishikawa */
@@ -1086,12 +1085,13 @@
   /* SWOT */
   .qld-swot { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .qld-swot-q { border:1px solid var(--line); border-radius:10px; padding:14px; background:var(--surface); }
-  .qld-swot-q.forcas { border-top:3px solid var(--done); }
-  .qld-swot-q.fraquezas { border-top:3px solid var(--flag); }
-  .qld-swot-q.oportunidades { border-top:3px solid var(--accent); }
-  .qld-swot-q.ameacas { border-top:3px solid var(--sev-2); }
-  .qld-swot-q h3 { margin:0 0 2px; font-size:14px; }
-  .qld-swot-q .sub { font-size:11px; color:var(--ink-3); margin-bottom:10px; }
+  .qld-swot-q h3 { margin:0 0 2px; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .qld-swot-q h3::before { content:""; width:10px; height:10px; border-radius:3px; flex:none; }
+  .qld-swot-q.forcas h3::before { background:var(--done); }
+  .qld-swot-q.fraquezas h3::before { background:var(--flag); }
+  .qld-swot-q.oportunidades h3::before { background:var(--accent); }
+  .qld-swot-q.ameacas h3::before { background:var(--sev-2); }
+  .qld-swot-q .sub { font-size:11px; color:var(--ink-3); margin:0 0 10px 18px; }
   .qld-swot-item { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
   .qld-swot-item .dot { flex:none; width:7px; height:7px; border-radius:2px; }
   .qld-swot-q.forcas .dot { background:var(--done); } .qld-swot-q.fraquezas .dot { background:var(--flag); }
@@ -6564,24 +6564,58 @@ function opQualidade() {
   const wrap = el("div", "qld-wrap"); wrap.id = "qualWrap";
   const d = qldDados();
 
-  const abas = el("div", "qld-abas");
+  // Abas no mesmo componente das visões do resto do painel (.views/.tab).
+  const abas = el("div", "views");
   [["w2h", "5W2H"], ["ishikawa", "Ishikawa"], ["swot", "SWOT"], ["kanban", "Kanban"]].forEach(([k, rot]) => {
-    const b = el("button", "qld-aba" + (qldAba === k ? " on" : "")); b.type = "button";
-    b.append(document.createTextNode(rot + " "), el("span", "n", String(d[k].length)));
+    const b = el("button", "tab" + (qldAba === k ? " on" : "")); b.type = "button";
+    b.append(document.createTextNode(rot), el("span", "qld-n", String(d[k].length)));
     b.addEventListener("click", () => { qldAba = k; opQualidade(); });
     abas.append(b);
   });
   wrap.append(abas);
 
   const corpo = el("div", "qld-corpo"); wrap.append(corpo);
-  qldSeletorDoc(corpo, d);   // barra de documentos (escolher/criar/renomear/excluir)
+  qldSeletorDoc(corpo, d);   // cabeçalho do documento (trocar/criar/renomear/excluir)
   const doc = qldDocAtual(d);
   if (!doc) {
-    corpo.append(el("p", "qld-vazio", "Nenhum documento ainda. Crie o primeiro com “+ Novo”."));
+    const rot = { w2h: "5W2H", ishikawa: "Ishikawa", swot: "SWOT", kanban: "Kanban" }[qldAba];
+    const vz = el("div", "qld-vazio");
+    vz.append(el("div", "ic", "＋"), el("p", null, "Nenhum " + rot + " ainda. Crie o primeiro para começar a estruturar a análise."));
+    const cta = el("button", "btn btn-primary", "+ Novo " + rot); cta.type = "button";
+    cta.addEventListener("click", () => qldNovoDoc(qldAba, d));
+    vz.append(cta); corpo.append(vz);
   } else {
+    qldStats(doc);
     ({ w2h: qldW2H, ishikawa: qldIshikawa, swot: qldSwot, kanban: qldKanban }[qldAba])(corpo, doc, d);
   }
   $("#opVazio").parentElement.insertBefore(wrap, $("#legacyBody"));
+}
+
+// Estatísticas do documento atual nas células padrão do painel (#opStats).
+function qldStats(doc) {
+  const host = $("#opStats"); host.innerHTML = "";
+  const split = el("div", "split");
+  const cell = (k, v, cls) => { const c = el("div", "cell" + (cls ? " " + cls : "")); c.append(el("div", "k", k), el("div", "v", String(v))); split.append(c); };
+  if (qldAba === "w2h") {
+    const linhas = doc.linhas || [];
+    const preench = linhas.filter(l => (l.oque || "").trim()).length;
+    const resp = new Set(linhas.map(l => (l.quem || "").trim()).filter(Boolean));
+    cell("Ações", linhas.length); cell("Definidas", preench, preench ? "lead" : ""); cell("Responsáveis", resp.size);
+  } else if (qldAba === "ishikawa") {
+    const cats = (doc.categorias || []).filter(c => (c.nome || "").trim());
+    const causas = (doc.categorias || []).reduce((s, c) => s + (c.causas || []).filter(x => (x.texto || "").trim()).length, 0);
+    cell("Categorias", cats.length); cell("Causas", causas, causas ? "lead" : "");
+  } else if (qldAba === "swot") {
+    const n = k => (doc[k] || []).filter(x => (x.texto || "").trim()).length;
+    cell("Forças", n("forcas")); cell("Fraquezas", n("fraquezas")); cell("Oportun.", n("oportunidades")); cell("Ameaças", n("ameacas"));
+  } else if (qldAba === "kanban") {
+    const cs = doc.cartoes || [];
+    const feito = cs.filter(c => c.col === "feito").length;
+    const atras = cs.filter(c => c.col !== "feito" && c.estimativa && c.estimativa < hoje()).length;
+    const pct = cs.length ? Math.round(feito / cs.length * 100) : 0;
+    cell("Cartões", cs.length); cell("Concluídos", feito, feito ? "lead" : ""); cell("Atrasados", atras, atras ? "warn" : ""); cell("% concluído", pct + "%");
+  }
+  host.append(split);
 }
 
 function qldDocAtual(d) {
@@ -6594,36 +6628,46 @@ function qldDocAtual(d) {
 
 function qldSeletorDoc(box, d) {
   const lista = d[qldAba];
-  const bar = el("div", "qld-docbar");
   const rotulo = { w2h: "5W2H", ishikawa: "Ishikawa", swot: "SWOT", kanban: "Kanban" }[qldAba];
-  if (lista.length) {
-    const sel = document.createElement("select"); sel.className = "qld-docsel";
-    lista.forEach(doc => {
-      const o = document.createElement("option"); o.value = doc.id; o.textContent = doc.titulo || "(sem título)";
-      if (doc.id === qldSel[qldAba]) o.selected = true;
-      sel.append(o);
-    });
-    sel.addEventListener("change", () => { qldSel[qldAba] = sel.value; opQualidade(); });
-    bar.append(sel);
-    // titulo editavel do doc atual
-    const doc = qldDocAtual(d);
-    const tit = document.createElement("input"); tit.className = "qld-doctit"; tit.value = doc.titulo || "";
-    tit.placeholder = "Título do " + rotulo;
-    tit.addEventListener("input", () => { doc.titulo = tit.value; qldSalvar();
-      const opt = [...sel.options].find(o => o.value === doc.id); if (opt) opt.textContent = tit.value || "(sem título)"; });
-    bar.append(tit);
-    const del = el("button", "qld-docdel", "Excluir"); del.type = "button";
-    del.addEventListener("click", () => qldConfirmar(del, () => {
-      d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(); opQualidade();
-    }));
-    bar.append(del);
+  if (!lista.length) return;   // estado vazio é tratado em opQualidade
+  const doc = qldDocAtual(d);
+  const head = el("div", "qld-head");
+
+  // Trocador de documentos: mesmo combobox usado no resto do painel.
+  if (lista.length > 1) {
+    const opcoes = lista.map(x => ({ valor: x.id, rotulo: x.titulo || "(sem título)", sub: "criado " + dbr(x.criadoEm) }));
+    const cbx = combobox(opcoes, doc.id, v => { qldSel[qldAba] = v; opQualidade(); }, rotulo);
+    cbx.classList.add("qld-switch");
+    head.append(cbx);
   }
-  const nv = el("button", "qld-docnovo", "+ Novo " + rotulo); nv.type = "button";
+
+  // Título editável do documento atual, à la Notion.
+  const tit = document.createElement("input"); tit.className = "qld-titulo"; tit.value = doc.titulo || "";
+  tit.placeholder = "Título do " + rotulo;
+  tit.addEventListener("input", () => { doc.titulo = tit.value; qldSalvar(); });
+  head.append(tit);
+
+  const acoes = el("div", "qld-head-acoes");
+  const del = el("button", "qld-docdel", "Excluir"); del.type = "button";
+  del.addEventListener("click", () => qldConfirmar(del, () => {
+    d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(); opQualidade();
+  }));
+  const nv = el("button", "btn btn-primary", "+ Novo"); nv.type = "button"; nv.style.width = "auto";
   nv.addEventListener("click", () => qldNovoDoc(qldAba, d));
-  bar.append(nv);
-  box.append(bar);
+  acoes.append(del, nv); head.append(acoes);
+  box.append(head);
+
+  const criado = dbr(doc.criadoEm);
+  box.append(el("p", "qld-meta", rotulo + " · criado em " + criado + " · " + lista.length + (lista.length === 1 ? " documento" : " documentos")));
 }
 
+// Iguala a altura dos textareas de uma mesma linha do 5W2H: cada um cresce com
+// seu conteúdo e todos assumem a maior altura, mantendo a linha alinhada.
+function qldSincLinha(areas) {
+  areas.forEach(a => { a.style.height = "auto"; });
+  const alt = Math.max(38, ...areas.map(a => a.scrollHeight));
+  areas.forEach(a => { a.style.height = alt + "px"; });
+}
 // ---- 5W2H ----
 const QLD_W2H = [["oque", "O quê", "What"], ["porque", "Por quê", "Why"], ["onde", "Onde", "Where"],
   ["quando", "Quando", "When"], ["quem", "Quem", "Who"], ["como", "Como", "How"], ["quanto", "Quanto", "How much"]];
@@ -6639,15 +6683,18 @@ function qldW2H(box, doc) {
   thead.append(el("th", "acoes")); t.append(thead);
   doc.linhas.forEach((linha, i) => {
     const tr = el("tr"); tr.append(el("td", "num", String(i + 1)));
+    const areas = [];
     QLD_W2H.forEach(([campo]) => {
-      const td = el("td"); const ta = el("textarea"); ta.value = linha[campo] || ""; ta.rows = 2;
-      ta.addEventListener("input", () => { linha[campo] = ta.value; qldSalvar(); });
-      td.append(ta); tr.append(td);
+      const td = el("td"); const ta = el("textarea"); ta.value = linha[campo] || "";
+      // Cresce com o conteúdo; ao crescer, iguala a altura de toda a linha.
+      ta.addEventListener("input", () => { linha[campo] = ta.value; qldSalvar(); qldSincLinha(areas); });
+      td.append(ta); tr.append(td); areas.push(ta);
     });
     const acoes = el("td", "acoes");
     const x = el("button", "btn-ghost", "✕"); x.type = "button"; x.title = "Remover";
     x.addEventListener("click", () => { doc.linhas.splice(i, 1); qldSalvar(); opQualidade(); });
     acoes.append(qldSetas(doc.linhas, i, x)); tr.append(acoes); t.append(tr);
+    requestAnimationFrame(() => qldSincLinha(areas));
   });
   scroll.append(t); box.append(scroll);
   const add = el("button", "btn", "+ Adicionar ação"); add.type = "button"; add.style.marginTop = "12px";

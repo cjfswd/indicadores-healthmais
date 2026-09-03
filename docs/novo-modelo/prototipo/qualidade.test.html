@@ -82,13 +82,14 @@ async function rodar() {
   checar("abre no layout do painel (título 'Qualidade')", (wd.querySelector("#opTitulo") || {}).textContent === "Qualidade");
   checar("é página especial: injeta #qualWrap e esconde a tabela genérica",
     !!wd.querySelector("#qualWrap") && wd.querySelector("#opTabela").classList.contains("hidden"));
-  // As abas agora carregam um contador ("5W2H 1"), então compara pelo começo.
-  const abas = [...wd.querySelectorAll(".qld-aba")].map(a => a.textContent.trim());
+  // As abas usam o mesmo componente das visões (.views/.tab) e carregam um
+  // contador ("5W2H 1"), então compara pelo começo.
+  const abas = [...wd.querySelectorAll("#qualWrap .views .tab")].map(a => a.textContent.trim());
   checar("tem as 4 abas (5W2H, Ishikawa, SWOT, Kanban)",
     ["5W2H", "Ishikawa", "SWOT", "Kanban"].every(x => abas.some(a => a.startsWith(x))), abas.join(", "));
 
   // 5W2H: header + linhas semeadas.
-  const clicaAba = rot => { const a = [...wd.querySelectorAll(".qld-aba")].find(x => x.textContent.trim().startsWith(rot)); if (a) a.click(); };
+  const clicaAba = rot => { const a = [...wd.querySelectorAll("#qualWrap .views .tab")].find(x => x.textContent.trim().startsWith(rot)); if (a) a.click(); };
   clicaAba("5W2H"); await espera(150);
   checar("5W2H: tabela com 7 colunas", wd.querySelectorAll(".qld-w2h th .q").length === 7,
     wd.querySelectorAll(".qld-w2h th .q").length);
@@ -121,21 +122,24 @@ async function rodar() {
   checar("Kanban: cartões semeados aparecem", wd.querySelectorAll(".qld-kb-card").length >= 3,
     wd.querySelectorAll(".qld-kb-card").length);
 
-  // Múltiplas instâncias: criar um novo documento de 5W2H.
+  // Múltiplas instâncias: criar um novo documento de 5W2H. O contador da aba
+  // (.qld-n) reflete quantos documentos a ferramenta tem.
   clicaAba("5W2H"); await espera(120);
-  const docsAntes = wd.querySelectorAll(".qld-docsel option").length;
-  const nv = [...wd.querySelectorAll(".qld-docnovo")][0]; if (nv) nv.click(); await espera(150);
+  const contaDocs = () => +([...wd.querySelectorAll("#qualWrap .views .tab")]
+    .find(t => t.textContent.trim().startsWith("5W2H")) || {}).querySelector(".qld-n").textContent;
+  const docsAntes = contaDocs();
+  const nv = [...wd.querySelectorAll(".qld-head-acoes .btn-primary")][0]; if (nv) nv.click(); await espera(150);
   checar("5W2H: '+ Novo' cria outro documento (vários por ferramenta)",
-    wd.querySelectorAll(".qld-docsel option").length === docsAntes + 1,
-    "antes " + docsAntes + ", depois " + wd.querySelectorAll(".qld-docsel option").length);
+    contaDocs() === docsAntes + 1, "antes " + docsAntes + ", depois " + contaDocs());
 
-  // Identificável: renomear reflete no seletor.
+  // Identificável: renomear reflete no trocador (combobox aparece com 2+ docs).
   const marca = "DOC TESTE " + Date.now();
-  const tit = wd.querySelector(".qld-doctit");
+  const tit = wd.querySelector(".qld-titulo");
   if (tit) { tit.value = marca; tit.dispatchEvent(new w.Event("input", { bubbles: true })); }
-  await espera(150);
-  checar("documento é identificável pelo título (aparece no seletor)",
-    [...wd.querySelectorAll(".qld-docsel option")].some(o => o.textContent === marca));
+  await espera(120);
+  clicaAba("Ishikawa"); await espera(120); clicaAba("5W2H"); await espera(150);
+  checar("documento é identificável pelo título (reflete no trocador)",
+    (wd.querySelector(".qld-switch .cbx-trigger .val") || {}).textContent === marca);
   let persistiu = false;
   try { persistiu = JSON.stringify(JSON.parse(w.localStorage.getItem("qualidade-v2"))).includes(marca); } catch (e) {}
   checar("edições persistem no localStorage", persistiu);
