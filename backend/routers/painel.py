@@ -4,8 +4,9 @@ import re
 from pathlib import Path
 
 import jwt
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Body, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
+from psycopg.types.json import Jsonb
 
 from core import painel_mongo, postgres
 from core.seguranca import jwt_secret as _jwt_secret
@@ -112,6 +113,102 @@ async def dados(authorization: str = Header(default=""), fonte: str = ""):
     # default=str para date/datetime que escaparem das consultas -- elas ja
     # formatam com to_char, mas uma coluna nova nao pode derrubar a pagina.
     return JSONResponse(content=json.loads(json.dumps(saida, default=str)))
+
+
+# ── Qualidade (5W2H, Ishikawa, SWOT, Kanban) ──────────────────────────────
+# Feature nova do novo painel: persiste direto no Postgres, um registro por
+# documento, escopo por empresa. Nao passa pelo Mongo (nao ha dado legado a
+# reconciliar). A tela guarda uma copia em localStorage e usa estes endpoints
+# como fonte quando ha sessao e Postgres; offline, fica so no navegador.
+
+QLD_TIPOS = ("w2h", "ishikawa", "swot", "kanban")
+# Chaves que sao colunas proprias; o resto do documento vai para `conteudo`.
+_QLD_META = ("id", "titulo", "criadoEm")
+
+
+def _exigir_postgres():
+    if not postgres.esta_ligado():
+        raise HTTPException(
+            status_code=503,
+            detail="Postgres nao configurado neste ambiente (POSTGRES_URI).",
+        )
+
+
+@router.get("/qualidade")
+async def qualidade_listar(authorization: str = Header(default=""),
+                           empresa: str = Query(...)):
+    """Devolve os documentos da empresa, no formato que a tela usa:
+    {w2h:[...], ishikawa:[...], swot:[...], kanban:[...]}."""
+    exigir_sessao(authorization)
+    _exigir_postgres()
+    saida = {t: [] for t in QLD_TIPOS}
+    async with postgres.get_pool().connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id, tipo, titulo, to_char(criado_em, 'YYYY-MM-DD'), conteudo "
+                "FROM qualidade_docs WHERE empresa = %s "
+                "ORDER BY tipo, criado_em DESC, id",
+                (empresa,),
+            )
+            for doc_id, tipo, titulo, criado, conteudo in await cur.fetchall():
+                if tipo not in saida:
+                    continue
+                doc = {"id": doc_id, "titulo": titulo, "criadoEm": criado}
+                doc.update(conteudo or {})
+                saida[tipo].append(doc)
+    return saida
+
+
+@router.put("/qualidade/{doc_id}")
+async def qualidade_salvar(doc_id: str, authorization: str = Header(default=""),
+                           corpo: dict = Body(...)):
+    """Cria ou atualiza um documento. Corpo: {empresa, tipo, doc}."""
+    sessao = exigir_sessao(authorization)
+    _exigir_postgres()
+    empresa = (corpo.get("empresa") or "").strip()
+    tipo = (corpo.get("tipo") or "").strip()
+    doc = corpo.get("doc") or {}
+    if not empresa:
+        raise HTTPException(status_code=400, detail="empresa ausente")
+    if tipo not in QLD_TIPOS:
+        raise HTTPException(status_code=400, detail="tipo invalido")
+    if doc.get("id") != doc_id:
+        raise HTTPException(status_code=400, detail="id do corpo diverge da URL")
+    titulo = doc.get("titulo") or ""
+    criado = doc.get("criadoEm") or None
+    conteudo = {k: v for k, v in doc.items() if k not in _QLD_META}
+    async with postgres.get_pool().connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "INSERT INTO qualidade_docs "
+                "  (id, empresa, tipo, titulo, criado_em, conteudo, atualizado_em, atualizado_por) "
+                "VALUES (%s, %s, %s, %s, COALESCE(%s::date, current_date), %s, now(), %s) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "  empresa = EXCLUDED.empresa, tipo = EXCLUDED.tipo, "
+                "  titulo = EXCLUDED.titulo, criado_em = EXCLUDED.criado_em, "
+                "  conteudo = EXCLUDED.conteudo, atualizado_em = now(), "
+                "  atualizado_por = EXCLUDED.atualizado_por",
+                (doc_id, empresa, tipo, titulo, criado, Jsonb(conteudo),
+                 sessao.get("email", "")),
+            )
+        await conn.commit()
+    return {"ok": True}
+
+
+@router.delete("/qualidade/{doc_id}")
+async def qualidade_remover(doc_id: str, authorization: str = Header(default=""),
+                            empresa: str = Query(...)):
+    """Remove um documento da empresa."""
+    exigir_sessao(authorization)
+    _exigir_postgres()
+    async with postgres.get_pool().connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "DELETE FROM qualidade_docs WHERE id = %s AND empresa = %s",
+                (doc_id, empresa),
+            )
+        await conn.commit()
+    return {"ok": True}
 
 
 @router.get("/saude")
