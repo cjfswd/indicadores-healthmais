@@ -6461,7 +6461,58 @@ const QLD_ISHK = ["Método", "Máquina", "Material", "Mão de obra", "Medição"
 const QLD_KB = [["backlog", "Backlog"], ["fazer", "A fazer"], ["fazendo", "Fazendo"], ["feito", "Feito"]];
 let _qldTudo = {};
 try { _qldTudo = JSON.parse(localStorage.getItem(QLD_CHAVE) || "{}") || {}; } catch (e) { _qldTudo = {}; }
-const qldSalvar = () => { try { localStorage.setItem(QLD_CHAVE, JSON.stringify(_qldTudo)); } catch (e) {} };
+// Salva no localStorage (cópia local / fallback offline) e, quando há sessão e
+// Postgres, sincroniza o documento atual com o servidor. `sincronizar=false`
+// evita reenviar logo após carregar do servidor.
+const qldSalvar = (sincronizar = true) => {
+  try { localStorage.setItem(QLD_CHAVE, JSON.stringify(_qldTudo)); } catch (e) {}
+  if (sincronizar) qldSincronizar();
+};
+// Há sessão com token? (offline/exemplo → só localStorage.)
+function qldOnline() {
+  const s = (typeof lerSessao === "function") ? lerSessao() : null;
+  return !!(s && s.token);
+}
+function qldAuthHeader() {
+  const s = (typeof lerSessao === "function") ? lerSessao() : null;
+  return s && s.token ? { Authorization: "Bearer " + s.token } : {};
+}
+// Empresas já carregadas do servidor nesta sessão (evita recarga a cada abrir).
+let qldCarregado = {};
+async function qldCarregar(emp) {
+  if (!qldOnline()) return;
+  try {
+    const r = await fetch(AUTH.api + "/painel/qualidade?empresa=" + encodeURIComponent(emp),
+      { headers: qldAuthHeader() });
+    if (!r.ok) return;               // 401/503: mantém o que já há em memória
+    const d = await r.json();
+    ["w2h", "ishikawa", "swot", "kanban"].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
+    _qldTudo[emp] = d; qldCarregado[emp] = true;
+    qldSalvar(false);
+    if ($("#qualWrap") && F.emp === emp) opQualidade();   // redesenha se está na tela
+  } catch (e) {}
+}
+// Envia o documento atual (debounce): quase toda edição é no doc em foco.
+let _qldTimer = null;
+function qldSincronizar() {
+  if (!qldOnline()) return;
+  const emp = F.emp; const doc = qldDocAtual(qldDados());
+  if (!doc) return;
+  const tipo = qldAba, id = doc.id;
+  clearTimeout(_qldTimer);
+  _qldTimer = setTimeout(() => {
+    fetch(AUTH.api + "/painel/qualidade/" + encodeURIComponent(id), {
+      method: "PUT",
+      headers: Object.assign({ "Content-Type": "application/json" }, qldAuthHeader()),
+      body: JSON.stringify({ empresa: emp, tipo, doc }),
+    }).catch(() => {});
+  }, 500);
+}
+function qldRemoverOnline(id) {
+  if (!qldOnline()) return;
+  fetch(AUTH.api + "/painel/qualidade/" + encodeURIComponent(id) + "?empresa=" + encodeURIComponent(F.emp),
+    { method: "DELETE", headers: qldAuthHeader() }).catch(() => {});
+}
 const qid = () => (typeof novoId === "function" ? novoId() : Math.random().toString(36).slice(2, 10));
 const hoje = () => new Date().toISOString().slice(0, 10);
 // Move item i de um array na direcao dir (-1/+1), com salvar+redesenho.
@@ -6563,6 +6614,8 @@ function opQualidade() {
   const antigo = $("#qualWrap"); if (antigo) antigo.remove();
   const wrap = el("div", "qld-wrap"); wrap.id = "qualWrap";
   const d = qldDados();
+  // Primeira abertura desta empresa com sessão: puxa do servidor e redesenha.
+  if (qldOnline() && !qldCarregado[F.emp]) qldCarregar(F.emp);
 
   // Abas no mesmo componente das visões do resto do painel (.views/.tab).
   const abas = el("div", "views");
@@ -6650,7 +6703,8 @@ function qldSeletorDoc(box, d) {
   const acoes = el("div", "qld-head-acoes");
   const del = el("button", "qld-docdel", "Excluir"); del.type = "button";
   del.addEventListener("click", () => qldConfirmar(del, () => {
-    d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(); opQualidade();
+    qldRemoverOnline(doc.id);
+    d[qldAba] = lista.filter(x => x.id !== doc.id); qldSel[qldAba] = null; qldSalvar(false); opQualidade();
   }));
   const nv = el("button", "btn btn-primary", "+ Novo"); nv.type = "button"; nv.style.width = "auto";
   nv.addEventListener("click", () => qldNovoDoc(qldAba, d));

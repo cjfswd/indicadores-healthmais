@@ -236,10 +236,26 @@ CREATE TABLE social_assistance_reports (
     updated_by          text
 );
 
+-- Ferramentas da qualidade (5W2H, Ishikawa, SWOT, Kanban): um registro por
+-- documento, escopo por empresa. Nao vem do dump do Mongo -- e feature nova do
+-- novo painel, gravada direto no Postgres. O corpo de cada ferramenta fica em
+-- `conteudo` (jsonb), porque o formato difere entre elas e evolui na tela.
+CREATE TABLE qualidade_docs (
+    id             text PRIMARY KEY,
+    empresa        text NOT NULL,
+    tipo           text NOT NULL CHECK (tipo IN ('w2h', 'ishikawa', 'swot', 'kanban')),
+    titulo         text NOT NULL DEFAULT '',
+    criado_em      date NOT NULL DEFAULT current_date,
+    conteudo       jsonb NOT NULL DEFAULT '{}'::jsonb,
+    atualizado_em  timestamptz NOT NULL DEFAULT now(),
+    atualizado_por text NOT NULL DEFAULT ''
+);
+
 CREATE INDEX idx_events_store_type_ts ON events_store (stream_type, "timestamp" DESC);
 CREATE INDEX idx_sar_linked_patient ON social_assistance_reports (linked_patient_id);
 CREATE INDEX idx_patient_events_patient ON patient_events (patient_id);
 CREATE INDEX idx_patient_events_occurrence ON patient_events (occurrence_date);
 CREATE INDEX idx_patients_operator ON patients (operator_id);
+CREATE INDEX qualidade_docs_empresa_tipo ON qualidade_docs (empresa, tipo, criado_em DESC, id);
 
 COMMIT;

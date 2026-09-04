@@ -138,21 +138,35 @@ próprios, para ler como os módulos de Indicadores, NPS e Certificados:
 - Trocar de empresa troca o plano; trocar de página limpa o wrap injetado.
 - Sem erros no console; verificado no navegador.
 
-## 6. Passo seguinte (fora deste escopo, especificado)
+## 6. Persistência online (implementado)
 
-Persistência no Postgres, com o plano ligado a um evento:
+A Qualidade grava **direto no Postgres** (feature nova do novo painel; não há
+dado legado no Mongo a reconciliar), com o `localStorage` como cópia local e
+fallback offline.
+
+**Modelo — um registro por documento** (`migration/postgres/migracoes/003_qualidade.sql`,
+também em `schema.sql`):
 
 ```
-plano_acao        (id, evento_id FK, empresa, caso_titulo, caso_descricao, criado_em)
-w2h_acao          (id, plano_id FK, oque, porque, onde, quando, quem, como, quanto, ordem)
-ishikawa_causa    (id, plano_id FK, categoria, texto)   -- categoria: enum 6M
-ishikawa_efeito   -> coluna em plano_acao
-swot_item         (id, plano_id FK, quadrante, texto)   -- quadrante: enum 4
-kanban_cartao     (id, plano_id FK, titulo, coluna, responsavel, prioridade, ordem)
+qualidade_docs (id PK, empresa, tipo CHECK(w2h|ishikawa|swot|kanban),
+                titulo, criado_em, conteudo jsonb, atualizado_em, atualizado_por)
+índice: (empresa, tipo, criado_em DESC, id)
 ```
 
-Enums: `ishikawa_categoria` (metodo, maquina, material, mao_obra, medicao,
-meio_ambiente), `swot_quadrante` (forcas, fraquezas, oportunidades, ameacas),
-`kanban_coluna` (backlog, a_fazer, fazendo, feito), `prioridade` (alta, media,
-baixa). Migração numerada `003_qualidade.sql`, no schema `painel`, idempotente,
-no mesmo padrão do `002_nps.sql`. ETL não toca — é dado novo, nasce no sistema.
+O corpo específico de cada ferramenta (linhas / efeito+categorias / quadrantes /
+cartões) fica em `conteudo` (jsonb), porque o formato difere entre elas e evolui
+na tela; título, tipo e datas ficam em colunas para listar e ordenar. Escolheu-se
+o blob jsonb em vez de tabelas relacionais por ferramenta pelo mesmo motivo do
+NPS: a forma nasce e muda na tela, e um esquema rígido por ferramenta obrigaria
+uma migração a cada ajuste de campo.
+
+**Endpoints** (`backend/routers/painel.py`, exigem sessão + Postgres):
+- `GET /painel/qualidade?empresa=` → `{w2h:[...], ishikawa:[...], swot:[...], kanban:[...]}`
+- `PUT /painel/qualidade/{id}` corpo `{empresa, tipo, doc}` → upsert
+- `DELETE /painel/qualidade/{id}?empresa=` → remove
+
+**Tela** (`painel.html`): ao abrir a Qualidade com sessão, puxa do servidor e
+redesenha (`qldCarregar`); cada edição salva o documento em foco com debounce
+(`qldSincronizar` via `PUT`); excluir chama `DELETE`. Sem sessão ou sem Postgres,
+tudo continua no `localStorage`. Aplicar: `psql … -f 003_qualidade.sql` depois do
+001; num banco criado do `schema.sql` regenerado, a tabela já vem do 001.
