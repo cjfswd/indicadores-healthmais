@@ -4,11 +4,14 @@
 - O "novo modelo" é um protótipo de página única em
   `docs/novo-modelo/prototipo/painel.html` (HTML/CSS/JS vanilla, sem build).
   É onde o novo layout evolui: Indicadores, NPS, Certificados, Qualidade.
-- Para ver com o servidor do sistema: `npm run dev` em `frontend/` e abrir
-  **http://localhost:5173/painel/**. Um plugin de dev do Vite
-  (`painelPrototipo`, em `frontend/vite.config.ts`, `apply: 'serve'`) serve o
-  protótipo em `/painel/` — não entra no build. `/db`, `/auth` e `/painel/dados`
-  passam pelo proxy para o backend em `localhost:3000`.
+- Caminho final: o painel é a **raiz `/`**, igual à produção (o Dockerfile
+  serve `painel.html` como `index.html` na raiz e renomeia o Vue para
+  `legado.html`). Para ver: `npm run dev` em `frontend/` e abrir
+  **http://localhost:5173/**; o Vue legado fica em `/legado.html`. Um plugin de
+  dev do Vite (`painelNaRaiz`, em `frontend/vite.config.ts`, `apply: 'serve'`)
+  serve o painel na raiz com as mesmas substituições do Dockerfile — não entra
+  no build. `/db`, `/auth`, `/report`, `/push` e `/painel/*` passam pelo proxy
+  para o backend em `localhost:3000`.
 
 ## Persistência / banco
 - Direção: o **novo painel usa Postgres direto** para features novas (sem
