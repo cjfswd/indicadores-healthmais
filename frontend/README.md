@@ -6,12 +6,17 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 
 ## Painel (novo modelo)
 
-O painel do novo modelo (`docs/novo-modelo/prototipo/painel.html`) é servido pelo
-próprio dev server. Rode `npm run dev` e abra:
+O painel é servido no **caminho final**, a raiz `/`, igual à produção. Rode
+`npm run dev` e abra:
 
-    http://localhost:5173/painel/
+    http://localhost:5173/
 
-Não é preciso subir um servidor estático à parte — um plugin de dev do Vite
-(`painelPrototipo`, em `vite.config.ts`) serve o protótipo em `/painel/` só no
-dev. As chamadas a `/db`, `/auth` e `/painel/dados` passam pelo proxy para o
-backend em `localhost:3000` (opcional; sem ele, o painel usa `dados.json`).
+O app Vue (legado, em standby) fica em `http://localhost:5173/legado.html`.
+
+Isso espelha o Dockerfile de produção, que serve `docs/novo-modelo/prototipo/painel.html`
+como `index.html` na raiz e renomeia o Vue para `legado.html`. Um plugin de dev
+do Vite (`painelNaRaiz`, em `vite.config.ts`, `apply: 'serve'`) faz o mesmo no
+dev e aplica as mesmas substituições (client id do Google, caminho dos
+certificados) — dev e produção veem o mesmo HTML. As chamadas a `/db`, `/auth`,
+`/report`, `/push` e `/painel/*` passam pelo proxy para o backend em
+`localhost:3000` (opcional; sem ele, o painel usa `dados.json`).
