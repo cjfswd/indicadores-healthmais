@@ -22,6 +22,8 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:3000',
       '/db': 'http://localhost:3000',
+      '/report': 'http://localhost:3000',
+      '/push': 'http://localhost:3000',
     }
   }
 })

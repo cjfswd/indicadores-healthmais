@@ -220,20 +220,11 @@ def generate_pptx(title, subtitle, headers, data, output_path, charts=None):
             p.alignment = PP_ALIGN.CENTER
 
             buf = _decode_chart_image(chart_b64)
-            img_path = output_path + f"_tmp_{chart_label[:10]}.png"
-            with open(img_path, "wb") as f:
-                f.write(buf.read())
-
             slide.shapes.add_picture(
-                img_path,
+                buf,
                 Inches(0.5), Inches(1.2),
                 Inches(12.333), Inches(5.8)
             )
-
-            try:
-                os.remove(img_path)
-            except OSError:
-                pass
 
     # ── Table slide ──
     if headers and data:

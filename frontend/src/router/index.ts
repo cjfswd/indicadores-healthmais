@@ -30,11 +30,7 @@ const router = createRouter({
       name: 'patients',
       component: PatientsView
     },
-    {
-      path: '/reports',
-      name: 'reports',
-      component: () => import('@/views/ReportsView.vue')
-    },
+
     // {
     //   path: '/users',
     //   name: 'users',

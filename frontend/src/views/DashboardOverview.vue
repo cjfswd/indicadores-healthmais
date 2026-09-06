@@ -118,12 +118,18 @@ div(class="space-y-6 animate-in fade-in duration-700")
             Bar(ref="barChartRef" :data="barChartData" :options="barOptions")
 
   .d-flex.justify-space-between.align-center.mb-4.mt-6
-    h2.text-h6.font-weight-bold Distribuição por Sub-indicador
+    .d-flex.align-center.ga-3
+      h2.text-h6.font-weight-bold Distribuição por Sub-indicador
+      v-chip(color="primary" variant="tonal" size="small" prepend-icon="mdi-account-group")
+        | Base: {{ totalPatients }} pacientes
 
   v-row
     v-col(cols="12" sm="6" lg="4" v-for="(card, idx) in analytics.indicatorsCards" :key="'doughnut-' + card.id")
       v-card(elevation="1" class="h-100 d-flex flex-column")
         v-card-title.text-subtitle-2.font-weight-bold.text-wrap(style="line-height: 1.3;") {{ card.name }}
+        v-card-subtitle.text-caption(v-if="card.totalEvents > 0")
+          span.font-weight-medium {{ card.totalEvents }} eventos
+          span.text-medium-emphasis  · {{ totalPatients > 0 ? ((card.totalEvents / totalPatients) * 100).toFixed(1) : '0.0' }}% da base ({{ totalPatients }})
         v-card-text.flex-grow-1.d-flex.flex-column.justify-center
           .chart-container(v-if="card.subindicators.length && card.totalEvents > 0" style="position: relative; height: 280px;")
             Doughnut(:ref="el => setDoughnutRef(el, idx)" :data="getDoughnutDataForCard(card)" :options="doughnutOptions")
@@ -345,6 +351,15 @@ const doughnutOptions = computed(() => ({
       bodyFont: { size: 12 },
       padding: 12,
       cornerRadius: 8,
+      callbacks: {
+        label: (ctx: any) => {
+          const value = ctx.parsed || 0
+          const total = totalPatients.value
+          if (total <= 0) return ` ${ctx.label}: ${value}`
+          const pct = ((value / total) * 100).toFixed(1)
+          return ` ${ctx.label}: ${value} de ${total} pacientes (${pct}%)`
+        },
+      },
     },
     datalabels: {
       color: '#fff',
@@ -415,7 +430,10 @@ async function downloadReport(format: 'pdf' | 'pptx') {
       },
       body: JSON.stringify(buildPayload(format)),
     })
-    if (!response.ok) throw new Error(`Falha ao gerar ${format.toUpperCase()}`)
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      throw new Error(errData.detail || `Falha ao gerar ${format.toUpperCase()}`)
+    }
 
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
@@ -425,9 +443,9 @@ async function downloadReport(format: 'pdf' | 'pptx') {
     a.click()
     URL.revokeObjectURL(url)
     snackbar.show(`${format.toUpperCase()} gerado com sucesso!`, 'success')
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    snackbar.show(`Erro ao gerar ${format.toUpperCase()}`, 'error')
+    snackbar.show(err.message || `Erro ao gerar ${format.toUpperCase()}`, 'error')
   } finally {
     loadingRef.value = false
   }

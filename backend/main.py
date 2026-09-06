@@ -42,45 +42,67 @@ app.include_router(notifications.router)
 @app.post("/report/generate")
 async def generate_report(request: Request):
     """Generate a PDF or PPTX report with optional embedded chart images."""
-    body = await request.json()
-    payload_json = json.dumps(body, ensure_ascii=False)
-
-    script = os.path.join(os.path.dirname(__file__), "core", "generate_report.py")
-    python_exec = sys.executable
-
-    process = await asyncio.create_subprocess_exec(
-        python_exec, script,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await process.communicate(input=payload_json.encode("utf-8"))
-
-    if process.returncode != 0:
-        error_msg = stderr.decode("utf-8", errors="replace") if stderr else "Unknown error"
-        raise HTTPException(status_code=500, detail=f"Report generation failed: {error_msg}")
-
     try:
-        result = json.loads(stdout.decode("utf-8"))
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Invalid response from report generator")
+        body = await request.json()
+        payload_json = json.dumps(body, ensure_ascii=False)
 
-    if result.get("success"):
-        file_path = result["filePath"]
-        fmt = result.get("format", "pdf")
+        script = os.path.join(os.path.dirname(__file__), "core", "generate_report.py")
+        python_exec = sys.executable
 
-        if fmt == "pptx":
-            media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        import subprocess
+
+        def run_report():
+            return subprocess.run(
+                [python_exec, script],
+                input=payload_json,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+        proc = await asyncio.to_thread(run_report)
+
+        if proc.returncode != 0:
+            error_msg = proc.stderr or "Unknown error"
+            print(f"[REPORT ERROR] subprocess failed: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"Report generation failed: {error_msg}")
+
+        try:
+            result = json.loads(proc.stdout)
+        except json.JSONDecodeError:
+            raw = proc.stdout[:500]
+            print(f"[REPORT ERROR] invalid JSON from subprocess: {raw}")
+            raise HTTPException(status_code=500, detail=f"Invalid response from report generator: {raw}")
+
+        if result.get("success"):
+            file_path = os.path.abspath(result["filePath"])
+            fmt = result.get("format", "pdf")
+
+            if not os.path.exists(file_path):
+                print(f"[REPORT ERROR] file not found: {file_path}")
+                raise HTTPException(status_code=500, detail=f"Generated file not found: {file_path}")
+
+            if fmt == "pptx":
+                media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            else:
+                media_type = "application/pdf"
+
+            return FileResponse(
+                file_path,
+                filename=os.path.basename(file_path),
+                media_type=media_type
+            )
         else:
-            media_type = "application/pdf"
-
-        return FileResponse(
-            file_path,
-            filename=os.path.basename(file_path),
-            media_type=media_type
-        )
-    else:
-        raise HTTPException(status_code=500, detail=result.get("error", "Report generation failed"))
+            detail = result.get("error", "Report generation failed")
+            print(f"[REPORT ERROR] generator returned error: {detail}")
+            raise HTTPException(status_code=500, detail=detail)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[REPORT ERROR] unhandled: {tb}")
+        raise HTTPException(status_code=500, detail=f"Unhandled error: {type(e).__name__}: {str(e)}")
 
 
 if __name__ == "__main__":

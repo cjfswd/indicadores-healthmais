@@ -147,9 +147,7 @@ const errors = reactive<Record<string, string>>({})
 const isPadEvent = computed(() => {
   const ind = indicators.value?.find((i: any) => i._id === form.indicatorId)
   const indName = ind?.name?.toLowerCase() || ''
-  const subName = form.subindicatorId?.toLowerCase() || ''
-  const combined = `${indName} ${subName}`
-  return combined.includes('pad') && (combined.includes('aumento') || combined.includes('redução') || combined.includes('reducao'))
+  return indName.includes('taxa') && indName.includes('pad')
 })
 
 const rawFiles = ref<File[]>([])
