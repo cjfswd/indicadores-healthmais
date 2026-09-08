@@ -19,7 +19,8 @@
   (`/painel/dados`) e escreve no Mongo via `/db/execute`, com o Postgres como
   alvo de conformidade.
 - Migrações Postgres: SQL numerado em `migration/postgres/migracoes/`
-  (001_base, 002_nps, 003_qualidade), schema `painel`, idempotentes.
+  (001_base, 002_nps, 003_qualidade, 004_triagem), schema `painel`,
+  idempotentes.
   `migration/postgres/schema.sql` é a fonte de verdade do 001 (regenerado por
   `gerar_migracao.py`); mudanças de coluna/tabela também ganham um ALTER
   numerado para bancos já implantados.
