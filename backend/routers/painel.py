@@ -72,6 +72,43 @@ def montar_relatorios(eventos: list) -> dict:
     return {"meses": meses, "linhas": linhas}
 
 
+async def triagem_por_evento() -> dict:
+    """Decisoes de triagem do Postgres, indexadas por evento.
+
+    Vale para as duas fontes: a decisao e da recategorizacao, nao do banco de
+    origem. O Mongo nao tem onde guarda-la -- o catalogo novo nao existe la --
+    e antes ela vivia so no localStorage de quem decidiu, invisivel para o
+    resto da equipe.
+
+    A chave interna e o card do espelho (ou "" no proprio evento): um obito
+    aparece no card do desfecho e espelhado no 03, e cada aparicao tem a sua
+    decisao.
+
+    Sem Postgres, ou antes da 004_triagem, devolve {} -- os registros aparecem
+    "Em triagem", que e o estado real de quem nunca decidiu. Ficar sem a
+    decisao nao pode derrubar a tela inteira.
+    """
+    if not postgres.esta_ligado():
+        return {}
+    fora = {}
+    async with postgres.get_pool().connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT to_regclass('triagem_decisoes') IS NOT NULL")
+            if not (await cur.fetchone())[0]:
+                return {}
+            await cur.execute(
+                "SELECT evento_id, coalesce(card, ''), codigo FROM triagem_decisoes")
+            for evento_id, card, codigo in await cur.fetchall():
+                fora.setdefault(str(evento_id), {})[card] = codigo
+    return fora
+
+
+def aplicar_triagem(eventos: list, triagem: dict) -> None:
+    """Poe em cada evento as decisoes que o painel usa para categorizar."""
+    for ev in eventos:
+        ev["triagem"] = triagem.get(str(ev.get("id")), {})
+
+
 @router.get("/dados")
 async def dados(authorization: str = Header(default=""), fonte: str = ""):
     """Devolve o JSON que o painel desenha, da base em uso.
@@ -89,6 +126,7 @@ async def dados(authorization: str = Header(default=""), fonte: str = ""):
 
     if fonte != "postgres":
         saida = await painel_mongo.montar(get_db())
+        aplicar_triagem(saida.get("eventos", []), await triagem_por_evento())
         saida["relatorios"] = montar_relatorios(saida.get("eventos", []))
         return JSONResponse(content=json.loads(json.dumps(saida, default=str)))
 
@@ -109,6 +147,7 @@ async def dados(authorization: str = Header(default=""), fonte: str = ""):
                 saida[nome] = [dict(zip(colunas, linha))
                                for linha in await cur.fetchall()]
 
+    aplicar_triagem(saida.get("eventos", []), await triagem_por_evento())
     saida["relatorios"] = montar_relatorios(saida.get("eventos", []))
     # default=str para date/datetime que escaparem das consultas -- elas ja
     # formatam com to_char, mas uma coluna nova nao pode derrubar a pagina.
