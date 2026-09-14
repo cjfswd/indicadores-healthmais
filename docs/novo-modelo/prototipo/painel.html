@@ -646,18 +646,6 @@
     color:var(--ink-3); font-family:"IBM Plex Mono", monospace; }
   .pac-resumo .v { font-size:16px; font-weight:600; letter-spacing:-.02em; margin-top:2px; }
 
-  /* Migração — decisão dos ambíguos */
-  .opts { display:flex; flex-direction:column; gap:6px; }
-  .opt-row {
-    display:flex; align-items:flex-start; gap:10px; width:100%; padding:9px 11px;
-    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-2);
-    text-align:left; transition:border-color .12s, background .12s;
-  }
-  .opt-row:hover { border-color:var(--accent-line); background:var(--surface-hi); }
-  .opt-row.on { border-color:var(--accent); background:var(--accent-soft); }
-  .opt-row .cod { font-family:"IBM Plex Mono", monospace; font-size:12px; font-weight:600;
-    color:var(--accent); flex:none; width:34px; padding-top:1px; }
-  .opt-row .mk { margin-left:auto; color:var(--accent); flex:none; }
   .trunc { display:block; max-width:320px; overflow:hidden; text-overflow:ellipsis;
     white-space:nowrap; color:var(--ink-2); font-size:12.5px; }
   .notebox.pre { white-space:pre-wrap; max-height:230px; overflow:auto; }
@@ -1243,47 +1231,6 @@
       <div class="cmdk-empty hidden" id="opVazio">Nada aqui com esse filtro.</div>
       <div class="legacy" id="legacyBody"></div>
     </div>
-
-    <div class="page hidden" id="pageMigracao">
-      <div>
-        <span class="h-code mono">MIGRAÇÃO · FASE 2</span>
-        <h1>Decisão dos eventos ambíguos</h1>
-        <p class="h-note">A recategorização pede distinções que o registro antigo não guardou.
-          Cada caso precisa de um destino antes de o loader rodar. A sugestão é apoio — quem decide é você.</p>
-        <div id="mgAviso"></div>
-      </div>
-
-      <div class="split" id="mgStats"></div>
-
-      <div class="filters">
-        <div class="fld">
-          <label for="mgSit">Situação</label>
-          <select id="mgSit">
-            <option value="pendentes">Só pendentes</option>
-            <option value="todos">Todos</option>
-            <option value="decididos">Só decididos</option>
-          </select>
-        </div>
-        <div class="fld">
-          <label for="mgCat">Categoria antiga</label>
-          <select id="mgCat"><option value="">Todas</option></select>
-        </div>
-        <span class="grow"></span>
-        <span class="period">Exibindo <b id="mgCount">0</b> de <b id="mgTotal">0</b> casos</span>
-        <button class="btn-ghost" id="mgExport">Exportar CSV</button>
-      </div>
-
-      <div class="tablewrap">
-        <table>
-          <thead><tr>
-            <th>Paciente</th><th>Data</th><th>Categoria antiga</th>
-            <th>Observação</th><th>Por que decidir</th><th>Decisão</th>
-          </tr></thead>
-          <tbody id="mgRows"></tbody>
-        </table>
-      </div>
-      <div class="cmdk-empty hidden" id="mgVazio">Nada aqui com esse filtro.</div>
-    </div>
   </main>
 </div>
 
@@ -1475,12 +1422,15 @@ function modalidades() {
   return m;
 }
 
-// A decisao de triagem fica na maquina de quem decide, como na pagina de
-// Migracao -- o painel nao grava categoria nova no banco antigo.
-const DEC_CHAVE = "triagem-cards-v1";
-let decisoes = {};
-try { decisoes = JSON.parse(localStorage.getItem(DEC_CHAVE) || "{}"); } catch (e) { decisoes = {}; }
-const salvarDecisoes = () => { try { localStorage.setItem(DEC_CHAVE, JSON.stringify(decisoes)); } catch (e) {} };
+// A decisao de triagem vem do servidor, em `evento.triagem`, e nao mais do
+// localStorage. Enquanto ela morava na maquina de quem decidia, o mesmo
+// registro aparecia categorizado para uma pessoa e "Em triagem" para todas as
+// outras -- e sumia ao trocar de navegador. Agora ela esta em
+// painel.triagem_decisoes e /painel/dados a devolve junto do evento.
+// A chave interna e o card do espelho, ou "" no proprio evento.
+const triagemDo = (e, id) => (e && e.triagem)
+  ? e.triagem[id.includes("@") ? id.slice(id.indexOf("@") + 1) : ""]
+  : null;
 
 let _cacheLinhas = null;
 const zerarLinhas = () => { _cacheLinhas = null; };
@@ -1501,7 +1451,7 @@ function linhasPorCard() {
     empresa: e.empresa || "",
     mod: mods[e.paciente_id] || "",
     data: e.data || "",
-    cod: decisoes[id] || cod || null,
+    cod: triagemDo(e, id) || cod || null,
     opcoes: opcoes && opcoes.length ? opcoes : (cod ? [cod] : []),
     nota: nota || "",
     obs: e.observacoes || "",
@@ -1567,7 +1517,7 @@ function enriquecerEventos() {
       e.sub_novo = e.subindicador || e.indicador || "";
       return;
     }
-    const cod = decisoes[e.id] || d.cod || null;
+    const cod = triagemDo(e, String(e.id)) || d.cod || null;
     e.card_novo = d.card;
     e.indicador_novo = d.card + " — " + CARDS[d.card].nome;
     e.sub_novo = cod ? cod + " — " + CARDS[d.card].sub[cod] : "Em triagem";
@@ -1630,13 +1580,12 @@ function montarCard(codigo, cfg) {
       alerta: r.cod ? null
         : "<b>Sem categoria no catálogo novo.</b> O registro foi feito como “"
           + r.antiga + "”. " + (r.nota || "Esse rótulo não diz qual das opções "
-          + "abaixo é o caso.") + " Escolha em “Categoria”: a decisão fica nesta "
-          + "máquina até a migração rodar.",
+          + "do catálogo novo é o caso.") + " A triagem da Fase 2 é carregada no "
+          + "banco (painel.triagem_decisoes) e este registro não recebeu decisão.",
       props: [
-        ["Categoria", r.cod ? r.cod + " — " + cfg.sub[r.cod] : "Em triagem",
-         r.novo ? null
-           : (r.opcoes.length > 1 ? r.opcoes : Object.keys(cfg.sub)).map(k => k + " — " + cfg.sub[k]),
-         v => { decisoes[r.id] = String(v).split(" — ")[0]; salvarDecisoes(); zerarLinhas(); irPara(codigo, true); }],
+        // Somente leitura: a categoria do registro legado vem da triagem
+        // gravada no banco, nao de uma escolha guardada neste navegador.
+        ["Categoria", r.cod ? r.cod + " — " + cfg.sub[r.cod] : "Em triagem"],
         ["Registrado como", r.antiga],
         ["Data da ocorrência", r.data ? dbr(r.data) : "não registrada"],
         ["Operadora", r.op || "sem vínculo"],
@@ -2041,7 +1990,6 @@ function abrirPagina(chave) {
   $("#crumbNow").textContent = p.nome;
   const cc = $("#cardCartas"); if (cc) cc.remove();
   $("#pageCard").classList.add("hidden");
-  $("#pageMigracao").classList.add("hidden");
   $("#pageLegacy").classList.remove("hidden");
   const box = $("#legacyBody");
   box.innerHTML = "";
@@ -2317,7 +2265,6 @@ function irPara(codigo, manterDrill) {
 
   $("#pageCard").classList.remove("hidden");
   $("#pageLegacy").classList.add("hidden");
-  $("#pageMigracao").classList.add("hidden");
   [...navBox.children].forEach((b, i) => b.classList.toggle("on", ORDEM[i] === codigo));
   [...navOps.children].forEach(b => b.classList.remove("on"));
   $("#crumbNow").textContent = codigo + " — " + card.nome;
@@ -2653,8 +2600,7 @@ function fechar() {
   peek.classList.remove("on");
   peek.setAttribute("aria-hidden", "true");
   scrim.classList.remove("on");
-  document.querySelectorAll("#rows tr, #mgRows tr").forEach(tr => tr.classList.remove("sel"));
-  if (typeof mgAtual !== "undefined") mgAtual = null;
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.remove("sel"));
 }
 $("#peekClose").addEventListener("click", fechar);
 scrim.addEventListener("click", fechar);
@@ -3901,7 +3847,6 @@ function toast(titulo, corpo) {
  *  com o que a pessoa esta vendo, inclusive filtro e ordenacao. */
 function tabelaVisivel() {
   const secoes = [
-    ["#pageMigracao", "#pageMigracao table"],
     ["#pageLegacy", "#opTabela table"],
     ["#pageCard", "#viewTable table, #viewPivot table"],
   ];
@@ -3916,7 +3861,6 @@ function tabelaVisivel() {
 }
 
 function nomeDaPagina() {
-  if (!$("#pageMigracao").classList.contains("hidden")) return "Migração";
   if (!$("#pageLegacy").classList.contains("hidden")) return $("#opTitulo").textContent || "Operação";
   return atual + " — " + (CARDS[atual] ? CARDS[atual].nome : "");
 }
@@ -3925,7 +3869,6 @@ function recorteDaPagina() {
   if (!$("#pageLegacy").classList.contains("hidden")) {
     return $("#opTitulo").textContent === "Relatórios" ? relRecorte() : "sem filtro de período";
   }
-  if (!$("#pageMigracao").classList.contains("hidden")) return "todos os casos ambíguos";
   return cardRecorte();
 }
 
@@ -4101,247 +4044,6 @@ btnTema.addEventListener("click", () => {
 });
 aplicaTema();
 
-// ═══ Migração — decisão dos eventos ambíguos ══════════════════
-// Os casos reais saem de dados.json, gerado por migration/gerar_interface.py.
-// Esse arquivo carrega nome de paciente e observação clínica e NUNCA entra no
-// repositório: fica ao lado do painel quando servido em localhost. Sem ele, a
-// página cai no exemplo fictício abaixo — é o que mantém o protótipo publicável.
-// A pagina de Migracao nao tem fonte propria. Ela mostra exatamente os
-// registros que os cards deixaram "Em triagem" -- os que o catalogo antigo
-// nao consegue traduzir sozinho. Antes ela lia uma chave `migracao` que so
-// o gerador do dump produzia: pela API a chave nunca vinha, e a pagina ficava
-// vazia mesmo com o banco cheio.
-//
-// A decisao e a mesma dos cards (`decisoes`): decidir aqui muda o card, e
-// decidir no card tira o caso daqui.
-let mgDados = [], mgAtual = null;
-const mgDecisoes = decisoes;
-const mgSalvar = () => { salvarDecisoes(); zerarLinhas(); };
-
-function casosEmTriagem() {
-  const por = linhasPorCard();
-  const casos = [];
-  ORDEM.forEach(c => por[c].forEach(r => {
-    if (r.cod || r.opcoes.length < 2) return;
-    casos.push({
-      evento_id: r.id,
-      paciente_id: r.paciente_id,
-      paciente: r.pac,
-      data: r.data,
-      indicador_antigo: r.antiga,
-      subindicador_antigo: r.antiga,
-      observacoes_raw: r.obs,
-      card_destino: c,
-      opcoes: r.opcoes.map(k => k + " " + CARDS[c].sub[k]).join(" | "),
-      nota: r.nota,
-    });
-  }));
-  return casos.sort((a, b) => a.subindicador_antigo.localeCompare(b.subindicador_antigo)
-                              || (b.data || "").localeCompare(a.data || ""));
-}
-
-const mgOpcoes = c => {
-  const o = (c.opcoes || "").split(" | ").filter(Boolean).map(s => {
-    const i = s.indexOf(" ");
-    return i < 0 ? { cod:s, nome:"" } : { cod:s.slice(0, i), nome:s.slice(i + 1) };
-  });
-  if (!o.length && c.destino) o.push({ cod:c.destino, nome:c.destino_nome || "" });
-  return o;
-};
-const mgCaso = id => mgDados.find(c => c.evento_id === id);
-const mgCodigo = s => (String(s).match(/^\s*([\d.]+)/) || [, ""])[1];
-
-function mgVisiveis() {
-  const sit = $("#mgSit").value, cat = $("#mgCat").value;
-  return mgDados.filter(c => {
-    if (cat && c.subindicador_antigo !== cat) return false;
-    const tem = !!mgDecisoes[c.evento_id];
-    return sit === "todos" || (sit === "pendentes" ? !tem : tem);
-  });
-}
-
-function mgStats() {
-  const s = $("#mgStats");
-  s.innerHTML = "";
-  const n = Object.keys(mgDecisoes).filter(k => mgCaso(k)).length, t = mgDados.length;
-  const cats = new Set(mgDados.map(c => c.subindicador_antigo)).size;
-  const cel = (k, v, d, cls, meter) => {
-    const c = el("div", "cell" + (cls ? " " + cls : ""));
-    c.append(el("div", "k", k), el("div", "v", String(v)), el("div", "d", d));
-    if (meter != null) { const m = el("div", "meter"), i = el("i"); i.style.width = meter + "%"; m.append(i); c.append(m); }
-    return c;
-  };
-  s.append(cel("Decididos", n, t ? Math.round(100 * n / t) + "% do total" : "—", "lead", t ? 100 * n / t : 0));
-  s.append(cel("Pendentes", t - n, "aguardando decisão", (t - n) ? "warn" : ""));
-  s.append(cel("Categorias antigas", cats, "que o catálogo novo divide"));
-  s.append(cel("Total", t, "registros aguardando decisão"));
-}
-
-function mgRender() {
-  mgStats();
-  const vis = mgVisiveis(), tb = $("#mgRows");
-  tb.innerHTML = "";
-  $("#mgCount").textContent = String(vis.length);
-  $("#mgTotal").textContent = String(mgDados.length);
-  $("#mgVazio").classList.toggle("hidden", vis.length > 0);
-  vis.forEach(c => {
-    const tr = el("tr");
-    tr.dataset.id = c.evento_id;
-    if (mgAtual === c.evento_id) tr.classList.add("sel");
-    const td1 = el("td", "pat");
-    td1.append(document.createTextNode(c.paciente), el("span", "op", c.indicador_antigo));
-    tr.append(td1, el("td", "dim nowrap", dbr(c.data)));
-    const td3 = el("td");
-    td3.append(el("span", "code-tag mono", mgCodigo(c.subindicador_antigo)),
-               document.createTextNode(c.subindicador_antigo.replace(/^\s*[\d.]+\s*-\s*/, "")));
-    tr.append(td3);
-    const td4 = el("td");
-    td4.append(el("span", "trunc", c.observacoes_raw || ""));
-    tr.append(td4);
-    const td5 = el("td");
-    td5.append(el("span", "trunc", c.nota || ""));
-    tr.append(td5);
-    const td6 = el("td");
-    const d = mgDecisoes[c.evento_id];
-    td6.append(d ? badge(d, "b-acc") : el("span", "dim", ""));
-    tr.append(td6);
-    tr.addEventListener("click", () => mgAbrir(c.evento_id));
-    tb.append(tr);
-  });
-}
-
-function mgAbrir(id) {
-  const c = mgCaso(id);
-  if (!c) return;
-  mgAtual = id;
-  $("#peekId").textContent = String(id).slice(0, 12);
-  const body = $("#peekBody");
-  body.innerHTML = "";
-  const cab = el("div");
-  cab.append(el("h2", null, c.paciente));
-  cab.append(el("div", "sub", dbr(c.data) + " · " + c.subindicador_antigo));
-  body.append(cab);
-
-  const s1 = el("div");
-  s1.append(el("div", "sec-h", "Observação do registro"));
-  const nb = el("div", "notebox pre" + (c.observacoes_raw ? "" : " empty"),
-                c.observacoes_raw || "sem observação registrada");
-  nb.style.marginTop = "10px";
-  s1.append(nb);
-  body.append(s1);
-
-  const s2 = el("div");
-  s2.append(el("div", "sec-h", "Por que precisa de decisão"));
-  const box = el("div", "alertbox");
-  box.style.marginTop = "10px";
-  box.append(document.createTextNode(c.nota
-    || "O rótulo antigo cobre mais de uma categoria do catálogo novo."));
-  s2.append(box);
-  body.append(s2);
-
-  const s3 = el("div");
-  s3.append(el("div", "sec-h", "Para onde vai"));
-  const opts = el("div", "opts");
-  opts.style.marginTop = "10px";
-  const sel = mgDecisoes[id] || "";
-  mgOpcoes(c).forEach(o => {
-    const b = el("button", "opt-row" + (sel === o.cod ? " on" : ""));
-    b.type = "button";
-    b.append(el("span", "cod", o.cod));
-    const w = el("span");
-    w.append(el("span", null, o.nome));
-    b.append(w);
-    if (sel === o.cod) b.append(el("span", "mk", "✓"));
-    b.addEventListener("click", () => {
-      mgDecisoes[id] = o.cod;
-      mgSalvar();
-      mgDados = casosEmTriagem();
-      atualizarContagens();
-      enriquecerEventos();
-      fechar();
-      mgRender();
-    });
-    opts.append(b);
-  });
-  s3.append(opts);
-  body.append(s3);
-
-  const irmaos = mgDados.filter(x => x.subindicador_antigo === c.subindicador_antigo);
-  const feitos = irmaos.filter(x => mgDecisoes[x.evento_id]).length;
-  const s4 = el("div");
-  s4.append(el("div", "sec-h", "Progresso desta categoria"));
-  const req = el("div", "req");
-  req.style.marginTop = "10px";
-  const bar = el("div", "bar"), bi = el("i");
-  bi.style.width = (100 * feitos / irmaos.length) + "%";
-  bar.append(bi);
-  const inner = el("div", "inner"), hd = el("div", "hd");
-  hd.append(el("b", null, c.subindicador_antigo), el("span", "n mono", feitos + "/" + irmaos.length));
-  inner.append(hd);
-  req.append(bar, inner);
-  s4.append(req);
-  body.append(s4);
-
-  peek.classList.add("on");
-  peek.setAttribute("aria-hidden", "false");
-  scrim.classList.add("on");
-  mgRender();
-}
-
-function mgMontarFiltros() {
-  const sel = $("#mgCat");
-  sel.innerHTML = '<option value="">Todas</option>';
-  [...new Set(mgDados.map(c => c.subindicador_antigo))].sort().forEach(v => {
-    const o = document.createElement("option");
-    o.value = v;
-    o.textContent = v + " (" + mgDados.filter(x => x.subindicador_antigo === v).length + ")";
-    sel.append(o);
-  });
-  const aviso = $("#mgAviso");
-  aviso.innerHTML = "";
-  if (!OP.__real) {
-    aviso.append(el("span", "mirror falha",
-      FONTE.aviso || "Sem fonte de dados: não há registro para decidir."));
-  }
-}
-
-function abrirMigracao() {
-  fechar();
-  document.querySelectorAll(".navitem").forEach(b => b.classList.remove("on"));
-  btnMigracao.classList.add("on");
-  $("#crumbNow").textContent = "Migração";
-  $("#pageCard").classList.add("hidden");
-  $("#pageLegacy").classList.add("hidden");
-  $("#pageMigracao").classList.remove("hidden");
-  mgRender();
-  window.scrollTo({ top: 0 });
-}
-
-const btnMigracao = el("button", "navitem");
-btnMigracao.type = "button";
-btnMigracao.append(el("span", "code", "·"), el("span", "nm", "Migração"));
-btnMigracao.append(el("span", "ct mono", "55"));
-btnMigracao.addEventListener("click", abrirMigracao);
-navOps.append(btnMigracao);
-
-$("#mgSit").addEventListener("change", mgRender);
-$("#mgCat").addEventListener("change", mgRender);
-$("#mgExport").addEventListener("click", () => {
-  const cols = ["evento_id","paciente_id","paciente","data","subindicador_antigo",
-                "card_destino","opcoes","DECISAO","observacoes_raw"];
-  const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
-  const linhas = [cols.join(",")];
-  mgDados.forEach(c => linhas.push(cols.map(k => q(k === "DECISAO" ? (mgDecisoes[c.evento_id] || "") : c[k])).join(",")));
-  const blob = new Blob(["\ufeff" + linhas.join("\r\n")], { type:"text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "decisoes-fase2.csv";
-  a.click();
-  URL.revokeObjectURL(a.href);
-  const pend = mgDados.length - Object.keys(mgDecisoes).filter(k => mgCaso(k)).length;
-  toast("CSV exportado", pend ? pend + " caso(s) saíram com DECISAO vazia." : "Todos os casos decididos.");
-});
-
 // Com sessao valida os dados vem do Postgres pela API; sem ela, do arquivo ao
 // lado. A API roda as mesmas consultas do consultas_painel.sql que geram esse
 // arquivo, entao a tela nao distingue as duas fontes -- e por isso a troca
@@ -4428,7 +4130,6 @@ async function buscarDados() {
 // visivel, nao por variavel de estado -- pelo mesmo motivo da troca de
 // empresa: `opAtual` guarda a ultima tela de Operacao e nunca zera.
 function repintarAtual() {
-  if (!$("#pageMigracao").classList.contains("hidden")) { mgRender(); return; }
   if (!$("#pageLegacy").classList.contains("hidden")) {
     if (opAtual) abrirPaginaOp(opAtual);
     return;
@@ -4440,16 +4141,8 @@ async function carregarDados() {
   try {
     const d = await buscarDados();
     if (!Array.isArray(d)) opAplicarDados(d);
-    mgDados = casosEmTriagem();
-    btnMigracao.querySelector(".ct").textContent = String(mgDados.length);
-    mgMontarFiltros();
-    if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
     if (FONTE.aviso) contarFalhaDeFonte();
   } catch (e) {
-    mgDados = [];
-    btnMigracao.querySelector(".ct").textContent = "0";
-    mgMontarFiltros();
-    if (!$("#pageMigracao").classList.contains("hidden")) mgRender();
     contarFalhaDeFonte();
   }
   // Redesenha a tela aberta com o dado que acabou de chegar. No primeiro
@@ -5127,7 +4820,7 @@ function fechamentoDerivado() {
     .filter(r => empresaDe(r) === F.emp && r.situacao === "ativo" && !r.admissao).length;
   const itens = [
     { regra: "Registro sem categoria no catálogo novo", qtd: triagem, bloqueia: true,
-      detalhe: "Decida na página de Migração ou abrindo o registro no card." },
+      detalhe: "A triagem da Fase 2 é carregada no banco; estes registros ficaram sem decisão." },
     { regra: "Registro sem data de ocorrência", qtd: semData, bloqueia: true,
       detalhe: "Sem data o registro não entra em competência nenhuma." },
     { regra: "Ocorrência do formulário público sem paciente", qtd: pendentes, bloqueia: true,
@@ -5191,7 +4884,6 @@ var abrirPaginaOp = function (chave) {
   [...navOps.children].forEach((b, i) => b.classList.toggle("on", Object.keys(PAGES)[i] === chave));
   $("#crumbNow").textContent = p.nome;
   $("#pageCard").classList.add("hidden");
-  $("#pageMigracao").classList.add("hidden");
   $("#pageLegacy").classList.remove("hidden");
 
   opAtual = chave;
