@@ -1685,13 +1685,42 @@ montarCard("08", {
 // mora numa spec propria, e nao numa subcategoria como as demais.
 const NPS_SUB = "9.NPS";   // sub sintetico: mantem o rendering de card>sub de pe
 const NPS_SPEC = {
+  // Ids p1..p6 (e nao q1..q6): q4 e q5 ja sao a aberta e a nota nos registros
+  // gravados. Opcoes sempre da melhor (indice 0) para a pior -- a nota depende
+  // dessa ordem. `rotulo` e o nome curto usado em listas e no detalhe; `obs`
+  // orienta quem registra a resposta.
   perguntas: [
-    { id: "q1", texto: "Atendimento da equipe/empresa",
-      opcoes: ["Excelente", "Bom", "Regular", "Péssimo"] },
-    { id: "q2", texto: "Comunicação da equipe",
-      opcoes: ["Excelente", "Boa", "Regular", "Péssima"] },
-    { id: "q3", texto: "Tempo de atendimento mediante solicitações",
-      opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
+    { id: "p1", rotulo: "Atendimento e trato no dia a dia",
+      texto: "Como você avalia nosso atendimento e a forma como os profissionais da equipe de saúde tratam o paciente no dia a dia?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Considere a cordialidade, o respeito e a atenção da equipe com o paciente." },
+    { id: "p2", rotulo: "Suporte a dúvidas e orientações",
+      texto: "Quando você tem dúvidas ou precisa de orientações sobre horários, medicamentos, procedimentos ou cuidados com o paciente, como avalia o suporte oferecido pela empresa e pela equipe?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Se nunca precisou de orientação, registre a percepção geral sobre a disponibilidade da equipe." },
+    { id: "p3", rotulo: "Comunicação fácil, acessível e resolutiva",
+      texto: "Você considera que a comunicação com a empresa é fácil, acessível e resolutiva?",
+      opcoes: ["Sim, sempre", "Na maioria das vezes", "Raramente", "Não"],
+      obs: "“Resolutiva”: a demanda foi resolvida, não apenas recebida." },
+    { id: "p4", rotulo: "Experiência com a rotina de cuidados",
+      texto: "Como tem sido sua experiência com a rotina de cuidados do paciente desde o início do Home Care?",
+      opcoes: ["Excelente", "Boa", "Regular", "Ruim"],
+      obs: "Rotina: frequência das visitas, cumprimento do plano de cuidados e adaptação da casa." },
+    { id: "p5", rotulo: "Pontualidade, organização e compromisso",
+      texto: "Como você avalia a pontualidade, organização e compromisso dos profissionais que prestam assistência ao paciente?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Atrasos, faltas ou trocas sem aviso puxam a avaliação para baixo." },
+    { id: "p6", rotulo: "Mudança na qualidade de vida e bem-estar",
+      texto: "Desde o início do atendimento de Home Care, você percebe alguma mudança na qualidade de vida, segurança ou bem-estar do paciente e da família?",
+      opcoes: ["Sim, melhorou muito", "Sim, melhorou um pouco", "Não percebi mudança", "Piorou"],
+      obs: "Vale para o paciente e para a família. “Não percebi mudança” conta abaixo de melhora." },
+  ],
+  // Instrumento anterior (3 perguntas). So para exibir os registros gravados
+  // com ele; a nota (q5) desses registros ja esta gravada e nao e recalculada.
+  legado: [
+    { id: "q1", rotulo: "Atendimento da equipe/empresa" },
+    { id: "q2", rotulo: "Comunicação da equipe" },
+    { id: "q3", rotulo: "Tempo de atendimento mediante solicitações" },
   ],
   // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS melhorias,
   // digitadas livremente numa lista. O combobox editavel sugere as ja usadas
@@ -1701,9 +1730,9 @@ const NPS_SPEC = {
   respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
 };
 
-/** Nota 0-10 calculada das respostas Q1..Q3. Cada pergunta tem 4 opcoes, da
+/** Nota 0-10 calculada das respostas P1..P6. Cada pergunta tem 4 opcoes, da
  *  melhor (indice 0) a pior; vira 10, 6.67, 3.33, 0; a nota e a media, arredondada.
- *  Sem as tres respostas, null -- nao da para calcular. E o que substitui a
+ *  Sem todas as respostas, null -- nao da para calcular. E o que substitui a
  *  digitacao da Q5: a probabilidade de recomendar sai da percepcao registrada. */
 function npsNotaCalculada(nps) {
   const notas = NPS_SPEC.perguntas.map(p => {
@@ -3464,7 +3493,7 @@ function montarListaMelhorias(container, nps) {
 function montarInstrumentoNps(f, estado, campo) {
   const nps = estado.nps;
 
-  // Q5 e calculada das respostas Q1..Q3, nao digitada. Este campo mostra a nota
+  // Q5 e calculada das respostas P1..P6, nao digitada. Este campo mostra a nota
   // e a classe ao vivo; recalcula a cada resposta.
   const wrapQ5 = el("div", "nps-calc");
   const valNota = el("span", "nps-calc-nota");
@@ -3479,11 +3508,12 @@ function montarInstrumentoNps(f, estado, campo) {
     selo.className = "nps-selo" + (c ? " " + c : "");
   };
 
-  // Q1..Q3: escolha unica, via combobox. Cada resposta recalcula a Q5.
-  NPS_SPEC.perguntas.forEach(p => {
-    campo(p.texto, combobox(
+  // P1..P6: escolha unica, via combobox. Cada resposta recalcula a Q5.
+  NPS_SPEC.perguntas.forEach((p, i) => {
+    const d = campo((i + 1) + ". " + p.texto, combobox(
       p.opcoes.map(o => ({ valor: o, rotulo: o })),
       nps[p.id], v => { nps[p.id] = v; recalcula(); }, "Escolha"), true);
+    if (p.obs) d.append(el("div", "dica", p.obs));
   });
 
   wrapQ5.append(valNota, selo);
@@ -3527,7 +3557,7 @@ function abrirNovoRegistro() {
                    anexo: null, anexoErro: "",
                    // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
                    classe: "quantitativa",
-                   nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
+                   nps: { p1: "", p2: "", p3: "", p4: "", p5: "", p6: "", q4: "", q5: "",
                           melhorias: [], respondente: "", parentesco: "" } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
@@ -3730,7 +3760,7 @@ function abrirNovoRegistro() {
       if (!estado.responsavel) faltando.push("profissional responsável");
       if (ehNpsSalvar) {
         const nps = estado.nps;
-        NPS_SPEC.perguntas.forEach(p => { if (!nps[p.id]) faltando.push(p.texto); });
+        NPS_SPEC.perguntas.forEach(p => { if (!nps[p.id]) faltando.push(p.rotulo); });
         if (npsClasse(nps.q5) === null) faltando.push("nota de recomendação (0 a 10)");
         if (!nps.respondente) faltando.push("quem respondeu");
       } else {
@@ -3776,7 +3806,8 @@ function abrirNovoRegistro() {
         // A nota vira numero e a classe do respondente e gravada junto: ler o
         // NPS depois nao pode depender de recalcular a regra em todo lugar.
         evento.nps = {
-          q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
+          ...Object.fromEntries(NPS_SPEC.perguntas.map(p => [p.id, nps[p.id]])),
+          q4: (nps.q4 || "").trim(),
           melhorias: (Array.isArray(nps.melhorias) ? nps.melhorias : [])
             .map(m => (m || "").trim()).filter(Boolean),
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
@@ -5927,7 +5958,9 @@ function relDetalheEvento(ev, voltar) {
       r.append(el("span", "pk", k), el("span", "pv", v == null || v === "" ? "—" : String(v)));
       p.append(r);
     };
-    NPS_SPEC.perguntas.forEach(q => linhaN(q.texto, nps[q.id]));
+    // Registro do instrumento anterior (q1..q3) mostra as perguntas de entao.
+    const lista = ("q1" in nps && !("p1" in nps)) ? NPS_SPEC.legado : NPS_SPEC.perguntas;
+    lista.forEach(q => linhaN(q.rotulo, nps[q.id]));
     if (Array.isArray(nps.melhorias) && nps.melhorias.length) {
       linhaN("Melhorias citadas", nps.melhorias.join(" · "));
     }
