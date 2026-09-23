@@ -53,6 +53,9 @@ COPY docs/novo-modelo/prototipo/painel.html /usr/share/nginx/html/index.html
 
 # O ARG precisa ser redeclarado: ele nao atravessa estagios.
 ARG VITE_GOOGLE_CLIENT_ID
+# Cordiva: Workspace proprio, cliente OAuth proprio. Vazio = so o botao da
+# HealthMais aparece.
+ARG VITE_GOOGLE_CLIENT_ID_CORDIVA
 
 # Duas substituicoes no HTML, ambas em meta tags que existem justamente para
 # isto. O client id liga o login com Google -- sem ele o painel abre em modo
@@ -60,6 +63,7 @@ ARG VITE_GOOGLE_CLIENT_ID
 # frontend/public/ para a raiz servida.
 RUN sed -i \
       -e "s|<meta name=\"google-client-id\" content=\"\">|<meta name=\"google-client-id\" content=\"${VITE_GOOGLE_CLIENT_ID}\">|" \
+      -e "s|<meta name=\"google-client-id-cordiva\" content=\"\">|<meta name=\"google-client-id-cordiva\" content=\"${VITE_GOOGLE_CLIENT_ID_CORDIVA}\">|" \
       -e "s|content=\"../../../frontend/public/certificates/\"|content=\"/certificates/\"|" \
       /usr/share/nginx/html/index.html \
  && grep -q 'name="cert-assets" content="/certificates/"' /usr/share/nginx/html/index.html

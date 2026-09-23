@@ -70,6 +70,7 @@ def caso(titulo, userinfo, dominio, esperado, falhas):
 
 def main():
     D = "healthmaiscuidados.com"
+    L = D + ", cordiva.net"
     falhas = []
     casos = [
         ("conta de fora barrada com 403", {"email": "x@gmail.com", "email_verified": True}, D, 403),
@@ -79,6 +80,11 @@ def main():
         ("resposta sem email vira 400", {"email_verified": True}, D, 400),
         ("conta do dominio passa", {"email": "x@" + D, "email_verified": True}, D, "chegou no banco"),
         ("email_verified ausente nao barra", {"email": "x@" + D}, D, "chegou no banco"),
+        ("lista: conta da Cordiva passa", {"email": "x@cordiva.net", "email_verified": True}, L, "chegou no banco"),
+        ("lista: conta da HealthMais passa", {"email": "x@" + D, "email_verified": True}, L, "chegou no banco"),
+        ("lista: conta de fora barrada", {"email": "x@gmail.com", "email_verified": True}, L, 403),
+        ("lista: prefixo da Cordiva barrado", {"email": "x@cordiva.net.invasor.com", "email_verified": True}, L, 403),
+        ("lista: subdominio da Cordiva barrado", {"email": "x@sub.cordiva.net", "email_verified": True}, L, 403),
         ("sem ALLOWED_DOMAIN qualquer conta passa", {"email": "x@gmail.com", "email_verified": True}, "", "chegou no banco"),
     ]
     for titulo, userinfo, dominio, esperado in casos:

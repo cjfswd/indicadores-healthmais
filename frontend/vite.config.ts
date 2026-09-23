@@ -17,10 +17,13 @@ function painelNaRaiz(): Plugin {
   const proto = fileURLToPath(new URL('../docs/novo-modelo/prototipo', import.meta.url))
   const indexVue = fileURLToPath(new URL('./index.html', import.meta.url))
   const clientId = process.env.VITE_GOOGLE_CLIENT_ID || ''
+  const clientIdCordiva = process.env.VITE_GOOGLE_CLIENT_ID_CORDIVA || ''
   const transformar = (html: string) =>
     html
       .replace('<meta name="google-client-id" content="">',
         `<meta name="google-client-id" content="${clientId}">`)
+      .replace('<meta name="google-client-id-cordiva" content="">',
+        `<meta name="google-client-id-cordiva" content="${clientIdCordiva}">`)
       .replace('content="../../../frontend/public/certificates/"',
         'content="/certificates/"')
   return {
