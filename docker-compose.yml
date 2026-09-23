@@ -12,7 +12,10 @@ services:
       - DB_NAME=${DB_NAME:-mongodb-database-ac4ljene7dzemo5naoldrcmv}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - ALLOWED_DOMAIN=${ALLOWED_DOMAIN:-healthmaiscuidados.com}
+      - ALLOWED_DOMAIN=${ALLOWED_DOMAIN:-healthmaiscuidados.com,cordiva.net}
+      # Cordiva: Workspace proprio, cliente OAuth proprio.
+      - GOOGLE_CLIENT_ID_CORDIVA=${GOOGLE_CLIENT_ID_CORDIVA:-}
+      - GOOGLE_CLIENT_SECRET_CORDIVA=${GOOGLE_CLIENT_SECRET_CORDIVA:-}
       # Sem default: o segredo de assinatura nao pode ser um valor conhecido.
       - JWT_SECRET=${JWT_SECRET:?defina JWT_SECRET no ambiente}
       # Sem default de proposito: ausente = app segue so no Mongo.
@@ -33,6 +36,7 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - VITE_GOOGLE_CLIENT_ID_CORDIVA=${GOOGLE_CLIENT_ID_CORDIVA:-}
     expose:
       - "80"
     labels:

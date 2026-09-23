@@ -16,7 +16,9 @@
        localStorage.setItem("painel.clientId", "...apps.googleusercontent.com")
        localStorage.setItem("painel.api", "http://localhost:3000")  -->
 <meta name="google-client-id" content="">
+<meta name="google-client-id-cordiva" content="">
 <meta name="allowed-domain" content="healthmaiscuidados.com">
+<meta name="allowed-domain-cordiva" content="cordiva.net">
 <meta name="api-base" content="">
 <!-- Caminho dos assets do certificado. O valor abaixo serve o arquivo aberto
      do repositorio; na imagem do frontend ele vira /certificates/, porque o
@@ -677,6 +679,7 @@
   .login-logo[hidden], .login-mark[hidden] { display:none; }
   .login h2 { margin:0 0 6px; font-size:19px; letter-spacing:-.02em; font-weight:600; }
   .login p { margin:0 0 22px; font-size:13px; color:var(--ink-3); }
+  .login-contas { display:flex; flex-direction:column; gap:8px; }
   .login .btn { width:100%; justify-content:center; padding:9px 14px; font-size:13.5px; }
   .login .dom { margin-top:16px; font-size:11.5px; color:var(--ink-3);
     border-top:1px solid var(--line); padding-top:14px; }
@@ -1258,9 +1261,9 @@
     <img class="login-logo" id="loginLogo" alt="HealthMais" hidden>
     <h2>Painel de Indicadores</h2>
     <p>Entre com a conta corporativa para acessar.</p>
-    <button class="btn btn-primary" id="btnEntrar">Entrar com Google</button>
+    <div class="login-contas" id="loginContas"></div>
     <div class="login-aviso" id="loginAviso" hidden></div>
-    <div class="dom">Acesso restrito ao domínio <b id="loginDominio">healthmaiscuidados.com</b></div>
+    <div class="dom" id="loginDominio">Acesso restrito ao domínio <b>healthmaiscuidados.com</b></div>
   </div>
 </div>
 
@@ -5090,9 +5093,20 @@ function opAplicarDados(d) {
 const metaTag = n => (document.querySelector('meta[name="' + n + '"]') || {}).content || "";
 const doLocal = n => { try { return localStorage.getItem(n) || ""; } catch (e) { return ""; } };
 
+// HealthMais e Cordiva sao Workspaces diferentes, cada um com o proprio
+// cliente OAuth -- um cliente "Interno" so aceita contas do proprio Workspace.
+// Um botao por conta configurada; sem client id a conta nao aparece.
+const CONTAS = [
+  { empresa: "healthmais", rotulo: "HealthMais",
+    clientId: doLocal("painel.clientId") || metaTag("google-client-id"),
+    dominio: metaTag("allowed-domain") },
+  { empresa: "cordiva", rotulo: "Córdiva",
+    clientId: metaTag("google-client-id-cordiva"),
+    dominio: metaTag("allowed-domain-cordiva") },
+].filter(c => c.clientId);
+
 const AUTH = {
-  clientId: doLocal("painel.clientId") || metaTag("google-client-id"),
-  dominio : metaTag("allowed-domain"),
+  clientId: CONTAS.length ? CONTAS[0].clientId : "",   // vazio = prototipo
   api     : doLocal("painel.api") || metaTag("api-base"),   // vazio = mesma origem
   chave   : "painel.sessao",
 };
@@ -5101,7 +5115,29 @@ const login = $("#login");
 const loginAviso = $("#loginAviso");
 const quem = $("#quem");
 
-if (AUTH.dominio) $("#loginDominio").textContent = AUTH.dominio;
+// Uma conta so: o botao de sempre. Duas: um botao por empresa, e quem entra
+// ja cai na empresa do botao que usou.
+(function montarContas() {
+  const box = $("#loginContas");
+  const lista = CONTAS.length ? CONTAS : [{ rotulo: "", dominio: metaTag("allowed-domain") }];
+  lista.forEach(c => {
+    const b = el("button", "btn btn-primary",
+      "Entrar com Google" + (CONTAS.length > 1 ? " — " + c.rotulo : ""));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      if (!AUTH.clientId) { login.classList.remove("on"); return; }   // prototipo
+      irParaGoogle(c);
+    });
+    box.append(b);
+  });
+  const doms = lista.map(c => c.dominio).filter(Boolean);
+  const d = $("#loginDominio");
+  d.textContent = "Acesso restrito " + (doms.length > 1 ? "aos domínios " : "ao domínio ");
+  doms.forEach((x, i) => {
+    if (i) d.append(document.createTextNode(" e "));
+    d.append(el("b", null, x));
+  });
+})();
 
 // A logo so substitui o H+ depois de carregar. Trocar antes deixaria um espaco
 // vazio no lugar da marca se o arquivo faltar -- que e o caso quando o painel
@@ -5151,14 +5187,16 @@ function voltaPara() {
   return location.origin + (location.pathname === "/" ? "" : location.pathname);
 }
 
-function irParaGoogle() {
+function irParaGoogle(conta) {
+  // Lembra por qual empresa entrou: na volta o painel abre nela.
+  try { sessionStorage.setItem("painel.loginEmpresa", conta.empresa || ""); } catch (e) {}
   const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  u.searchParams.set("client_id", AUTH.clientId);
+  u.searchParams.set("client_id", conta.clientId);
   u.searchParams.set("redirect_uri", voltaPara());
   u.searchParams.set("response_type", "token");
   u.searchParams.set("scope", "email profile");
   u.searchParams.set("prompt", "select_account");
-  if (AUTH.dominio) u.searchParams.set("hd", AUTH.dominio);
+  if (conta.dominio) u.searchParams.set("hd", conta.dominio);
   location.href = u.toString();
 }
 
@@ -5178,6 +5216,11 @@ async function trocarPorSessao(accessToken) {
     try { localStorage.setItem(AUTH.chave, JSON.stringify({ token: corpo.token, user: corpo.user })); }
     catch (e) {}
     avisar("");
+    try {
+      const emp = sessionStorage.getItem("painel.loginEmpresa");
+      sessionStorage.removeItem("painel.loginEmpresa");
+      if (emp && EMPRESAS.some(x => x.id === emp)) { F.emp = emp; localStorage.setItem("empresa", emp); }
+    } catch (e) {}
     mostrarPainel({ user: corpo.user });
     toast("Sessão iniciada", (corpo.user && corpo.user.name) || "");
     // Agora HA sessao. Buscar de novo troca o exemplo -- carregado antes do
@@ -5187,11 +5230,6 @@ async function trocarPorSessao(accessToken) {
     avisar("Não foi possível falar com o servidor.", "erro");
   }
 }
-
-$("#btnEntrar").addEventListener("click", () => {
-  if (!AUTH.clientId) { login.classList.remove("on"); return; }   // prototipo
-  irParaGoogle();
-});
 
 $("#btnSair").addEventListener("click", () => {
   fechar();

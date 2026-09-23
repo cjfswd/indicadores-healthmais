@@ -12,16 +12,19 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def dominio_permitido(email: str, dominio: str) -> bool:
-    """A conta pertence ao dominio exigido?
+    """A conta pertence a um dos dominios exigidos?
 
-    Dominio vazio libera tudo -- e o comportamento de hoje, mantido para quem
-    subir sem a variavel. Com dominio definido a comparacao e no sufixo
-    "@dominio", nunca `in`: "healthmaiscuidados.com.invasor.net" contem o
-    dominio e nao e ele.
+    `dominio` aceita lista separada por virgula -- HealthMais e Cordiva sao
+    Workspaces diferentes e as duas entram. Vazio libera tudo -- e o
+    comportamento de hoje, mantido para quem subir sem a variavel. Com dominio
+    definido a comparacao e no sufixo "@dominio", nunca `in`:
+    "healthmaiscuidados.com.invasor.net" contem o dominio e nao e ele.
     """
-    if not dominio:
+    dominios = [d.strip().lower() for d in (dominio or "").split(",") if d.strip()]
+    if not dominios:
         return True
-    return email.strip().lower().endswith("@" + dominio.strip().lower())
+    e = email.strip().lower()
+    return any(e.endswith("@" + d) for d in dominios)
 
 
 @router.post("/google")
@@ -62,7 +65,8 @@ async def auth_google(request: Request):
         if not dominio_permitido(email, dominio):
             raise HTTPException(
                 status_code=403,
-                detail=f"Acesso restrito ao dominio {dominio}.",
+                detail="Acesso restrito aos dominios "
+                       + ", ".join(d.strip() for d in dominio.split(",") if d.strip()) + ".",
             )
 
         db = get_db()
