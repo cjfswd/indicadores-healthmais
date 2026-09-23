@@ -384,6 +384,13 @@
   .nps-qual .cell .k { font-size:11px; color:var(--ink-3); }
   .nps-qual .cell .v { font-size:19px; font-weight:600; letter-spacing:-.02em; }
   .nps-qual .cell .d { font-size:10.5px; color:var(--ink-3); }
+  .nps-tend { margin-top:14px; }
+  .nps-tend .t-linha { fill:none; stroke:var(--accent); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .nps-tend .t-ponto { fill:var(--accent); stroke:var(--surface); stroke-width:2; }
+  .nps-tend .t-ponto.instavel { fill:var(--surface); stroke:var(--accent); }
+  .nps-tend .t-ref { stroke:var(--ink-3); stroke-opacity:.35; stroke-width:1; stroke-dasharray:3 4; }
+  .nps-tend .t-meta { stroke:var(--ink-3); stroke-width:1; stroke-dasharray:6 4; }
+  .nps-tend .t-rot { fill:var(--ink-3); font-size:10px; font-family:"IBM Plex Mono", monospace; }
   .nps-aviso { font-size:12px; padding:9px 11px; border-radius:8px;
     background:var(--sev-2-soft); color:var(--sev-2); }
   /* Respondentes: secao colapsavel, busca por nome, filtro e lista clicavel. */
@@ -1685,13 +1692,42 @@ montarCard("08", {
 // mora numa spec propria, e nao numa subcategoria como as demais.
 const NPS_SUB = "9.NPS";   // sub sintetico: mantem o rendering de card>sub de pe
 const NPS_SPEC = {
+  // Ids p1..p6 (e nao q1..q6): q4 e q5 ja sao a aberta e a nota nos registros
+  // gravados. Opcoes sempre da melhor (indice 0) para a pior -- a nota depende
+  // dessa ordem. `rotulo` e o nome curto usado em listas e no detalhe; `obs`
+  // orienta quem registra a resposta.
   perguntas: [
-    { id: "q1", texto: "Atendimento da equipe/empresa",
-      opcoes: ["Excelente", "Bom", "Regular", "Péssimo"] },
-    { id: "q2", texto: "Comunicação da equipe",
-      opcoes: ["Excelente", "Boa", "Regular", "Péssima"] },
-    { id: "q3", texto: "Tempo de atendimento mediante solicitações",
-      opcoes: ["Rápido", "Dentro do prazo esperado", "Demorado", "Muito demorado"] },
+    { id: "p1", rotulo: "Atendimento e trato no dia a dia",
+      texto: "Como você avalia nosso atendimento e a forma como os profissionais da equipe de saúde tratam o paciente no dia a dia?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Considere a cordialidade, o respeito e a atenção da equipe com o paciente." },
+    { id: "p2", rotulo: "Suporte a dúvidas e orientações",
+      texto: "Quando você tem dúvidas ou precisa de orientações sobre horários, medicamentos, procedimentos ou cuidados com o paciente, como avalia o suporte oferecido pela empresa e pela equipe?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Se nunca precisou de orientação, registre a percepção geral sobre a disponibilidade da equipe." },
+    { id: "p3", rotulo: "Comunicação fácil, acessível e resolutiva",
+      texto: "Você considera que a comunicação com a empresa é fácil, acessível e resolutiva?",
+      opcoes: ["Sim, sempre", "Na maioria das vezes", "Raramente", "Não"],
+      obs: "“Resolutiva”: a demanda foi resolvida, não apenas recebida." },
+    { id: "p4", rotulo: "Experiência com a rotina de cuidados",
+      texto: "Como tem sido sua experiência com a rotina de cuidados do paciente desde o início do Home Care?",
+      opcoes: ["Excelente", "Boa", "Regular", "Ruim"],
+      obs: "Rotina: frequência das visitas, cumprimento do plano de cuidados e adaptação da casa." },
+    { id: "p5", rotulo: "Pontualidade, organização e compromisso",
+      texto: "Como você avalia a pontualidade, organização e compromisso dos profissionais que prestam assistência ao paciente?",
+      opcoes: ["Excelente", "Bom", "Regular", "Ruim"],
+      obs: "Atrasos, faltas ou trocas sem aviso puxam a avaliação para baixo." },
+    { id: "p6", rotulo: "Mudança na qualidade de vida e bem-estar",
+      texto: "Desde o início do atendimento de Home Care, você percebe alguma mudança na qualidade de vida, segurança ou bem-estar do paciente e da família?",
+      opcoes: ["Sim, melhorou muito", "Sim, melhorou um pouco", "Não percebi mudança", "Piorou"],
+      obs: "Vale para o paciente e para a família. “Não percebi mudança” conta abaixo de melhora." },
+  ],
+  // Instrumento anterior (3 perguntas). So para exibir os registros gravados
+  // com ele; a nota (q5) desses registros ja esta gravada e nao e recalculada.
+  legado: [
+    { id: "q1", rotulo: "Atendimento da equipe/empresa" },
+    { id: "q2", rotulo: "Comunicação da equipe" },
+    { id: "q3", rotulo: "Tempo de atendimento mediante solicitações" },
   ],
   // Q4 e "aberta + quantitativo": um mesmo envio pode citar VARIAS melhorias,
   // digitadas livremente numa lista. O combobox editavel sugere as ja usadas
@@ -1701,9 +1737,9 @@ const NPS_SPEC = {
   respondentes: ["Paciente", "Familiar", "Cuidador", "Responsável legal", "Outro"],
 };
 
-/** Nota 0-10 calculada das respostas Q1..Q3. Cada pergunta tem 4 opcoes, da
+/** Nota 0-10 calculada das respostas P1..P6. Cada pergunta tem 4 opcoes, da
  *  melhor (indice 0) a pior; vira 10, 6.67, 3.33, 0; a nota e a media, arredondada.
- *  Sem as tres respostas, null -- nao da para calcular. E o que substitui a
+ *  Sem todas as respostas, null -- nao da para calcular. E o que substitui a
  *  digitacao da Q5: a probabilidade de recomendar sai da percepcao registrada. */
 function npsNotaCalculada(nps) {
   const notas = NPS_SPEC.perguntas.map(p => {
@@ -2040,6 +2076,82 @@ function eventosNpsDoCard(codigo) {
   });
 }
 
+/** Score NPS mes a mes nos 12 meses que terminam no fim do periodo filtrado.
+ *  Ignora o inicio do filtro de proposito: tendencia precisa de historico. */
+function npsSerieMensal(codigo) {
+  const fim = (fimF() || new Date().toISOString().slice(0, 10)).slice(0, 7);
+  const [a, m] = fim.split("-").map(Number);
+  const meses = [];
+  for (let k = 11; k >= 0; k--) {
+    const d = new Date(a, m - 1 - k, 1);
+    meses.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+  }
+  const todos = (OP.eventos || []).filter(e =>
+    e.card === codigo && e.classe === "qualitativa" && e.nps && empresaDe(e) === F.emp);
+  return meses.map(mes => {
+    const ap = npsApurar(todos.filter(e => (e.data || "").slice(0, 7) === mes));
+    return { mes, score: ap.score, n: ap.n, instavel: ap.instavel };
+  });
+}
+
+const MES_CURTO = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+
+/** Linha do score NPS (-100..+100) por mes. Mes sem resposta quebra a linha;
+ *  mes com menos de NPS_N_MINIMO respostas vira ponto vazado (instavel). */
+function graficoTendenciaNps(box, serie, meta) {
+  const c = carta("Tendência do NPS", "Score mensal nos últimos 12 meses. Ponto vazado: menos de "
+    + NPS_N_MINIMO + " respostas no mês.");
+  c.classList.add("nps-tend");
+  const w = 1000, h = 220, padT = 16, padB = 28, padL = 40, padR = 14;
+  const alt = h - padT - padB, larg = w - padL - padR;
+  const X = i => padL + (serie.length === 1 ? larg / 2 : larg * i / (serie.length - 1));
+  // Piso em 0; so desce (de 25 em 25) se algum mes ficou negativo. Escala fixa
+  // de -100 espremia a leitura, porque o score quase sempre fica positivo.
+  const scores = serie.map(s => s.score).filter(v => v !== null);
+  const minimo = Math.min(...scores, 0);
+  const lo = minimo >= 0 ? 0 : Math.max(-100, Math.floor((minimo - 10) / 25) * 25);
+  const Y = v => padT + alt * (100 - v) / (100 - lo);
+  const p = [];
+  [...new Set([100, 75, 50, 0, lo])].filter(v => v >= lo).forEach(v => {
+    p.push(`<line class="${v === 0 ? "g-grid" : "t-ref"}" x1="${padL}" y1="${Y(v)}" x2="${w - padR}" y2="${Y(v)}"></line>`);
+    p.push(`<text class="t-rot" x="${padL - 6}" y="${Y(v) + 3}" text-anchor="end">${v > 0 ? "+" + v : v}</text>`);
+  });
+  p.push(`<line class="t-meta" x1="${padL}" y1="${Y(meta)}" x2="${w - padR}" y2="${Y(meta)}"></line>`);
+  p.push(`<text class="t-rot" x="${w - padR}" y="${Y(meta) - 5}" text-anchor="end">meta ${meta}</text>`);
+  // Trechos continuos: mes vazio interrompe a linha em vez de ligar por cima.
+  let trecho = [];
+  const fecha = () => { if (trecho.length > 1) p.push(`<path class="t-linha" d="M${trecho.join(" L")}"></path>`); trecho = []; };
+  serie.forEach((s, i) => { if (s.score === null) fecha(); else trecho.push(X(i) + " " + Y(s.score)); });
+  fecha();
+  serie.forEach((s, i) => {
+    const [a, m] = s.mes.split("-");
+    const rot = MES_CURTO[+m - 1] + (m === "01" || i === 0 ? "/" + a.slice(2) : "");
+    p.push(`<text class="g-eixo" x="${X(i)}" y="${h - padB + 16}" text-anchor="middle">${rot}</text>`);
+    if (s.score !== null)
+      p.push(`<circle class="t-ponto${s.instavel ? " instavel" : ""}" cx="${X(i)}" cy="${Y(s.score)}" r="4.5"></circle>`);
+    p.push(`<rect class="g-alvo" x="${X(i) - larg / serie.length / 2}" y="0" width="${larg / serie.length}" height="${h - padB}" data-i="${i}"></rect>`);
+  });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Tendência mensal do NPS");
+  svg.innerHTML = p.join("");
+  c.append(svg);
+  svg.querySelectorAll(".g-alvo").forEach(alvo => {
+    const s = serie[+alvo.dataset.i];
+    const [a, m] = s.mes.split("-");
+    alvo.addEventListener("mousemove", ev => {
+      const r = c.getBoundingClientRect();
+      dica(c, ev.clientX - r.left, ev.clientY - r.top, `${MES_CURTO[+m - 1]}/${a}<br>`
+        + (s.score === null ? "sem respostas"
+          : `<b>${s.score > 0 ? "+" : ""}${s.score}</b> · ${s.n} ${s.n === 1 ? "resposta" : "respostas"}`
+            + (s.instavel ? "<br><span style=\"opacity:.7\">instável</span>" : "")));
+    });
+    alvo.addEventListener("mouseleave", () => semDica(c));
+  });
+  box.append(c);
+}
+
 // Pacientes elegiveis no periodo = ativos da empresa. Denominador da taxa de
 // resposta (respondentes / elegiveis), qualificador obrigatorio da leitura.
 function elegiveisNps() {
@@ -2121,6 +2233,8 @@ function desenharPainelNps(codigo) {
   cel("Detratores a tratar", ap.detratoresPendentes,
       "contato em até 5 dias úteis", ap.detratoresPendentes ? "warn" : "");
   box.append(qual);
+
+  graficoTendenciaNps(box, npsSerieMensal(codigo), meta);
 
   if (ap.instavel) {
     const a = el("div", "nps-aviso");
@@ -3464,7 +3578,7 @@ function montarListaMelhorias(container, nps) {
 function montarInstrumentoNps(f, estado, campo) {
   const nps = estado.nps;
 
-  // Q5 e calculada das respostas Q1..Q3, nao digitada. Este campo mostra a nota
+  // Q5 e calculada das respostas P1..P6, nao digitada. Este campo mostra a nota
   // e a classe ao vivo; recalcula a cada resposta.
   const wrapQ5 = el("div", "nps-calc");
   const valNota = el("span", "nps-calc-nota");
@@ -3479,11 +3593,12 @@ function montarInstrumentoNps(f, estado, campo) {
     selo.className = "nps-selo" + (c ? " " + c : "");
   };
 
-  // Q1..Q3: escolha unica, via combobox. Cada resposta recalcula a Q5.
-  NPS_SPEC.perguntas.forEach(p => {
-    campo(p.texto, combobox(
+  // P1..P6: escolha unica, via combobox. Cada resposta recalcula a Q5.
+  NPS_SPEC.perguntas.forEach((p, i) => {
+    const d = campo((i + 1) + ". " + p.texto, combobox(
       p.opcoes.map(o => ({ valor: o, rotulo: o })),
       nps[p.id], v => { nps[p.id] = v; recalcula(); }, "Escolha"), true);
+    if (p.obs) d.append(el("div", "dica", p.obs));
   });
 
   wrapQ5.append(valNota, selo);
@@ -3527,7 +3642,7 @@ function abrirNovoRegistro() {
                    anexo: null, anexoErro: "",
                    // Ouvidoria: classe quantitativa (padrao) ou qualitativa (NPS).
                    classe: "quantitativa",
-                   nps: { q1: "", q2: "", q3: "", q4: "", q5: "",
+                   nps: { p1: "", p2: "", p3: "", p4: "", p5: "", p6: "", q4: "", q5: "",
                           melhorias: [], respondente: "", parentesco: "" } };
   // Mesmo teto do sistema atual, descrito na propria pagina de Eventos.
   const TETO_ANEXO = 5 * 1024 * 1024;
@@ -3730,7 +3845,7 @@ function abrirNovoRegistro() {
       if (!estado.responsavel) faltando.push("profissional responsável");
       if (ehNpsSalvar) {
         const nps = estado.nps;
-        NPS_SPEC.perguntas.forEach(p => { if (!nps[p.id]) faltando.push(p.texto); });
+        NPS_SPEC.perguntas.forEach(p => { if (!nps[p.id]) faltando.push(p.rotulo); });
         if (npsClasse(nps.q5) === null) faltando.push("nota de recomendação (0 a 10)");
         if (!nps.respondente) faltando.push("quem respondeu");
       } else {
@@ -3776,7 +3891,8 @@ function abrirNovoRegistro() {
         // A nota vira numero e a classe do respondente e gravada junto: ler o
         // NPS depois nao pode depender de recalcular a regra em todo lugar.
         evento.nps = {
-          q1: nps.q1, q2: nps.q2, q3: nps.q3, q4: (nps.q4 || "").trim(),
+          ...Object.fromEntries(NPS_SPEC.perguntas.map(p => [p.id, nps[p.id]])),
+          q4: (nps.q4 || "").trim(),
           melhorias: (Array.isArray(nps.melhorias) ? nps.melhorias : [])
             .map(m => (m || "").trim()).filter(Boolean),
           q5: Number(nps.q5), classe: npsClasse(nps.q5),
@@ -5927,7 +6043,9 @@ function relDetalheEvento(ev, voltar) {
       r.append(el("span", "pk", k), el("span", "pv", v == null || v === "" ? "—" : String(v)));
       p.append(r);
     };
-    NPS_SPEC.perguntas.forEach(q => linhaN(q.texto, nps[q.id]));
+    // Registro do instrumento anterior (q1..q3) mostra as perguntas de entao.
+    const lista = ("q1" in nps && !("p1" in nps)) ? NPS_SPEC.legado : NPS_SPEC.perguntas;
+    lista.forEach(q => linhaN(q.rotulo, nps[q.id]));
     if (Array.isArray(nps.melhorias) && nps.melhorias.length) {
       linhaN("Melhorias citadas", nps.melhorias.join(" · "));
     }
